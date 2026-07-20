@@ -214,6 +214,8 @@
     </div>
   </div>
   <div class="header-meta">
+    <select id="proj-select" class="search-box" style="width:auto;max-width:230px;padding:4px 8px;font-size:12px" onchange="switchProject(this.value)"></select>
+    <button class="tool-btn" id="user-chip" style="border-color:var(--blue);color:var(--blue)" onclick="openSwitchUser()">👤</button>
     <span class="header-badge live" id="save-badge">⬤ حفظ تلقائي</span>
     <button class="tool-btn" onclick="openHelp()">؟ دليل الاستخدام</button>
     <button class="tool-btn" onclick="openSettings()">⚙ إعدادات</button>
@@ -225,6 +227,7 @@
 
 <!-- ===================== NAV ===================== -->
 <div class="nav-tabs">
+  <div class="nav-tab" data-tab="projects" onclick="switchTab('projects')">🗂 المشاريع <span class="tab-count" id="tc-projects">0</span></div>
   <div class="nav-tab active" data-tab="dashboard" onclick="switchTab('dashboard')">📊 لوحة التحكم</div>
   <div class="nav-tab" data-tab="plan" onclick="switchTab('plan')">🧭 خطة العمل <span class="tab-count" id="tc-plan">0</span></div>
   <div class="nav-tab" data-tab="items" onclick="switchTab('items')">📋 جدول الكميات <span class="tab-count" id="tc-items">0</span></div>
@@ -235,6 +238,16 @@
 </div>
 
 <div class="main">
+
+  <!-- ===================== PROJECTS ===================== -->
+  <div class="tab-panel" id="tab-projects">
+    <div class="filter-bar">
+      <button class="btn btn-amber" id="btn-add-project" onclick="openProjectModal(null)">+ إضافة مشروع</button>
+      <button class="btn btn-ghost" id="btn-users-manage" onclick="openUsersManage()">👥 إدارة المستخدمين ومدراء المشاريع</button>
+    </div>
+    <div id="pm-notice"></div>
+    <div class="status-cards" id="projects-grid"></div>
+  </div>
 
   <!-- ===================== DASHBOARD ===================== -->
   <div class="tab-panel active" id="tab-dashboard">
@@ -430,7 +443,7 @@
         </div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>التاريخ</th><th>الفرقة</th><th>البند</th><th>الفيلا</th><th>الكمية</th><th>عمال</th><th>الإنتاجية/عامل</th><th>مضافة للنسبة</th><th></th></tr></thead>
+            <thead><tr><th>التاريخ</th><th>الفرقة</th><th>البند</th><th>الفيلا</th><th>الكمية</th><th>عمال</th><th>الإنتاجية/عامل</th><th>مضافة للنسبة</th><th>سجلها</th><th></th></tr></thead>
             <tbody id="wl-tbody"></tbody>
           </table>
         </div>
@@ -505,7 +518,7 @@
 
 <div class="modal-overlay" id="settings-modal">
   <div class="modal">
-    <div class="modal-title"><span>⚙ إعدادات المشروع</span><span class="modal-close" onclick="closeModal('settings-modal')">✕</span></div>
+    <div class="modal-title"><span>⚙ إعدادات المشروع الحالي</span><span class="modal-close" onclick="closeModal('settings-modal')">✕</span></div>
     <div class="f-grid">
       <div class="f-field full"><label>اسم المشروع</label><input type="text" id="st-name"></div>
       <div class="f-field"><label>المقاول الرئيسي</label><input type="text" id="st-client"></div>
@@ -552,6 +565,63 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="project-modal">
+  <div class="modal">
+    <div class="modal-title"><span id="project-modal-title">إضافة مشروع</span><span class="modal-close" onclick="closeModal('project-modal')">✕</span></div>
+    <div class="f-grid">
+      <div class="f-field full"><label>اسم المشروع *</label><input type="text" id="pm-name" placeholder="مثال: مشروع فلل الرياض - المرحلة 2"></div>
+      <div class="f-field"><label>المقاول الرئيسي / العميل</label><input type="text" id="pm-client"></div>
+      <div class="f-field"><label>الاستشاري</label><input type="text" id="pm-consultant"></div>
+      <div class="f-field"><label>المقاول من الباطن (شركتك)</label><input type="text" id="pm-contractor"></div>
+      <div class="f-field"><label>عدد الفلل / الوحدات</label><input type="number" id="pm-villas" min="0" value="0"></div>
+      <div class="f-field"><label>ضريبة القيمة المضافة %</label><input type="number" id="pm-vat" min="0" step="0.5" value="15"></div>
+      <div class="f-field"><label>محتجز الضمان %</label><input type="number" id="pm-ret" min="0" step="0.5" value="10"></div>
+      <div class="f-field"><label>استرداد الدفعة المقدمة %</label><input type="number" id="pm-adv" min="0" step="0.5" value="0"></div>
+      <div class="f-field"><label>👤 مدير المشروع المسؤول</label><select id="pm-manager"></select></div>
+      <div class="f-field" id="pm-boq-src-wrap"><label>جدول الكميات</label>
+        <select id="pm-boq-src"></select>
+      </div>
+    </div>
+    <div class="alert info" style="margin-top:12px;font-size:12px">💡 مدير المشروع يشوف مشاريعه فقط عند تسجيل دخوله، ويقدر يسجل اليوميات ويحدّث النسب ويرفع المستخلصات. أضف المدراء من "إدارة المستخدمين".</div>
+    <div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap">
+      <button class="btn btn-green" onclick="saveProject()">💾 حفظ المشروع</button>
+      <button class="btn btn-red" id="pm-delete-btn" onclick="deleteProject()">🗑 حذف المشروع</button>
+      <button class="btn btn-ghost" onclick="closeModal('project-modal')">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="users-modal">
+  <div class="modal">
+    <div class="modal-title"><span>👥 إدارة المستخدمين ومدراء المشاريع</span><span class="modal-close" onclick="closeModal('users-modal')">✕</span></div>
+    <div id="users-list" style="margin-bottom:16px"></div>
+    <div class="divider"></div>
+    <div class="card-title" style="font-size:13px">+ إضافة مستخدم جديد</div>
+    <div class="f-grid" style="grid-template-columns:2fr 1fr 1fr">
+      <div class="f-field"><label>الاسم *</label><input type="text" id="us-name" placeholder="م. خالد - مدير مشروع"></div>
+      <div class="f-field"><label>الدور</label>
+        <select id="us-role">
+          <option value="pm">مدير مشروع</option>
+          <option value="owner">مالك / إدارة (كل الصلاحيات)</option>
+        </select>
+      </div>
+      <div class="f-field"><label>رمز دخول PIN (اختياري)</label><input type="text" id="us-pin" placeholder="مثال: 1234"></div>
+    </div>
+    <div class="alert warning" style="margin-top:10px;font-size:11px">⚠️ رمز الـ PIN حماية تنظيمية خفيفة داخل الجهاز فقط (لتنظيم العمل بين الفريق) — ليس تشفيراً أمنياً.</div>
+    <div style="display:flex;gap:10px;margin-top:8px">
+      <button class="btn btn-green" onclick="addUser()">+ إضافة المستخدم</button>
+      <button class="btn btn-ghost" onclick="closeModal('users-modal')">إغلاق</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="switch-user-modal">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-title"><span>👤 تبديل المستخدم</span><span class="modal-close" onclick="closeModal('switch-user-modal')">✕</span></div>
+    <div id="switch-user-list" style="display:flex;flex-direction:column;gap:8px"></div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="help-modal">
   <div class="modal">
     <div class="modal-title"><span>؟ كيف تستخدم النظام</span><span class="modal-close" onclick="closeModal('help-modal')">✕</span></div>
@@ -561,6 +631,8 @@
       <div>2️⃣ <strong style="color:var(--amber)">خطة العمل:</strong> شوف وش الجاهز للرفع، وش تشتغل عليه الحين، وأي عائق لو انحل يفتح لك أكبر مبلغ.</div>
       <div>3️⃣ <strong style="color:var(--green)">المستخلصات:</strong> النظام يقترح الكميات (المنفذ − المرفوع سابقاً)، احفظ المستخلص واطبعه، ويسجل في التاريخ ويخصم من الرصيد.</div>
       <div>4️⃣ <strong style="color:var(--red)">العوائق:</strong> سجّل أي عائق على البند (من نافذة تعديل البند)، والنظام يحسب الأثر المالي المباشر + الأعمال المعتمدة عليه.</div>
+      <div>🗂 <strong style="color:var(--purple)">تعدد المشاريع:</strong> من تبويب المشاريع أضف مشاريعك (مع نسخ جدول كميات من مشروع موجود إذا حاب)، وعيّن لكل مشروع مديره. بدّل بين المشاريع من القائمة أعلى الصفحة.</div>
+      <div>👤 <strong style="color:var(--blue)">المستخدمون:</strong> المالك يشوف كل المشاريع ويديرها، ومدير المشروع يشوف مشاريعه فقط ويسجل اليوميات ويرفع المستخلصات — وكل عملية تنختم باسم من سواها. من "إدارة المستخدمين" تضيف المدراء وتحط لهم رمز PIN.</div>
       <div>💾 بياناتك تنحفظ تلقائياً في المتصفح. خذ <strong style="color:var(--text)">نسخة احتياطية JSON</strong> بشكل دوري من الزر أعلى الصفحة، وتقدر تستوردها في أي جهاز.</div>
     </div>
   </div>
@@ -662,30 +734,95 @@ function defaultState(){
   ];
 
   return {
-    meta:{version:1, seq:1000, savedAt:null},
-    project:{
-      name:'مشروع SANG السكني - موقع القصيم', client:'Saudi Binladen Group (SBG)', consultant:'Dar Al-Riyadh',
-      contractor:'AZOOM UNITED CO. - عزوم المتحدة', totalVillas:96, vatRate:15, retentionRate:10, advanceRate:0
-    },
-    boqItems:items, villas, villaProgress, mustakhlasat, workLogs, blockerLog:[]
+    meta:{version:2, seq:1000, savedAt:null},
+    users:[
+      {id:1, name:'المالك - الإدارة العامة', role:'owner', pin:''},
+      {id:2, name:'م. مدير مشروع القصيم', role:'pm', pin:''}
+    ],
+    currentUserId:1,
+    currentProjectId:1,
+    projects:[{
+      id:1, managerUserId:2,
+      info:{
+        name:'مشروع SANG السكني - موقع القصيم', client:'Saudi Binladen Group (SBG)', consultant:'Dar Al-Riyadh',
+        contractor:'AZOOM UNITED CO. - عزوم المتحدة', totalVillas:96, vatRate:15, retentionRate:10, advanceRate:0
+      },
+      boqItems:items, villas, villaProgress, mustakhlasat, workLogs, blockerLog:[]
+    }]
   };
+}
+
+// ============================================================
+//  MULTI-PROJECT + USERS
+// ============================================================
+const DUMMY_PROJECT = {id:0, managerUserId:null,
+  info:{name:'لا يوجد مشروع', client:'', consultant:'', contractor:'', totalVillas:0, vatRate:15, retentionRate:0, advanceRate:0},
+  boqItems:[], villas:[], villaProgress:{}, mustakhlasat:[], workLogs:[], blockerLog:[]};
+
+function currentUser(){
+  return state.users.find(u => u.id === state.currentUserId) || state.users[0];
+}
+const isOwner = () => currentUser().role === 'owner';
+const canAccess = p => isOwner() || p.managerUserId === currentUser().id;
+const accessibleProjects = () => state.projects.filter(canAccess);
+const userName = id => { const u = state.users.find(x => x.id === id); return u ? u.name : null; };
+
+function proj(){
+  let p = state.projects.find(x => x.id === state.currentProjectId);
+  if (!p || !canAccess(p)) {
+    p = accessibleProjects()[0] || null;
+    state.currentProjectId = p ? p.id : 0;
+  }
+  return p || DUMMY_PROJECT;
+}
+
+function switchProject(id){
+  state.currentProjectId = Number(id);
+  mbSel = {};
+  closeVillaDetail();
+  save(); renderAll();
 }
 
 // ترقية البيانات المحفوظة من إصدارات سابقة (إضافة الحقول الجديدة بدون فقدان شيء)
 function migrate(s){
   s.meta = s.meta || {version:1, seq:1000, savedAt:null};
-  s.blockerLog = s.blockerLog || [];
-  (s.mustakhlasat||[]).forEach(m => { m.payments = m.payments || []; });
-  (s.boqItems||[]).forEach(i => {
-    if (i.blocker) { i.blocker.since = i.blocker.since || ''; i.blocker.expected = i.blocker.expected || ''; }
+  // v1 → v2: تحويل بنية المشروع الواحد إلى مشاريع متعددة
+  if (s.boqItems && !s.projects) {
+    s.projects = [{
+      id:1, managerUserId:null,
+      info: s.project || {name:'مشروع', client:'', consultant:'', contractor:'', totalVillas:0, vatRate:15, retentionRate:0, advanceRate:0},
+      boqItems:s.boqItems, villas:s.villas||[], villaProgress:s.villaProgress||{},
+      mustakhlasat:s.mustakhlasat||[], workLogs:s.workLogs||[], blockerLog:s.blockerLog||[]
+    }];
+    delete s.boqItems; delete s.project; delete s.villas; delete s.villaProgress;
+    delete s.mustakhlasat; delete s.workLogs; delete s.blockerLog;
+    s.currentProjectId = 1;
+  }
+  s.projects = s.projects || [];
+  if (!s.users || !s.users.length) s.users = [{id:1, name:'المالك - الإدارة العامة', role:'owner', pin:''}];
+  if (!s.users.some(u => u.role === 'owner')) s.users[0].role = 'owner';
+  if (!s.users.find(u => u.id === s.currentUserId)) s.currentUserId = s.users[0].id;
+  s.projects.forEach(p => {
+    p.info = p.info || {}; p.blockerLog = p.blockerLog || []; p.workLogs = p.workLogs || [];
+    p.villas = p.villas || []; p.villaProgress = p.villaProgress || {}; p.boqItems = p.boqItems || [];
+    p.mustakhlasat = p.mustakhlasat || [];
+    p.mustakhlasat.forEach(m => { m.payments = m.payments || []; });
+    p.boqItems.forEach(i => {
+      if (i.blocker) { i.blocker.since = i.blocker.since || ''; i.blocker.expected = i.blocker.expected || ''; }
+    });
   });
-  s.workLogs = s.workLogs || []; s.villas = s.villas || []; s.villaProgress = s.villaProgress || {};
+  if (!s.projects.find(p => p.id === s.currentProjectId) && s.projects.length) s.currentProjectId = s.projects[0].id;
+  s.meta.version = 2;
 }
 
 function load(){
   try {
     const raw = localStorage.getItem(LS_KEY);
-    if (raw) { state = JSON.parse(raw); if (!state.boqItems) throw new Error('bad'); migrate(state); return; }
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (!parsed.projects && !parsed.boqItems) throw new Error('صيغة بيانات غير معروفة');
+      state = parsed; migrate(state); return;
+    }
   } catch(e) { console.warn('failed to load saved state, using defaults', e); }
   state = defaultState();
 }
@@ -699,7 +836,7 @@ function save(){
 // ============================================================
 //  DERIVED / COMPUTED
 // ============================================================
-const getItem = id => state.boqItems.find(i => i.id === id);
+const getItem = id => proj().boqItems.find(i => i.id === id);
 const amt = it => (it.totalQty||0) * (it.unitRate||0);
 const itemPct = it => it.totalQty > 0 ? clamp(it.executedQty / it.totalQty, 0, 1) : 0;
 const claimedPct = it => it.totalQty > 0 ? clamp(it.claimedQty / it.totalQty, 0, 1) : 0;
@@ -732,7 +869,7 @@ function statusOf(it){
   return 'partial';
 }
 
-function successorsOf(id){ return state.boqItems.filter(i => (i.predecessors||[]).includes(id)); }
+function successorsOf(id){ return proj().boqItems.filter(i => (i.predecessors||[]).includes(id)); }
 function downstreamSet(id, seen){
   seen = seen || new Set();
   successorsOf(id).forEach(c => { if (!seen.has(c.id)) { seen.add(c.id); downstreamSet(c.id, seen); } });
@@ -753,43 +890,227 @@ function chainOf(it){
 }
 function rootCauseOf(it){ const c = chainOf(it); return c.length ? c[c.length-1] : null; }
 
-function totals(){
-  const t = {contract:0, azoomScope:0, executed:0, claimed:0, net:0, locked:0, othersVal:0, musNet:0, collected:0};
-  state.boqItems.forEach(it => {
+function totalsFor(p){
+  const t = {contract:0, azoomScope:0, executed:0, claimed:0, net:0, locked:0, othersVal:0, musNet:0, collected:0, blockedCount:0};
+  const getP = id => p.boqItems.find(i => i.id === id);
+  p.boqItems.forEach(it => {
     const a = amt(it);
     t.contract += a;
     if (it.scope === 'others') { t.othersVal += a; return; }
     t.azoomScope += a;
     t.executed += itemPct(it) * a;
     t.claimed += claimedPct(it) * a;
-    t.net += netClaimable(it);
-    const st = statusOf(it);
-    if (['blocked','waiting','by_client'].includes(st)) t.locked += remainingValue(it);
+    t.net += Math.max(0, (it.executedQty||0) - (it.claimedQty||0)) * it.unitRate;
+    if (it.blocker && it.blocker.active && itemPct(it) < DONE) t.blockedCount++;
+    // محجوب: عائق خارجي أو انتظار سلف غير مكتمل أو توريد عميل
+    let locked = it.blocker && it.blocker.active && itemPct(it) < DONE;
+    if (!locked && itemPct(it) === 0) {
+      if (it.scope === 'client_supply') locked = true;
+      else locked = (it.predecessors||[]).map(getP).filter(Boolean).some(x => itemPct(x) < DONE);
+    }
+    if (locked) t.locked += (1 - itemPct(it)) * a;
   });
-  state.mustakhlasat.forEach(m => { t.musNet += m.net; t.collected += paidAmount(m); });
+  p.mustakhlasat.forEach(m => { t.musNet += m.net; t.collected += paidAmount(m); });
   return t;
 }
+function totals(){ return totalsFor(proj()); }
 
 // ============================================================
 //  RENDER: SHARED
 // ============================================================
 function renderAll(){
-  renderHeader(); renderKPIs(); renderCharts(); renderAlerts(); renderClaimSummary();
+  renderHeader(); renderProjects(); renderKPIs(); renderCharts(); renderAlerts(); renderClaimSummary();
   renderItemFilters(); renderItemsTable(); renderPlan(); renderBuilder(); renderHistory();
   renderBlocked(); renderVillaFilters(); renderVillaGrid(); renderProd(); updateTabCounts();
 }
 
 function renderHeader(){
-  $('hd-sub').textContent = state.project.name + ' | ' + state.project.contractor;
+  const p = proj();
+  const cu = currentUser();
+  const mgr = userName(p.managerUserId);
+  $('hd-sub').textContent = p.info.name + (mgr ? ' | مدير المشروع: ' + mgr : '');
+  const list = accessibleProjects();
+  $('proj-select').innerHTML = list.length
+    ? list.map(x => '<option value="' + x.id + '"' + (x.id === p.id ? ' selected' : '') + '>🗂 ' + esc(x.info.name) + '</option>').join('')
+    : '<option>لا يوجد مشروع معين لك</option>';
+  $('user-chip').textContent = '👤 ' + cu.name + (cu.role === 'owner' ? ' ★' : '');
+}
+
+// ============================================================
+//  PROJECTS TAB
+// ============================================================
+function renderProjects(){
+  const list = accessibleProjects();
+  $('btn-add-project').style.display = isOwner() ? '' : 'none';
+  $('btn-users-manage').style.display = isOwner() ? '' : 'none';
+  $('pm-notice').innerHTML = isOwner() ? '' :
+    '<div class="alert info">👤 أنت مسجل كمدير مشروع — تظهر لك مشاريعك المعينة فقط.</div>';
+  $('projects-grid').innerHTML = list.map(p => {
+    const t = totalsFor(p);
+    const pct = t.azoomScope > 0 ? t.executed / t.azoomScope * 100 : 0;
+    const barColor = pct >= 80 ? 'var(--green)' : pct >= 40 ? 'var(--amber)' : 'var(--red)';
+    const mgr = userName(p.managerUserId);
+    const isCur = p.id === proj().id;
+    return '<div class="card' + (isCur ? ' green-b' : '') + '" style="margin-bottom:0">' +
+      '<div class="sc-header"><div class="sc-icon" style="background:var(--amber-dim)">🗂</div>' +
+      '<div style="flex:1"><div>' + esc(p.info.name) + (isCur ? ' <span class="pill green" style="font-size:9px">الحالي</span>' : '') + '</div>' +
+      '<div style="font-size:11px;color:var(--text2)">' + esc(p.info.client || '—') + ' · ' + p.boqItems.length + ' بند · ' + p.villas.length + ' فيلا</div></div></div>' +
+      '<div class="sc-item"><span class="sc-item-name">👤 مدير المشروع</span><span class="sc-item-val" style="color:' + (mgr ? 'var(--blue)' : 'var(--red)') + '">' + (mgr ? esc(mgr) : 'غير معيّن ⚠') + '</span></div>' +
+      '<div style="margin:8px 0"><div class="villa-prog-bar" style="height:6px"><div class="villa-prog-fill" style="width:' + pct + '%;background:' + barColor + '"></div></div>' +
+      '<div style="font-size:11px;font-family:var(--mono);color:' + barColor + '">' + pct.toFixed(1) + '% إنجاز</div></div>' +
+      '<div class="sc-item"><span class="sc-item-name">قيمة النطاق</span><span class="sc-item-val">' + money(t.azoomScope) + '</span></div>' +
+      '<div class="sc-item"><span class="sc-item-name">✅ جاهز للرفع</span><span class="sc-item-val" style="color:var(--green-bright)">' + money(t.net) + '</span></div>' +
+      '<div class="sc-item"><span class="sc-item-name">⛔ بنود معيقة</span><span class="sc-item-val" style="color:' + (t.blockedCount ? 'var(--red)' : 'var(--text3)') + '">' + t.blockedCount + '</span></div>' +
+      '<div class="sc-item"><span class="sc-item-name">📤 مستخلصات / محصل</span><span class="sc-item-val" style="color:var(--teal)">' + p.mustakhlasat.length + ' · ' + money(t.collected) + '</span></div>' +
+      '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">' +
+      '<button class="btn btn-green" style="flex:1;font-size:12px;padding:6px" onclick="switchProject(' + p.id + ');switchTab(\'dashboard\')">📂 فتح المشروع</button>' +
+      (isOwner() ? '<button class="mini-btn" onclick="openProjectModal(' + p.id + ')">✏️ تعديل / تعيين مدير</button>' : '') +
+      '</div></div>';
+  }).join('') || '<div class="empty-state"><div class="icon">🗂</div><p>لا توجد مشاريع' + (isOwner() ? ' — أضف مشروعك الأول' : ' معينة لك — راجع الإدارة') + '</p></div>';
+}
+
+let editingProjectId = null;
+function openProjectModal(id){
+  if (!isOwner()) { alert('إضافة وتعديل المشاريع صلاحية المالك فقط'); return; }
+  editingProjectId = id;
+  const p = id ? state.projects.find(x => x.id === id) : null;
+  $('project-modal-title').textContent = p ? 'تعديل مشروع: ' + p.info.name : 'إضافة مشروع جديد';
+  $('pm-delete-btn').style.display = p ? '' : 'none';
+  $('pm-name').value = p ? p.info.name : '';
+  $('pm-client').value = p ? (p.info.client||'') : '';
+  $('pm-consultant').value = p ? (p.info.consultant||'') : '';
+  $('pm-contractor').value = p ? (p.info.contractor||'') : (state.projects[0] ? state.projects[0].info.contractor : '');
+  $('pm-villas').value = p ? (p.info.totalVillas||0) : 0;
+  $('pm-vat').value = p ? p.info.vatRate : 15;
+  $('pm-ret').value = p ? p.info.retentionRate : 10;
+  $('pm-adv').value = p ? p.info.advanceRate : 0;
+  $('pm-manager').innerHTML = '<option value="">— بدون مدير معيّن —</option>' +
+    state.users.map(u => '<option value="' + u.id + '"' + (p && p.managerUserId === u.id ? ' selected' : '') + '>' + esc(u.name) + (u.role === 'owner' ? ' (مالك)' : '') + '</option>').join('');
+  $('pm-boq-src-wrap').style.display = p ? 'none' : '';
+  if (!p) {
+    $('pm-boq-src').innerHTML = '<option value="">جدول كميات فارغ (أضف البنود يدوياً)</option>' +
+      state.projects.map(x => '<option value="' + x.id + '">نسخ بنود من: ' + esc(x.info.name) + ' (بدون نسب التنفيذ)</option>').join('');
+  }
+  $('project-modal').classList.add('open');
+}
+
+function saveProject(){
+  const name = $('pm-name').value.trim();
+  if (!name) { alert('اكتب اسم المشروع'); return; }
+  const info = {
+    name, client:$('pm-client').value.trim(), consultant:$('pm-consultant').value.trim(),
+    contractor:$('pm-contractor').value.trim(), totalVillas:Number($('pm-villas').value)||0,
+    vatRate:Number($('pm-vat').value)||0, retentionRate:Number($('pm-ret').value)||0, advanceRate:Number($('pm-adv').value)||0
+  };
+  const managerUserId = Number($('pm-manager').value) || null;
+  if (editingProjectId) {
+    const p = state.projects.find(x => x.id === editingProjectId);
+    p.info = info; p.managerUserId = managerUserId;
+  } else {
+    let boqItems = [];
+    const srcId = Number($('pm-boq-src').value);
+    if (srcId) {
+      const src = state.projects.find(x => x.id === srcId);
+      if (src) boqItems = src.boqItems.map(it => ({...it, predecessors:[...(it.predecessors||[])], blocker:null, executedQty:0, claimedQty:0}));
+    }
+    const np = {id: ++state.meta.seq, managerUserId, info, boqItems, villas:[], villaProgress:{}, mustakhlasat:[], workLogs:[], blockerLog:[]};
+    state.projects.push(np);
+    state.currentProjectId = np.id;
+  }
+  closeModal('project-modal'); save(); renderAll();
+}
+
+function deleteProject(){
+  if (!editingProjectId) return;
+  const p = state.projects.find(x => x.id === editingProjectId);
+  if (state.projects.length <= 1) { alert('لا يمكن حذف آخر مشروع'); return; }
+  if (!confirm('حذف المشروع "' + p.info.name + '" نهائياً بكل بنوده ومستخلصاته ويومياته؟ خذ نسخة احتياطية أولاً!')) return;
+  if (!confirm('تأكيد أخير: البيانات لا يمكن استرجاعها بعد الحذف.')) return;
+  state.projects = state.projects.filter(x => x.id !== editingProjectId);
+  closeModal('project-modal'); save(); renderAll();
+}
+
+// ============================================================
+//  USERS
+// ============================================================
+const ROLE_LABELS = {owner:'مالك / إدارة', pm:'مدير مشروع'};
+
+function openUsersManage(){
+  if (!isOwner()) { alert('إدارة المستخدمين صلاحية المالك فقط'); return; }
+  renderUsersList();
+  $('users-modal').classList.add('open');
+}
+
+function renderUsersList(){
+  $('users-list').innerHTML = state.users.map(u => {
+    const projects = state.projects.filter(p => p.managerUserId === u.id);
+    return '<div class="sc-item"><span class="sc-item-name" style="white-space:normal">' +
+      (u.role === 'owner' ? '★ ' : '👤 ') + '<strong style="color:var(--text)">' + esc(u.name) + '</strong> — ' + ROLE_LABELS[u.role] +
+      (u.pin ? ' 🔒' : '') +
+      (projects.length ? '<br><span style="font-size:11px">يدير: ' + projects.map(p => esc(p.info.name)).join('، ') + '</span>' : '') + '</span>' +
+      '<span><button class="mini-btn" onclick="editUserPin(' + u.id + ')">🔒 PIN</button> ' +
+      (u.id !== state.currentUserId ? '<button class="mini-btn red" onclick="deleteUser(' + u.id + ')">🗑</button>' : '<span class="pill blue" style="font-size:9px">أنت</span>') + '</span></div>';
+  }).join('');
+}
+
+function addUser(){
+  const name = $('us-name').value.trim();
+  if (!name) { alert('اكتب اسم المستخدم'); return; }
+  state.users.push({id: ++state.meta.seq, name, role:$('us-role').value, pin:$('us-pin').value.trim()});
+  $('us-name').value = ''; $('us-pin').value = '';
+  save(); renderUsersList(); renderAll();
+}
+
+function editUserPin(id){
+  const u = state.users.find(x => x.id === id);
+  if (!u) return;
+  const pin = prompt('رمز PIN الجديد لـ "' + u.name + '" (اتركه فارغاً لإلغاء الرمز):', u.pin || '');
+  if (pin === null) return;
+  u.pin = pin.trim();
+  save(); renderUsersList();
+}
+
+function deleteUser(id){
+  const u = state.users.find(x => x.id === id);
+  if (!u) return;
+  if (u.role === 'owner' && state.users.filter(x => x.role === 'owner').length <= 1) { alert('لا يمكن حذف آخر مالك'); return; }
+  const projects = state.projects.filter(p => p.managerUserId === id);
+  if (!confirm('حذف المستخدم "' + u.name + '"؟' + (projects.length ? ' سيتم إلغاء تعيينه من ' + projects.length + ' مشروع.' : ''))) return;
+  projects.forEach(p => { p.managerUserId = null; });
+  state.users = state.users.filter(x => x.id !== id);
+  save(); renderUsersList(); renderAll();
+}
+
+function openSwitchUser(){
+  $('switch-user-list').innerHTML = state.users.map(u =>
+    '<button class="btn ' + (u.id === state.currentUserId ? 'btn-green' : 'btn-ghost') + '" style="width:100%;text-align:right" onclick="switchUser(' + u.id + ')">' +
+    (u.role === 'owner' ? '★ ' : '👤 ') + esc(u.name) + ' — ' + ROLE_LABELS[u.role] + (u.pin ? ' 🔒' : '') +
+    (u.id === state.currentUserId ? ' (الحالي)' : '') + '</button>').join('');
+  $('switch-user-modal').classList.add('open');
+}
+
+function switchUser(id){
+  const u = state.users.find(x => x.id === id);
+  if (!u) return;
+  if (u.pin) {
+    const entered = prompt('أدخل رمز PIN للمستخدم "' + u.name + '":');
+    if (entered === null) return;
+    if (entered.trim() !== u.pin) { alert('رمز غير صحيح'); return; }
+  }
+  state.currentUserId = id;
+  mbSel = {};
+  closeModal('switch-user-modal');
+  save(); renderAll();
 }
 
 function updateTabCounts(){
-  $('tc-items').textContent = state.boqItems.length;
-  $('tc-plan').textContent = state.boqItems.filter(i => netClaimable(i) > 1).length;
-  $('tc-invoice').textContent = state.mustakhlasat.length;
-  $('tc-blocked').textContent = state.boqItems.filter(i => ['blocked','waiting'].includes(statusOf(i))).length;
-  $('tc-villas').textContent = state.villas.length;
-  $('tc-prod').textContent = state.workLogs.length;
+  $('tc-projects').textContent = accessibleProjects().length;
+  $('tc-items').textContent = proj().boqItems.length;
+  $('tc-plan').textContent = proj().boqItems.filter(i => netClaimable(i) > 1).length;
+  $('tc-invoice').textContent = proj().mustakhlasat.length;
+  $('tc-blocked').textContent = proj().boqItems.filter(i => ['blocked','waiting'].includes(statusOf(i))).length;
+  $('tc-villas').textContent = proj().villas.length;
+  $('tc-prod').textContent = proj().workLogs.length;
 }
 
 function switchTab(id){
@@ -816,8 +1137,8 @@ function renderKPIs(){
   const kpis = [
     {label:'قيمة نطاق أعمال عزوم', value:money(t.azoomScope), color:'amber', sub:'من إجمالي البنود ' + money(t.contract)},
     {label:'قيمة الأعمال المنفذة', value:money(t.executed), color:'blue', sub:'نسبة الإنجاز ' + progressPct.toFixed(1) + '%'},
-    {label:'مرفوع بمستخلصات سابقة', value:money(t.claimed), color:'teal', sub:state.mustakhlasat.length + ' مستخلص'},
-    {label:'✅ جاهز للرفع الآن (صافي)', value:money(t.net), color:'green', sub:state.boqItems.filter(i=>netClaimable(i)>1).length + ' بند - المنفذ ناقص المرفوع'},
+    {label:'مرفوع بمستخلصات سابقة', value:money(t.claimed), color:'teal', sub:proj().mustakhlasat.length + ' مستخلص'},
+    {label:'✅ جاهز للرفع الآن (صافي)', value:money(t.net), color:'green', sub:proj().boqItems.filter(i=>netClaimable(i)>1).length + ' بند - المنفذ ناقص المرفوع'},
     {label:'محجوب بعوائق وتسلسل', value:money(t.locked), color:'red', sub:'قيمة الأعمال غير الممكنة حالياً'},
     {label:'💵 محصل نقداً', value:money(t.collected), color:'teal', sub:'متبقي تحصيله ' + money(Math.max(0, t.musNet - t.collected)) + ' من المستخلصات'},
     {label:'خارج نطاق عزوم', value:money(t.othersVal), color:'purple', sub:'منفذ سابقاً - لا مطالبة'}
@@ -830,7 +1151,7 @@ function renderKPIs(){
 function renderCharts(){
   // by division: executed vs total (azoom scope)
   const divs = {};
-  state.boqItems.forEach(it => {
+  proj().boqItems.forEach(it => {
     if (it.scope === 'others') return;
     if (!divs[it.div]) divs[it.div] = {name:it.divAr, total:0, exec:0, net:0};
     divs[it.div].total += amt(it);
@@ -848,7 +1169,7 @@ function renderCharts(){
 
   // by status
   const stG = {};
-  state.boqItems.forEach(it => {
+  proj().boqItems.forEach(it => {
     const st = statusOf(it);
     if (!stG[st]) stG[st] = 0;
     stG[st] += amt(it);
@@ -866,24 +1187,24 @@ function renderCharts(){
 
 function renderAlerts(){
   const t = totals();
-  const blockedItems = state.boqItems.filter(i => statusOf(i) === 'blocked');
+  const blockedItems = proj().boqItems.filter(i => statusOf(i) === 'blocked');
   const reasons = [...new Set(blockedItems.map(i => i.blocker.reason))];
   let html = '';
   if (t.net > 1) html += '<div class="alert success">✅ <div>عندك <strong>' + money(t.net) + '</strong> جاهزة للرفع الآن — روح لتبويب المستخلصات.</div></div>';
   if (blockedItems.length) html += '<div class="alert danger">⛔ <div><strong>' + blockedItems.length + ' بند</strong> موقوف بعوائق خارجية (' + reasons.map(esc).join('، ') + ') — راجع تبويب العوائق للأثر المالي.</div></div>';
-  const stale = state.boqItems.filter(i => statusOf(i) === 'available');
+  const stale = proj().boqItems.filter(i => statusOf(i) === 'available');
   if (stale.length) html += '<div class="alert warning">▶ <div><strong>' + stale.length + ' بند</strong> متاح تبدأ فيه الحين بدون أي عائق — بقيمة ' + money(stale.reduce((s,i)=>s+remainingValue(i),0)) + '.</div></div>';
   $('alerts-area').innerHTML = html;
 }
 
 function renderClaimSummary(){
   const t = totals();
-  const vat = t.net * state.project.vatRate/100;
+  const vat = t.net * proj().info.vatRate/100;
   $('claim-summary').innerHTML =
     '<div class="sc-item"><span class="sc-item-name">إجمالي المنفذ</span><span class="sc-item-val" style="color:var(--blue)">' + money(t.executed) + '</span></div>' +
     '<div class="sc-item"><span class="sc-item-name">مرفوع بمستخلصات سابقة</span><span class="sc-item-val" style="color:var(--teal)">− ' + money(t.claimed) + '</span></div>' +
     '<div class="sc-item"><span class="sc-item-name" style="font-weight:700">الصافي الجاهز للرفع</span><span class="sc-item-val" style="color:var(--green-bright);font-size:13px">' + money(t.net) + '</span></div>' +
-    '<div class="sc-item"><span class="sc-item-name">+ ضريبة ' + state.project.vatRate + '%</span><span class="sc-item-val">' + money(vat) + '</span></div>' +
+    '<div class="sc-item"><span class="sc-item-name">+ ضريبة ' + proj().info.vatRate + '%</span><span class="sc-item-val">' + money(vat) + '</span></div>' +
     '<div class="sc-item"><span class="sc-item-name" style="font-weight:700">الإجمالي شامل الضريبة</span><span class="sc-item-val" style="color:var(--green-bright);font-weight:700;font-size:13px">' + money(t.net + vat) + '</span></div>';
 }
 
@@ -892,7 +1213,7 @@ function quickBuildInvoice(){ switchTab('invoice'); mbSelectAll(); }
 // معدل الإنتاج اليومي لكل بند من سجل اليوميات
 function itemLogRates(){
   const per = {};
-  state.workLogs.forEach(l => {
+  proj().workLogs.forEach(l => {
     if (!per[l.itemId]) per[l.itemId] = {qty:0, days:new Set()};
     per[l.itemId].qty += l.qty; per[l.itemId].days.add(l.date);
   });
@@ -905,11 +1226,11 @@ function itemLogRates(){
 //  ACTION PLAN
 // ============================================================
 function renderPlan(){
-  const claimable = state.boqItems.filter(i => netClaimable(i) > 1).sort((a,b) => netClaimable(b) - netClaimable(a));
-  const workNow = state.boqItems.filter(i => ['partial','available'].includes(statusOf(i))).sort((a,b) => remainingValue(b) - remainingValue(a));
+  const claimable = proj().boqItems.filter(i => netClaimable(i) > 1).sort((a,b) => netClaimable(b) - netClaimable(a));
+  const workNow = proj().boqItems.filter(i => ['partial','available'].includes(statusOf(i))).sort((a,b) => remainingValue(b) - remainingValue(a));
 
   // external blockers grouped with downstream impact
-  const blockedItems = state.boqItems.filter(i => statusOf(i) === 'blocked');
+  const blockedItems = proj().boqItems.filter(i => statusOf(i) === 'blocked');
   const groups = {};
   blockedItems.forEach(i => {
     const key = i.blocker.reason || 'غير محدد';
@@ -925,7 +1246,7 @@ function renderPlan(){
   }).sort((a,b) => b.total - a.total);
 
   // sequence: waiting items grouped by root cause (root not blocked externally)
-  const waiting = state.boqItems.filter(i => statusOf(i) === 'waiting');
+  const waiting = proj().boqItems.filter(i => statusOf(i) === 'waiting');
   const seqGroups = {};
   waiting.forEach(w => {
     const root = rootCauseOf(w);
@@ -982,7 +1303,7 @@ function renderPlan(){
 
   // 5 — forecast from productivity rates
   const rates = itemLogRates();
-  const forecastRows = state.boqItems
+  const forecastRows = proj().boqItems
     .filter(i => ['partial','available'].includes(statusOf(i)) && rates[i.id] && rates[i.id].rate > 0)
     .map(i => {
       const r = rates[i.id].rate;
@@ -1021,7 +1342,7 @@ function setFilter(f){ currentFilter = f; renderItemFilters(); renderItemsTable(
 
 function renderItemsTable(){
   const search = ($('search-items').value || '').toLowerCase();
-  let list = state.boqItems.filter(it => {
+  let list = proj().boqItems.filter(it => {
     if (search && !(it.desc.toLowerCase().includes(search) || it.id.toLowerCase().includes(search) || (it.divAr||'').includes(search))) return false;
     if (currentFilter === 'all') return true;
     if (currentFilter === 'claimable') return netClaimable(it) > 1;
@@ -1099,9 +1420,9 @@ function openItemModal(id){
   $('im-blk-since').value = it && it.blocker ? (it.blocker.since||'') : '';
   $('im-blk-expected').value = it && it.blocker ? (it.blocker.expected||'') : '';
   $('im-notes').value = it ? (it.notes||'') : '';
-  $('div-list').innerHTML = [...new Set(state.boqItems.map(i=>i.div))].map(d=>'<option value="'+esc(d)+'">').join('');
+  $('div-list').innerHTML = [...new Set(proj().boqItems.map(i=>i.div))].map(d=>'<option value="'+esc(d)+'">').join('');
   const preds = it ? (it.predecessors||[]) : [];
-  $('im-preds').innerHTML = state.boqItems.filter(i => !it || i.id !== it.id).map(i =>
+  $('im-preds').innerHTML = proj().boqItems.filter(i => !it || i.id !== it.id).map(i =>
     '<label><input type="checkbox" value="' + esc(i.id) + '"' + (preds.includes(i.id)?' checked':'') + '> <span class="item-no">' + esc(i.id) + '</span> ' + esc(i.desc.substring(0,50)) + '</label>'
   ).join('');
   $('item-modal').classList.add('open');
@@ -1129,7 +1450,7 @@ function saveItem(){
     Object.assign(it, data);
   } else {
     data.claimedQty = 0;
-    state.boqItems.push(data);
+    proj().boqItems.push(data);
   }
   closeModal('item-modal'); save(); renderAll();
 }
@@ -1139,9 +1460,9 @@ function deleteItem(){
   const it = getItem(editingItemId);
   if (it.claimedQty > 0 && !confirm('هذا البند مرفوع في مستخلصات سابقة. متأكد من حذفه؟')) return;
   if (!confirm('حذف البند ' + editingItemId + ' نهائياً؟')) return;
-  state.boqItems = state.boqItems.filter(i => i.id !== editingItemId);
-  state.boqItems.forEach(i => { i.predecessors = (i.predecessors||[]).filter(p => p !== editingItemId); });
-  delete state.villaProgress[editingItemId];
+  proj().boqItems = proj().boqItems.filter(i => i.id !== editingItemId);
+  proj().boqItems.forEach(i => { i.predecessors = (i.predecessors||[]).filter(p => p !== editingItemId); });
+  delete proj().villaProgress[editingItemId];
   closeModal('item-modal'); save(); renderAll();
 }
 
@@ -1150,12 +1471,12 @@ function deleteItem(){
 // ============================================================
 let mbSel = {}; // itemId -> qty
 
-function claimableItems(){ return state.boqItems.filter(i => i.scope !== 'others' && availQty(i) > 0.01); }
+function claimableItems(){ return proj().boqItems.filter(i => i.scope !== 'others' && availQty(i) > 0.01); }
 
 function renderBuilder(){
   if (!$('mb-date').value) $('mb-date').value = todayStr();
-  if ($('mb-ret').value === '') $('mb-ret').value = state.project.retentionRate;
-  if ($('mb-adv').value === '') $('mb-adv').value = state.project.advanceRate;
+  if ($('mb-ret').value === '') $('mb-ret').value = proj().info.retentionRate;
+  if ($('mb-adv').value === '') $('mb-adv').value = proj().info.advanceRate;
   const list = claimableItems();
   $('mb-tbody').innerHTML = list.map(it => {
     const sel = mbSel[it.id] !== undefined;
@@ -1198,7 +1519,7 @@ function mbCompute(){
       prevQty:it.claimedQty, currQty:qty, cumQty:it.claimedQty + qty, amount:qty * it.unitRate});
   });
   const gross = lines.reduce((s,l) => s + l.amount, 0);
-  const vatRate = state.project.vatRate, retRate = Number($('mb-ret').value)||0, advRate = Number($('mb-adv').value)||0;
+  const vatRate = proj().info.vatRate, retRate = Number($('mb-ret').value)||0, advRate = Number($('mb-adv').value)||0;
   const vat = gross * vatRate/100, retention = gross * retRate/100, advance = gross * advRate/100;
   return {lines, gross, vatRate, retRate, advRate, vat, retention, advance, net: gross + vat - retention - advance};
 }
@@ -1218,12 +1539,12 @@ function saveMustakhlas(){
   const c = mbCompute();
   if (!c.lines.length) { alert('حدّد بنود أولاً'); return; }
   if (!confirm('حفظ المستخلص بقيمة ' + money(c.gross) + '؟ سيتم خصم الكميات من الرصيد القابل للرفع.')) return;
-  const no = 'MUS-' + String(state.mustakhlasat.length + 1).padStart(3,'0');
+  const no = 'MUS-' + String(proj().mustakhlasat.length + 1).padStart(3,'0');
   const rec = {id: ++state.meta.seq, no, date: $('mb-date').value || todayStr(), status:'submitted',
     lines:c.lines, gross:c.gross, vatRate:c.vatRate, retRate:c.retRate, advRate:c.advRate,
-    vat:c.vat, retention:c.retention, advance:c.advance, net:c.net, notes:$('mb-notes').value.trim(), payments:[]};
+    vat:c.vat, retention:c.retention, advance:c.advance, net:c.net, notes:$('mb-notes').value.trim(), payments:[], by: currentUser().name};
   c.lines.forEach(l => { const it = getItem(l.itemId); if (it) it.claimedQty = Math.min(it.totalQty, it.claimedQty + l.currQty); });
-  state.mustakhlasat.push(rec);
+  proj().mustakhlasat.push(rec);
   mbSel = {}; $('mb-notes').value = '';
   save(); renderAll(); showDoc(rec);
 }
@@ -1240,7 +1561,7 @@ function previewMustakhlas(){
 const MUS_STATUS = {submitted:{label:'مرفوع', color:'amber'}, approved:{label:'معتمد', color:'blue'}, paid:{label:'مدفوع', color:'green'}};
 
 function renderHistory(){
-  const list = [...state.mustakhlasat].sort((a,b) => b.date.localeCompare(a.date));
+  const list = [...proj().mustakhlasat].sort((a,b) => b.date.localeCompare(a.date));
   $('mus-history-tbody').innerHTML = list.map(m => {
     const stm = MUS_STATUS[m.status] || MUS_STATUS.submitted;
     const paid = paidAmount(m);
@@ -1262,7 +1583,7 @@ function renderHistory(){
 
   // monthly claimed chart
   const byMonth = {};
-  state.mustakhlasat.forEach(m => { const k = (m.date||'').slice(0,7); if (k) byMonth[k] = (byMonth[k]||0) + m.gross; });
+  proj().mustakhlasat.forEach(m => { const k = (m.date||'').slice(0,7); if (k) byMonth[k] = (byMonth[k]||0) + m.gross; });
   const months = Object.keys(byMonth).sort();
   const maxM = Math.max(1, ...months.map(k => byMonth[k]));
   $('mus-monthly').innerHTML = months.length ? months.map(k =>
@@ -1275,7 +1596,7 @@ function renderHistory(){
 // ---- payments ----
 let payMusId = null;
 function openPay(id){
-  const m = state.mustakhlasat.find(x => x.id === id);
+  const m = proj().mustakhlasat.find(x => x.id === id);
   if (!m) return;
   payMusId = id;
   const paid = paidAmount(m);
@@ -1286,23 +1607,23 @@ function openPay(id){
   $('pay-modal').classList.add('open');
 }
 function savePayment(){
-  const m = state.mustakhlasat.find(x => x.id === payMusId);
+  const m = proj().mustakhlasat.find(x => x.id === payMusId);
   if (!m) return;
   const amount = Number($('pay-amount').value);
   if (!amount || amount <= 0) { alert('اكتب مبلغ الدفعة'); return; }
-  m.payments.push({id: ++state.meta.seq, date: $('pay-date').value || todayStr(), amount, note: $('pay-note').value.trim()});
+  m.payments.push({id: ++state.meta.seq, date: $('pay-date').value || todayStr(), amount, note: $('pay-note').value.trim(), by: currentUser().name});
   if (paidAmount(m) >= m.net - 1) m.status = 'paid';
   closeModal('pay-modal'); save(); renderAll();
 }
 
-function musStatus(id, st){ const m = state.mustakhlasat.find(x => x.id === id); if (m) { m.status = st; save(); renderHistory(); } }
-function viewMus(id){ const m = state.mustakhlasat.find(x => x.id === id); if (m) showDoc(m); }
+function musStatus(id, st){ const m = proj().mustakhlasat.find(x => x.id === id); if (m) { m.status = st; save(); renderHistory(); } }
+function viewMus(id){ const m = proj().mustakhlasat.find(x => x.id === id); if (m) showDoc(m); }
 function deleteMus(id){
-  const m = state.mustakhlasat.find(x => x.id === id);
+  const m = proj().mustakhlasat.find(x => x.id === id);
   if (!m) return;
   if (!confirm('حذف المستخلص ' + m.no + '؟ سيتم إرجاع كمياته إلى الرصيد القابل للرفع.')) return;
   m.lines.forEach(l => { const it = getItem(l.itemId); if (it) it.claimedQty = Math.max(0, it.claimedQty - l.currQty); });
-  state.mustakhlasat = state.mustakhlasat.filter(x => x.id !== id);
+  proj().mustakhlasat = proj().mustakhlasat.filter(x => x.id !== id);
   save(); renderAll();
 }
 
@@ -1314,7 +1635,7 @@ function showDoc(m){
   currentDoc = m;
   $('doc-title').textContent = '📄 وثيقة المستخلص ' + (m.no || '');
   $('doc-csv-btn').style.display = '';
-  const p = state.project;
+  const p = proj().info;
   const rows = m.lines.map((l, i) =>
     '<tr>' +
     '<td style="padding:6px;border:1px solid var(--border);text-align:center;font-family:var(--mono)">' + (i+1) + '</td>' +
@@ -1343,6 +1664,7 @@ function showDoc(m){
       '<div><span style="color:var(--text2)">الاستشاري:</span> <strong>' + esc(p.consultant) + '</strong></div>' +
       '<div><span style="color:var(--text2)">تاريخ المستخلص:</span> <strong>' + esc(m.date) + '</strong></div>' +
       '<div><span style="color:var(--text2)">عدد البنود:</span> <strong>' + m.lines.length + '</strong></div>' +
+      (m.by ? '<div><span style="color:var(--text2)">معد المستخلص:</span> <strong>' + esc(m.by) + '</strong></div>' : '') +
       (m.notes ? '<div style="grid-column:1/-1"><span style="color:var(--text2)">ملاحظات:</span> ' + esc(m.notes) + '</div>' : '') +
     '</div>' +
     '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px">' +
@@ -1389,7 +1711,7 @@ const cell = (v, extra) => '<td style="padding:6px;border:1px solid var(--border
 const hcell = v => '<th style="padding:7px;border:1px solid var(--border);color:var(--amber);text-align:center">' + v + '</th>';
 
 function docHeader(title, sub){
-  const p = state.project;
+  const p = proj().info;
   return '<div style="text-align:center;padding:14px 0;border-bottom:2px solid var(--amber);margin-bottom:14px">' +
     '<div style="font-size:11px;color:var(--text2);letter-spacing:2px">' + esc(p.contractor) + '</div>' +
     '<div style="font-size:18px;font-weight:700;color:var(--amber);margin:4px 0">' + title + '</div>' +
@@ -1397,8 +1719,8 @@ function docHeader(title, sub){
 }
 
 function genBlockerLetter(){
-  const p = state.project;
-  const blocked = state.boqItems.filter(i => statusOf(i) === 'blocked');
+  const p = proj().info;
+  const blocked = proj().boqItems.filter(i => statusOf(i) === 'blocked');
   if (!blocked.length) { alert('لا توجد عوائق نشطة حالياً 🎉'); return; }
   const groups = {};
   blocked.forEach(i => {
@@ -1452,7 +1774,7 @@ function buildProgressReport(){
 
   // per-division summary
   const divs = {};
-  state.boqItems.forEach(it => {
+  proj().boqItems.forEach(it => {
     if (it.scope === 'others') return;
     if (!divs[it.div]) divs[it.div] = {name:it.divAr, total:0, exec:0, claimed:0};
     divs[it.div].total += amt(it); divs[it.div].exec += itemPct(it)*amt(it); divs[it.div].claimed += claimedPct(it)*amt(it);
@@ -1463,7 +1785,7 @@ function buildProgressReport(){
     cell(fmtN(d.claimed),'text-align:center;font-family:var(--mono)') + '</tr>').join('');
 
   // blockers
-  const blocked = state.boqItems.filter(i => statusOf(i) === 'blocked');
+  const blocked = proj().boqItems.filter(i => statusOf(i) === 'blocked');
   const bGroups = {};
   blocked.forEach(i => {
     const k = i.blocker.reason;
@@ -1476,7 +1798,7 @@ function buildProgressReport(){
     cell(fmtN(g.val),'text-align:center;font-family:var(--mono);color:var(--red)') + '</tr>').join('');
 
   // top claimables
-  const claimables = state.boqItems.filter(i => netClaimable(i) > 1).sort((a,b) => netClaimable(b)-netClaimable(a)).slice(0,10);
+  const claimables = proj().boqItems.filter(i => netClaimable(i) > 1).sort((a,b) => netClaimable(b)-netClaimable(a)).slice(0,10);
   const claimRows = claimables.map(i =>
     '<tr>' + cell('<span style="font-family:var(--mono);color:var(--amber)">' + esc(i.id) + '</span> ' + esc(i.desc)) +
     cell((itemPct(i)*100).toFixed(0)+'%','text-align:center;font-family:var(--mono)') +
@@ -1484,7 +1806,7 @@ function buildProgressReport(){
 
   // productivity last 7 days
   const wk = daysAgo(7);
-  const recent = state.workLogs.filter(l => l.date >= wk);
+  const recent = proj().workLogs.filter(l => l.date >= wk);
   const crewQty = {};
   recent.forEach(l => { crewQty[l.crew] = (crewQty[l.crew]||0) + l.qty; });
   const crewRows = Object.entries(crewQty).sort((a,b)=>b[1]-a[1]).map(([c,q]) =>
@@ -1537,7 +1859,7 @@ function dlCSV(name, rows){
 
 function exportItemsCSV(){
   const rows = [['رقم البند','القسم','الوصف','الوحدة','الكمية الكلية','سعر الوحدة','الإجمالي','الكمية المنفذة','نسبة التنفيذ %','الكمية المرفوعة','صافي المطالبة','الحالة','العائق / يعتمد على']];
-  state.boqItems.forEach(it => {
+  proj().boqItems.forEach(it => {
     const st = STATUS_META[statusOf(it)].label;
     const dep = it.blocker && it.blocker.active ? it.blocker.reason : (it.predecessors||[]).join(' + ');
     rows.push([it.id, it.div + ' ' + (it.divAr||''), it.desc, it.unit, it.totalQty, it.unitRate, amt(it),
@@ -1547,11 +1869,11 @@ function exportItemsCSV(){
 }
 
 function exportLogsCSV(){
-  const rows = [['التاريخ','الفرقة','البند','الوصف','الفيلا','الكمية','الوحدة','عدد العمال','الإنتاجية/عامل','ملاحظات']];
-  [...state.workLogs].sort((a,b) => a.date.localeCompare(b.date)).forEach(l => {
+  const rows = [['التاريخ','الفرقة','البند','الوصف','الفيلا','الكمية','الوحدة','عدد العمال','الإنتاجية/عامل','سجلها','ملاحظات']];
+  [...proj().workLogs].sort((a,b) => a.date.localeCompare(b.date)).forEach(l => {
     const it = getItem(l.itemId);
     rows.push([l.date, l.crew, l.itemId, it ? it.desc : '', l.villaNo || '', l.qty, it ? it.unit : '',
-      l.workers || '', l.workers > 0 ? (l.qty/l.workers).toFixed(1) : '', l.note || '']);
+      l.workers || '', l.workers > 0 ? (l.qty/l.workers).toFixed(1) : '', l.by || '', l.note || '']);
   });
   dlCSV('WorkLogs-' + todayStr() + '.csv', rows);
 }
@@ -1575,7 +1897,7 @@ function exportDocCSV(){
 //  BLOCKED TAB
 // ============================================================
 function renderBlocked(){
-  const blocked = state.boqItems.filter(i => statusOf(i) === 'blocked');
+  const blocked = proj().boqItems.filter(i => statusOf(i) === 'blocked');
   const groups = {};
   blocked.forEach(i => {
     const key = i.blocker.reason || 'غير محدد';
@@ -1606,7 +1928,7 @@ function renderBlocked(){
   }).join('') || '<div class="empty-state"><div class="icon">🎉</div><p>لا توجد عوائق خارجية نشطة</p></div>';
 
   // waiting table
-  const waiting = state.boqItems.filter(i => statusOf(i) === 'waiting');
+  const waiting = proj().boqItems.filter(i => statusOf(i) === 'waiting');
   let sumW = 0;
   $('waiting-tbody').innerHTML = waiting.map(w => {
     const chain = chainOf(w);
@@ -1624,20 +1946,20 @@ function renderBlocked(){
   $('waiting-tfoot').innerHTML = waiting.length ? '<tr class="summary-row"><td colspan="4" style="text-align:right;color:var(--text2)">إجمالي القيمة المنتظرة</td><td class="amount blocked">' + fmtN(sumW) + '</td></tr>' : '';
 
   // resolved blockers history
-  const logs = [...(state.blockerLog||[])].sort((a,b) => (b.resolvedAt||'').localeCompare(a.resolvedAt||''));
+  const logs = [...(proj().blockerLog||[])].sort((a,b) => (b.resolvedAt||'').localeCompare(a.resolvedAt||''));
   $('blocker-log-list').innerHTML = logs.length ? logs.map(l => {
     const dur = (l.since && l.resolvedAt) ? ageDays(l.since) - ageDays(l.resolvedAt) : null;
     return '<div class="sc-item"><span class="sc-item-name" style="white-space:normal">✅ <strong style="color:var(--green-bright)">' + esc(l.reason) + '</strong> — حُل بتاريخ ' + esc(l.resolvedAt) +
-      (dur !== null && dur >= 0 ? ' (استمر ' + dur + ' يوم)' : '') + '<br><span style="font-size:11px">كان يوقف: ' + l.items.map(esc).join('، ') + '</span></span></div>';
+      (dur !== null && dur >= 0 ? ' (استمر ' + dur + ' يوم)' : '') + (l.by ? ' · بواسطة ' + esc(l.by) : '') + '<br><span style="font-size:11px">كان يوقف: ' + l.items.map(esc).join('، ') + '</span></span></div>';
   }).join('') : '<div class="empty-state" style="padding:14px"><p>لم يتم حل أي عائق بعد — عند الضغط على "تم حل العائق" يسجل هنا</p></div>';
 }
 
 function resolveBlockerGroup(reason){
-  const items = state.boqItems.filter(i => i.blocker && i.blocker.active && i.blocker.reason === reason);
+  const items = proj().boqItems.filter(i => i.blocker && i.blocker.active && i.blocker.reason === reason);
   if (!items.length) return;
   if (!confirm('تأكيد حل العائق "' + reason + '"؟ سيتم فتح ' + items.length + ' بند للعمل.')) return;
   const sinceDates = items.map(i => i.blocker.since).filter(Boolean).sort();
-  state.blockerLog.push({id: ++state.meta.seq, reason, type: items[0].blocker.type, items: items.map(i => i.id), since: sinceDates[0] || '', resolvedAt: todayStr()});
+  proj().blockerLog.push({id: ++state.meta.seq, reason, type: items[0].blocker.type, items: items.map(i => i.id), since: sinceDates[0] || '', resolvedAt: todayStr(), by: currentUser().name});
   items.forEach(i => { i.blocker.active = false; });
   save(); renderAll();
 }
@@ -1649,21 +1971,21 @@ let currentVillaFilter = 'all';
 let currentVillaNo = null;
 
 function renderVillaFilters(){
-  const sheets = [...new Set(state.villas.map(v => v.sheet))];
+  const sheets = [...new Set(proj().villas.map(v => v.sheet))];
   $('villa-filters').innerHTML = ['<button class="filter-btn' + (currentVillaFilter==='all'?' active':'') + '" onclick="setVillaFilter(\'all\')">كل الفلل</button>']
     .concat(sheets.map(s => '<button class="filter-btn' + (currentVillaFilter===s?' active':'') + '" onclick="setVillaFilter(\'' + esc(s) + '\')">' + esc(s) + '</button>')).join(' ');
 }
 function setVillaFilter(f){ currentVillaFilter = f; closeVillaDetail(); renderVillaFilters(); renderVillaGrid(); }
 
 function villaPct(itemId, villaNo){
-  const vp = state.villaProgress[itemId];
+  const vp = proj().villaProgress[itemId];
   return vp && vp[villaNo] !== undefined ? clamp(vp[villaNo],0,100) : 0;
 }
 
 function renderVillaGrid(){
-  let list = state.villas;
+  let list = proj().villas;
   if (currentVillaFilter !== 'all') list = list.filter(v => v.sheet === currentVillaFilter);
-  const activeItems = state.boqItems.filter(i => i.scope !== 'others');
+  const activeItems = proj().boqItems.filter(i => i.scope !== 'others');
   $('villa-grid').innerHTML = list.map(v => {
     let wSum = 0, wTot = 0, done = 0, prog = 0, blockedC = 0;
     activeItems.forEach(it => {
@@ -1686,12 +2008,12 @@ function renderVillaGrid(){
 
 function showVillaDetail(no){
   currentVillaNo = no;
-  const v = state.villas.find(x => x.no === no);
+  const v = proj().villas.find(x => x.no === no);
   if (!v) return;
   $('villa-grid').style.display = 'none';
   $('villa-detail').style.display = 'block';
   $('villa-detail-title').textContent = 'تفاصيل فيلا #' + no + ' - ' + v.sheet;
-  $('villa-detail-tbody').innerHTML = state.boqItems.filter(i => i.scope !== 'others').map(it => {
+  $('villa-detail-tbody').innerHTML = proj().boqItems.filter(i => i.scope !== 'others').map(it => {
     const p = villaPct(it.id, no);
     return '<tr>' +
       '<td><span class="item-no">' + esc(it.id) + '</span></td>' +
@@ -1703,8 +2025,8 @@ function showVillaDetail(no){
 }
 
 function setVillaPct(itemId, villaNo, val){
-  if (!state.villaProgress[itemId]) state.villaProgress[itemId] = {};
-  state.villaProgress[itemId][villaNo] = clamp(val, 0, 100);
+  if (!proj().villaProgress[itemId]) proj().villaProgress[itemId] = {};
+  proj().villaProgress[itemId][villaNo] = clamp(val, 0, 100);
   save(); renderVillaGrid();
 }
 
@@ -1717,28 +2039,28 @@ function closeVillaDetail(){
 function addVilla(){
   const no = prompt('رقم الفيلا:');
   if (!no) return;
-  if (state.villas.find(v => v.no === no.trim())) { alert('الفيلا موجودة مسبقاً'); return; }
+  if (proj().villas.find(v => v.no === no.trim())) { alert('الفيلا موجودة مسبقاً'); return; }
   const sheet = prompt('المخطط / الشيت (مثال C36):', 'C37') || '—';
-  state.villas.push({no:no.trim(), sheet:sheet.trim()});
+  proj().villas.push({no:no.trim(), sheet:sheet.trim()});
   save(); renderVillaFilters(); renderVillaGrid(); updateTabCounts();
 }
 
 function deleteVilla(){
   if (!currentVillaNo) return;
   if (!confirm('حذف فيلا #' + currentVillaNo + ' وكل نسبها؟')) return;
-  state.villas = state.villas.filter(v => v.no !== currentVillaNo);
-  Object.values(state.villaProgress).forEach(vp => { delete vp[currentVillaNo]; });
+  proj().villas = proj().villas.filter(v => v.no !== currentVillaNo);
+  Object.values(proj().villaProgress).forEach(vp => { delete vp[currentVillaNo]; });
   closeVillaDetail(); save(); renderAll();
 }
 
 function syncFromVillas(){
-  if (!state.villas.length) { alert('لا توجد فلل'); return; }
-  if (!confirm('سيتم إعادة حساب نسبة إنجاز كل بند من متوسط نسب الفلل المسجلة (' + state.villas.length + ' فيلا). متابعة؟')) return;
-  state.boqItems.forEach(it => {
+  if (!proj().villas.length) { alert('لا توجد فلل'); return; }
+  if (!confirm('سيتم إعادة حساب نسبة إنجاز كل بند من متوسط نسب الفلل المسجلة (' + proj().villas.length + ' فيلا). متابعة؟')) return;
+  proj().boqItems.forEach(it => {
     if (it.scope === 'others') return;
-    const vp = state.villaProgress[it.id];
+    const vp = proj().villaProgress[it.id];
     if (!vp || !Object.keys(vp).length) return;
-    const mean = state.villas.reduce((s,v) => s + villaPct(it.id, v.no), 0) / state.villas.length;
+    const mean = proj().villas.reduce((s,v) => s + villaPct(it.id, v.no), 0) / proj().villas.length;
     it.executedQty = Math.round(mean/100 * it.totalQty * 100) / 100;
   });
   save(); renderAll();
@@ -1749,12 +2071,12 @@ function syncFromVillas(){
 // ============================================================
 function renderProd(){
   if (!$('wl-date').value) $('wl-date').value = todayStr();
-  $('crew-list').innerHTML = [...new Set(state.workLogs.map(l => l.crew))].map(c => '<option value="' + esc(c) + '">').join('');
-  $('wl-item').innerHTML = state.boqItems.filter(i => i.scope !== 'others').map(i =>
+  $('crew-list').innerHTML = [...new Set(proj().workLogs.map(l => l.crew))].map(c => '<option value="' + esc(c) + '">').join('');
+  $('wl-item').innerHTML = proj().boqItems.filter(i => i.scope !== 'others').map(i =>
     '<option value="' + esc(i.id) + '">' + esc(i.id) + ' - ' + esc(i.desc.substring(0,40)) + '</option>').join('');
-  $('wl-villa').innerHTML = '<option value="">— بدون فيلا محددة —</option>' + state.villas.map(v => '<option value="' + esc(v.no) + '">' + esc(v.no) + ' (' + esc(v.sheet) + ')</option>').join('');
+  $('wl-villa').innerHTML = '<option value="">— بدون فيلا محددة —</option>' + proj().villas.map(v => '<option value="' + esc(v.no) + '">' + esc(v.no) + ' (' + esc(v.sheet) + ')</option>').join('');
 
-  const logs = [...state.workLogs].sort((a,b) => b.date.localeCompare(a.date) || b.id - a.id);
+  const logs = [...proj().workLogs].sort((a,b) => b.date.localeCompare(a.date) || b.id - a.id);
   $('wl-tbody').innerHTML = logs.slice(0, 60).map(l => {
     const it = getItem(l.itemId);
     const perWorker = l.workers > 0 ? l.qty / l.workers : 0;
@@ -1767,13 +2089,14 @@ function renderProd(){
       '<td class="amount muted">' + (l.workers||'—') + '</td>' +
       '<td class="amount muted">' + fmtQ(perWorker) + '</td>' +
       '<td>' + (l.applied ? '<span class="pill green" style="font-size:10px">نعم</span>' : '<span class="pill gray" style="font-size:10px">لا</span>') + '</td>' +
+      '<td style="font-size:11px;color:var(--text3)">' + esc(l.by || '—') + '</td>' +
       '<td><button class="mini-btn red" onclick="deleteWorkLog(' + l.id + ')">🗑</button></td>' +
       '</tr>';
-  }).join('') || '<tr><td colspan="9"><div class="empty-state"><p>لا توجد يوميات مسجلة</p></div></td></tr>';
+  }).join('') || '<tr><td colspan="10"><div class="empty-state"><p>لا توجد يوميات مسجلة</p></div></td></tr>';
 
   // daily chart last 14 days
   const byDay = {};
-  state.workLogs.forEach(l => { byDay[l.date] = (byDay[l.date]||0) + l.qty; });
+  proj().workLogs.forEach(l => { byDay[l.date] = (byDay[l.date]||0) + l.qty; });
   const days = [];
   for (let k = 13; k >= 0; k--) days.push(daysAgo(k));
   const maxD = Math.max(1, ...days.map(d => byDay[d]||0));
@@ -1786,7 +2109,7 @@ function renderProd(){
 
   // crew summary
   const crews = {};
-  state.workLogs.forEach(l => {
+  proj().workLogs.forEach(l => {
     if (!crews[l.crew]) crews[l.crew] = {qty:0, days:new Set(), workers:0, n:0, last:''};
     const c = crews[l.crew];
     c.qty += l.qty; c.days.add(l.date); c.workers += (l.workers||0); c.n++;
@@ -1801,7 +2124,7 @@ function renderProd(){
 
   // item rates + forecast
   const perItem = {};
-  state.workLogs.forEach(l => {
+  proj().workLogs.forEach(l => {
     if (!perItem[l.itemId]) perItem[l.itemId] = {qty:0, days:new Set()};
     perItem[l.itemId].qty += l.qty; perItem[l.itemId].days.add(l.date);
   });
@@ -1832,22 +2155,22 @@ function addWorkLog(){
     appliedQty = Math.min(qty, Math.max(0, it.totalQty - it.executedQty));
     it.executedQty = Math.round((it.executedQty + appliedQty) * 100) / 100;
     if (villaNo && it.qtyPerVilla > 0) {
-      if (!state.villaProgress[itemId]) state.villaProgress[itemId] = {};
+      if (!proj().villaProgress[itemId]) proj().villaProgress[itemId] = {};
       const cur = villaPct(itemId, villaNo);
-      state.villaProgress[itemId][villaNo] = clamp(cur + qty / it.qtyPerVilla * 100, 0, 100);
+      proj().villaProgress[itemId][villaNo] = clamp(cur + qty / it.qtyPerVilla * 100, 0, 100);
     }
   }
-  state.workLogs.push({
+  proj().workLogs.push({
     id: ++state.meta.seq, date: $('wl-date').value || todayStr(), crew,
     itemId, villaNo, qty, workers: Number($('wl-workers').value)||0,
-    note: $('wl-note').value.trim(), applied: apply, appliedQty
+    note: $('wl-note').value.trim(), applied: apply, appliedQty, by: currentUser().name
   });
   $('wl-qty').value = ''; $('wl-note').value = '';
   save(); renderAll();
 }
 
 function deleteWorkLog(id){
-  const l = state.workLogs.find(x => x.id === id);
+  const l = proj().workLogs.find(x => x.id === id);
   if (!l) return;
   if (!confirm('حذف اليومية؟' + (l.applied ? ' سيتم خصم الكمية من نسبة إنجاز البند.' : ''))) return;
   if (l.applied && l.appliedQty > 0) {
@@ -1855,13 +2178,13 @@ function deleteWorkLog(id){
     if (it) it.executedQty = Math.max(0, Math.round((it.executedQty - l.appliedQty) * 100) / 100);
     if (l.villaNo) {
       const it2 = getItem(l.itemId);
-      if (it2 && it2.qtyPerVilla > 0 && state.villaProgress[l.itemId]) {
+      if (it2 && it2.qtyPerVilla > 0 && proj().villaProgress[l.itemId]) {
         const cur = villaPct(l.itemId, l.villaNo);
-        state.villaProgress[l.itemId][l.villaNo] = clamp(cur - l.qty / it2.qtyPerVilla * 100, 0, 100);
+        proj().villaProgress[l.itemId][l.villaNo] = clamp(cur - l.qty / it2.qtyPerVilla * 100, 0, 100);
       }
     }
   }
-  state.workLogs = state.workLogs.filter(x => x.id !== id);
+  proj().workLogs = proj().workLogs.filter(x => x.id !== id);
   save(); renderAll();
 }
 
@@ -1869,14 +2192,14 @@ function deleteWorkLog(id){
 //  SETTINGS / IMPORT / EXPORT
 // ============================================================
 function openSettings(){
-  const p = state.project;
+  const p = proj().info;
   $('st-name').value = p.name; $('st-client').value = p.client; $('st-consultant').value = p.consultant;
   $('st-contractor').value = p.contractor; $('st-villas').value = p.totalVillas;
   $('st-vat').value = p.vatRate; $('st-ret').value = p.retentionRate; $('st-adv').value = p.advanceRate;
   $('settings-modal').classList.add('open');
 }
 function saveSettings(){
-  const p = state.project;
+  const p = proj().info;
   p.name = $('st-name').value.trim(); p.client = $('st-client').value.trim();
   p.consultant = $('st-consultant').value.trim(); p.contractor = $('st-contractor').value.trim();
   p.totalVillas = Number($('st-villas').value)||0;
@@ -1885,7 +2208,8 @@ function saveSettings(){
   closeModal('settings-modal'); save(); renderAll();
 }
 function resetDemo(){
-  if (!confirm('سيتم مسح كل بياناتك الحالية والرجوع للبيانات التجريبية. خذ نسخة احتياطية أولاً! متابعة؟')) return;
+  if (!isOwner()) { alert('استرجاع البيانات التجريبية صلاحية المالك فقط'); return; }
+  if (!confirm('سيتم مسح كل بياناتك الحالية (جميع المشاريع والمستخدمين) والرجوع للبيانات التجريبية. خذ نسخة احتياطية أولاً! متابعة؟')) return;
   state = defaultState();
   closeModal('settings-modal'); save(); renderAll();
 }
@@ -1904,9 +2228,10 @@ function importJSON(input){
   reader.onload = e => {
     try {
       const data = JSON.parse(e.target.result);
-      if (!data.boqItems || !data.project) throw new Error('صيغة الملف غير صحيحة');
-      if (!confirm('استبدال البيانات الحالية بالملف المستورد؟')) return;
+      if (!data.projects && !data.boqItems) throw new Error('صيغة الملف غير صحيحة');
+      if (!confirm('استبدال البيانات الحالية (جميع المشاريع) بالملف المستورد؟')) return;
       state = data;
+      migrate(state);
       save(); renderAll();
       alert('تم الاستيراد بنجاح ✅');
     } catch(err) { alert('فشل الاستيراد: ' + err.message); }

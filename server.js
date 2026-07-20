@@ -11,6 +11,18 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
+// تحميل ملف .env إن وجد (بدون مكتبات خارجية) — متغيرات البيئة الفعلية لها الأولوية
+(function loadEnv(){
+  const envFile = path.join(__dirname, '.env');
+  if (!fs.existsSync(envFile)) return;
+  fs.readFileSync(envFile, 'utf8').split('\n').forEach(line => {
+    const m = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/.exec(line);
+    if (m && !line.trim().startsWith('#') && process.env[m[1]] === undefined && m[2] !== '') {
+      process.env[m[1]] = m[2].replace(/^["']|["']$/g, '');
+    }
+  });
+})();
+
 const PORT = Number(process.env.PORT || 3000);
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const PROJECTS_DIR = path.join(DATA_DIR, 'projects');

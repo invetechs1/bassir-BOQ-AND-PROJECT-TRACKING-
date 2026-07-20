@@ -14,11 +14,13 @@ const jwt = require('jsonwebtoken');
 const PORT = Number(process.env.PORT || 3000);
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const PROJECTS_DIR = path.join(DATA_DIR, 'projects');
+const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
 const META_FILE = path.join(DATA_DIR, 'meta.json');
 const SECRET_FILE = path.join(DATA_DIR, '.jwt-secret');
 
 fs.mkdirSync(PROJECTS_DIR, { recursive: true });
+fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
 // ---------- أدوات تخزين ذرية ----------
 function readJSON(file, fallback) {
@@ -229,6 +231,41 @@ app.delete('/api/users/:id', auth, ownerOnly, (req, res) => {
   res.json({ ok: true });
 });
 
+// ---------- صور الموقع ----------
+// الرفع: JSON بصيغة dataURL (الواجهة تضغط الصورة قبل الإرسال)
+// أسماء الملفات عشوائية غير قابلة للتخمين، وتُخدم من /uploads
+app.post('/api/projects/:id/photos', auth, (req, res) => {
+  const id = Number(req.params.id);
+  const stored = loadProject(id);
+  if (!stored) return res.status(404).json({ error: 'المشروع غير موجود' });
+  if (!canAccessProject(req.user, stored)) return res.status(403).json({ error: 'لا تملك صلاحية على هذا المشروع' });
+  const dataUrl = req.body && req.body.dataUrl;
+  const m = /^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/=]+)$/.exec(String(dataUrl || '').slice(0, 12 * 1024 * 1024));
+  if (!m) return res.status(400).json({ error: 'صيغة الصورة غير مدعومة (jpeg/png/webp)' });
+  const buf = Buffer.from(m[2], 'base64');
+  if (buf.length > 8 * 1024 * 1024) return res.status(400).json({ error: 'الصورة كبيرة جداً (الحد 8MB)' });
+  const ext = m[1] === 'jpeg' ? 'jpg' : m[1];
+  const file = crypto.randomBytes(14).toString('hex') + '.' + ext;
+  const dir = path.join(UPLOADS_DIR, String(id));
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, file), buf);
+  res.json({ url: '/uploads/' + id + '/' + file });
+});
+
+app.delete('/api/projects/:id/photos/:file', auth, (req, res) => {
+  const id = Number(req.params.id);
+  const stored = loadProject(id);
+  if (!stored) return res.status(404).json({ error: 'المشروع غير موجود' });
+  if (!canAccessProject(req.user, stored)) return res.status(403).json({ error: 'لا تملك صلاحية' });
+  const file = String(req.params.file);
+  if (!/^[a-f0-9]{28}\.(jpg|png|webp)$/.test(file)) return res.status(400).json({ error: 'اسم ملف غير صالح' });
+  const fp = path.join(UPLOADS_DIR, String(id), file);
+  if (fs.existsSync(fp)) fs.unlinkSync(fp);
+  res.json({ ok: true });
+});
+
+app.use('/uploads', express.static(UPLOADS_DIR, { maxAge: '30d', immutable: true }));
+
 // ---------- نسخ احتياطي واستعادة ----------
 app.get('/api/backup', auth, ownerOnly, (req, res) => {
   res.setHeader('Content-Disposition', 'attachment; filename="azoom-backup-' + new Date().toISOString().slice(0, 10) + '.json"');
@@ -255,6 +292,7 @@ app.post('/api/restore', auth, ownerOnly, (req, res) => {
 app.use(express.static(path.join(__dirname, 'public')));
 app.get('*', (req, res) => {
   if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'not found' });
+  if (req.path.startsWith('/uploads/')) return res.status(404).end();
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 

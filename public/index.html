@@ -2,7 +2,14 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#161b22">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/icon-192.png">
 <title>نظام إدارة المستخلصات والإنتاجية</title>
 <!-- تحميل الخطوط بدون حجب تنفيذ الصفحة (يعمل النظام حتى بدون إنترنت خارجي) -->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" media="print" onload="this.media='all'">
@@ -120,6 +127,7 @@
   .mini-btn.red { border-color: rgba(248,81,73,0.4); color: var(--red); }
 
   .two-col { display: grid; grid-template-columns: 1fr 350px; gap: 20px; align-items: start; }
+  .two-col > div { min-width: 0; } /* يسمح للأعمدة بالانكماش والجداول تتمرر داخل حاوياتها */
   @media (max-width: 950px) { .two-col { grid-template-columns: 1fr; } }
 
   .card { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
@@ -175,8 +183,9 @@
   .f-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .f-grid .full { grid-column: 1 / -1; }
   @media (max-width: 640px) { .f-grid { grid-template-columns: 1fr; } }
+  .f-field { min-width: 0; }
   .f-field label { display: block; font-size: 11px; color: var(--text2); margin-bottom: 4px; }
-  .f-field input, .f-field select, .f-field textarea { width: 100%; padding: 7px 10px; border-radius: 6px; background: var(--bg3); border: 1px solid var(--border); color: var(--text); font-family: var(--font); font-size: 13px; }
+  .f-field input, .f-field select, .f-field textarea { width: 100%; min-width: 0; padding: 7px 10px; border-radius: 6px; background: var(--bg3); border: 1px solid var(--border); color: var(--text); font-family: var(--font); font-size: 13px; }
   .f-field input:focus, .f-field select:focus, .f-field textarea:focus { outline: none; border-color: var(--amber); }
   .pred-list { max-height: 160px; overflow-y: auto; background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; padding: 8px; display: flex; flex-direction: column; gap: 4px; }
   .pred-list label { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text2); cursor: pointer; margin: 0; }
@@ -198,6 +207,44 @@
   .login-logo { width: 56px; height: 56px; margin: 0 auto 14px; background: linear-gradient(135deg, var(--amber), var(--orange)); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 700; color: #000; }
   .login-err { color: var(--red); font-size: 12px; min-height: 18px; margin-top: 8px; text-align: center; }
   #app-loading { position: fixed; inset: 0; background: var(--bg); z-index: 4000; display: flex; align-items: center; justify-content: center; color: var(--text2); font-size: 14px; }
+  #offline-banner { display: none; background: var(--amber-dim); border-bottom: 1px solid var(--amber); color: var(--amber); padding: 8px 20px; font-size: 12px; text-align: center; }
+
+  /* PHOTOS */
+  .photo-strip { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .photo-thumb { width: 54px; height: 54px; border-radius: 6px; object-fit: cover; border: 1px solid var(--border); cursor: pointer; }
+  .photo-thumb-wrap { position: relative; }
+  .photo-thumb-x { position: absolute; top: -6px; left: -6px; width: 18px; height: 18px; border-radius: 50%; background: var(--red); color: #fff; border: none; font-size: 11px; cursor: pointer; line-height: 1; }
+  .log-photo { width: 30px; height: 30px; border-radius: 4px; object-fit: cover; border: 1px solid var(--border); cursor: pointer; vertical-align: middle; }
+  .gallery-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .gallery-item { position: relative; cursor: pointer; }
+  .gallery-item img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); }
+  .gallery-cap { font-size: 9px; color: var(--text3); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 6000; align-items: center; justify-content: center; flex-direction: column; padding: 20px; }
+  #lightbox.open { display: flex; }
+  #lightbox img { max-width: 95vw; max-height: 82vh; border-radius: 8px; }
+  #lightbox-cap { color: var(--text2); font-size: 13px; margin-top: 10px; text-align: center; }
+
+  /* ===== MOBILE ===== */
+  @media (max-width: 700px) {
+    .main { padding: 12px; }
+    .top-header { padding: 8px 12px; }
+    .logo-text h1 { font-size: 13px; }
+    .nav-tabs { padding: 0 8px; }
+    .nav-tab { padding: 10px 10px; font-size: 12px; }
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .kpi-value { font-size: 16px; }
+    th, td { padding: 6px 8px; font-size: 12px; }
+    .desc-text { max-width: 150px; }
+    .bar-label { width: 90px; font-size: 11px; }
+    .bar-amount { width: 90px; font-size: 10px; }
+    .invoice-sidebar { position: static; }
+    .villa-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+    .modal { padding: 14px; }
+    .f-grid { grid-template-columns: 1fr 1fr !important; }
+    .btn { padding: 8px 12px; font-size: 12px; }
+    #proj-select { max-width: 150px; }
+    .status-cards { grid-template-columns: 1fr; }
+  }
 
   .empty-state { text-align: center; padding: 36px; color: var(--text3); }
   .empty-state .icon { font-size: 36px; margin-bottom: 8px; }
@@ -225,6 +272,8 @@
     <div class="login-err" id="login-err"></div>
   </div>
 </div>
+
+<div id="offline-banner">📴 وضع بدون اتصال — عرض آخر بيانات محفوظة (للقراءة فقط) · <a href="#" onclick="retryOnline();return false" style="color:var(--amber);font-weight:700">إعادة المحاولة</a></div>
 
 <!-- ===================== HEADER ===================== -->
 <div class="top-header">
@@ -452,6 +501,11 @@
             <div class="f-field"><label>الكمية المنفذة اليوم</label><input type="number" id="wl-qty" min="0" step="0.1" placeholder="م² / خ.م / قطعة"></div>
             <div class="f-field full"><label>ملاحظات</label><input type="text" id="wl-note" placeholder="اختياري"></div>
             <div class="f-field full">
+              <label>📷 صور من الموقع (اختياري — من الكاميرا أو الاستوديو)</label>
+              <input type="file" id="wl-photos" accept="image/*" multiple capture="environment" onchange="wlPhotosPicked(this)">
+              <div class="photo-strip" id="wl-photo-strip"></div>
+            </div>
+            <div class="f-field full">
               <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--text2)">
                 <input type="checkbox" id="wl-apply" checked style="width:auto"> إضافة الكمية تلقائياً إلى نسبة إنجاز البند (والوحدة إذا محددة)
               </label>
@@ -466,7 +520,7 @@
         </div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>التاريخ</th><th>الفرقة</th><th>البند</th><th id="wl-th-villa">الوحدة</th><th>الكمية</th><th>عمال</th><th>الإنتاجية/عامل</th><th>مضافة للنسبة</th><th>سجلها</th><th></th></tr></thead>
+            <thead><tr><th>التاريخ</th><th>الفرقة</th><th>البند</th><th id="wl-th-villa">الوحدة</th><th>الكمية</th><th>عمال</th><th>الإنتاجية/عامل</th><th>📷</th><th>مضافة للنسبة</th><th>سجلها</th><th></th></tr></thead>
             <tbody id="wl-tbody"></tbody>
           </table>
         </div>
@@ -483,6 +537,10 @@
         <div class="card">
           <div class="card-title">⏱ معدلات البنود وتوقع الإنجاز</div>
           <div id="item-rates"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">📷 أحدث صور الموقع</div>
+          <div class="gallery-grid" id="site-gallery"></div>
         </div>
       </div>
     </div>
@@ -652,6 +710,11 @@
   </div>
 </div>
 
+<div id="lightbox" onclick="this.classList.remove('open')">
+  <img id="lightbox-img" src="" alt="">
+  <div id="lightbox-cap"></div>
+</div>
+
 <div class="modal-overlay" id="help-modal">
   <div class="modal">
     <div class="modal-title"><span>؟ كيف تستخدم النظام</span><span class="modal-close" onclick="closeModal('help-modal')">✕</span></div>
@@ -663,7 +726,9 @@
       <div>4️⃣ <strong style="color:var(--red)">العوائق:</strong> سجّل أي عائق على البند (من نافذة تعديل البند)، والنظام يحسب الأثر المالي المباشر + الأعمال المعتمدة عليه.</div>
       <div>🗂 <strong style="color:var(--purple)">تعدد المشاريع:</strong> من تبويب المشاريع أضف مشاريعك (مع نسخ جدول كميات من مشروع موجود إذا حاب)، وعيّن لكل مشروع مديره. بدّل بين المشاريع من القائمة أعلى الصفحة.</div>
       <div>👤 <strong style="color:var(--blue)">المستخدمون:</strong> المالك يشوف كل المشاريع ويديرها، ومدير المشروع يشوف مشاريعه فقط ويسجل اليوميات ويرفع المستخلصات — وكل عملية تنختم باسم من سواها. من "إدارة المستخدمين" تضيف المدراء وتحط لهم رمز PIN.</div>
-      <div>💾 بياناتك تنحفظ تلقائياً في المتصفح. خذ <strong style="color:var(--text)">نسخة احتياطية JSON</strong> بشكل دوري من الزر أعلى الصفحة، وتقدر تستوردها في أي جهاز.</div>
+      <div>📱 <strong style="color:var(--green-bright)">تثبيت التطبيق على الجوال:</strong> افتح رابط النظام من متصفح الجوال ثم: أندرويد (Chrome) → قائمة ⋮ → "إضافة إلى الشاشة الرئيسية" · آيفون (Safari) → زر المشاركة → "Add to Home Screen". يشتغل كتطبيق كامل، ولو انقطع النت يعرض آخر بيانات للقراءة.</div>
+      <div>📷 <strong style="color:var(--amber)">صور الموقع:</strong> مع كل يومية تقدر ترفق صور من كاميرا الجوال مباشرة — تنضغط تلقائياً وترتبط باليومية وتظهر في معرض الصور.</div>
+      <div>💾 بياناتك تنحفظ تلقائياً على الخادم. المالك يقدر يأخذ <strong style="color:var(--text)">نسخة احتياطية JSON</strong> كاملة من الزر أعلى الصفحة.</div>
     </div>
   </div>
 </div>
@@ -913,7 +978,9 @@ function projectsFromLegacyBackup(data){
   return projects.map(p => { const {id, version, ...rest} = p; return migrateProject(rest); });
 }
 
-// ---- تحميل الحالة من الخادم ----
+// ---- تحميل الحالة من الخادم (مع كاش للعمل بدون اتصال) ----
+let offlineMode = false;
+
 async function refreshState(){
   const d = await API.req('GET', '/api/state');
   d.projects.forEach(migrateProject);
@@ -922,8 +989,33 @@ async function refreshState(){
   if (!state.projects.find(p => p.id === state.currentProjectId)) {
     state.currentProjectId = state.projects.length ? state.projects[0].id : 0;
   }
+  offlineMode = false;
+  $('offline-banner').style.display = 'none';
+  try { localStorage.setItem('azoom_cache', JSON.stringify({me:d.me, users:d.users, projects:d.projects})) } catch(e) {}
   renderAll();
 }
+
+// عند انقطاع الاتصال: عرض آخر بيانات محفوظة للقراءة فقط
+function loadOfflineCache(){
+  try {
+    const c = JSON.parse(localStorage.getItem('azoom_cache'));
+    if (!c || !c.projects) return false;
+    c.projects.forEach(migrateProject);
+    state = { me:c.me, users:c.users, projects:c.projects, currentProjectId: Number(localStorage.getItem('azoom_proj')||0) };
+    if (!state.projects.find(p => p.id === state.currentProjectId)) {
+      state.currentProjectId = state.projects.length ? state.projects[0].id : 0;
+    }
+    offlineMode = true;
+    $('offline-banner').style.display = 'block';
+    renderAll();
+    return true;
+  } catch(e) { return false; }
+}
+
+async function retryOnline(){
+  try { await refreshState(); } catch(e) { alert('لا يزال الاتصال متعذراً'); }
+}
+window.addEventListener('online', () => { if (offlineMode) retryOnline(); });
 
 // ---- حفظ تلقائي إلى الخادم مع كشف تعارض التعديلات ----
 let saveTimer = null;
@@ -931,6 +1023,7 @@ const dirtyProjects = new Set();
 
 function save(){
   if (!proj().id) return;
+  if (offlineMode) { alert('📴 أنت في وضع بدون اتصال — التعديلات غير ممكنة حتى عودة الاتصال بالخادم.'); return; }
   dirtyProjects.add(proj().id);
   $('save-badge').textContent = '⬤ جاري الحفظ...';
   clearTimeout(saveTimer);
@@ -2246,11 +2339,27 @@ function renderProd(){
       '<td class="amount">' + fmtQ(l.qty) + ' ' + esc(it ? it.unit : '') + '</td>' +
       '<td class="amount muted">' + (l.workers||'—') + '</td>' +
       '<td class="amount muted">' + fmtQ(perWorker) + '</td>' +
+      '<td>' + ((l.photos||[]).length
+        ? (l.photos.slice(0,3).map(ph => '<img class="log-photo" src="' + esc(ph.url) + '" onclick="openLightbox(\'' + esc(ph.url) + '\', \'' + esc(l.date + ' · ' + l.crew) + '\')" alt="">').join(' ') + (l.photos.length > 3 ? ' <span style="font-size:10px;color:var(--text3)">+' + (l.photos.length-3) + '</span>' : ''))
+        : '<span style="color:var(--text3);font-size:11px">—</span>') + '</td>' +
       '<td>' + (l.applied ? '<span class="pill green" style="font-size:10px">نعم</span>' : '<span class="pill gray" style="font-size:10px">لا</span>') + '</td>' +
       '<td style="font-size:11px;color:var(--text3)">' + esc(l.by || '—') + '</td>' +
       '<td><button class="mini-btn red" onclick="deleteWorkLog(' + l.id + ')">🗑</button></td>' +
       '</tr>';
-  }).join('') || '<tr><td colspan="10"><div class="empty-state"><p>لا توجد يوميات مسجلة</p></div></td></tr>';
+  }).join('') || '<tr><td colspan="11"><div class="empty-state"><p>لا توجد يوميات مسجلة</p></div></td></tr>';
+
+  // معرض أحدث صور الموقع
+  const allPhotos = [];
+  [...proj().workLogs].sort((a,b) => b.date.localeCompare(a.date) || b.id - a.id).forEach(l => {
+    (l.photos||[]).forEach(ph => {
+      const it2 = getItem(l.itemId);
+      allPhotos.push({url: ph.url, cap: l.date + ' · ' + (it2 ? it2.id : l.itemId) + (l.villaNo ? ' · ' + l.villaNo : '') + ' · ' + l.crew});
+    });
+  });
+  $('site-gallery').innerHTML = allPhotos.length
+    ? allPhotos.slice(0, 12).map(p =>
+        '<div class="gallery-item" onclick="openLightbox(\'' + esc(p.url) + '\', \'' + esc(p.cap) + '\')"><img src="' + esc(p.url) + '" loading="lazy" alt=""><div class="gallery-cap">' + esc(p.cap) + '</div></div>').join('')
+    : '<div class="empty-state" style="padding:14px;grid-column:1/-1"><p>أرفق صوراً مع اليوميات لتظهر هنا</p></div>';
 
   // daily chart last 14 days
   const byDay = {};
@@ -2298,7 +2407,64 @@ function renderProd(){
   }).join('') || '<div class="empty-state" style="padding:14px"><p>لا توجد بيانات بعد</p></div>';
 }
 
-function addWorkLog(){
+// ---- صور الموقع: ضغط بالمتصفح ثم رفع للخادم ----
+let wlPendingPhotos = []; // [{dataUrl, name}]
+
+function compressImage(file){
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const MAX = 1600;
+      let w = img.width, h = img.height;
+      if (Math.max(w, h) > MAX) { const k = MAX / Math.max(w, h); w = Math.round(w*k); h = Math.round(h*k); }
+      const cv = document.createElement('canvas');
+      cv.width = w; cv.height = h;
+      cv.getContext('2d').drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      resolve(cv.toDataURL('image/jpeg', 0.72));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('ملف صورة غير صالح')); };
+    img.src = url;
+  });
+}
+
+async function wlPhotosPicked(input){
+  const files = [...(input.files || [])].slice(0, 8 - wlPendingPhotos.length);
+  for (const f of files) {
+    try {
+      const dataUrl = await compressImage(f);
+      wlPendingPhotos.push({dataUrl, name: f.name});
+    } catch(e) { alert(e.message); }
+  }
+  input.value = '';
+  renderWlPhotoStrip();
+}
+
+function renderWlPhotoStrip(){
+  $('wl-photo-strip').innerHTML = wlPendingPhotos.map((p, i) =>
+    '<span class="photo-thumb-wrap"><img class="photo-thumb" src="' + p.dataUrl + '" onclick="openLightbox(wlPendingPhotos[' + i + '].dataUrl)" alt="">' +
+    '<button class="photo-thumb-x" onclick="wlPendingPhotos.splice(' + i + ',1);renderWlPhotoStrip()">✕</button></span>'
+  ).join('');
+}
+
+function openLightbox(url, caption){
+  if (!url) return;
+  $('lightbox-img').src = url;
+  $('lightbox-cap').textContent = caption || '';
+  $('lightbox').classList.add('open');
+}
+
+async function uploadPendingPhotos(){
+  const uploaded = [];
+  for (const p of wlPendingPhotos) {
+    const r = await API.req('POST', '/api/projects/' + proj().id + '/photos', {dataUrl: p.dataUrl});
+    uploaded.push({url: r.url});
+  }
+  return uploaded;
+}
+
+async function addWorkLog(){
   const itemId = $('wl-item').value;
   const it = getItem(itemId);
   const qty = Number($('wl-qty').value);
@@ -2306,6 +2472,12 @@ function addWorkLog(){
   if (!it) { alert('اختر بند'); return; }
   if (!crew) { alert('اكتب اسم الفرقة / المسؤول'); return; }
   if (!qty || qty <= 0) { alert('اكتب الكمية المنفذة'); return; }
+  if (offlineMode) { alert('📴 لا يمكن التسجيل بدون اتصال'); return; }
+  let photos = [];
+  if (wlPendingPhotos.length) {
+    try { photos = await uploadPendingPhotos(); }
+    catch(e) { alert('تعذر رفع الصور: ' + e.message); return; }
+  }
   const villaNo = $('wl-villa').value;
   const apply = $('wl-apply').checked;
   let appliedQty = 0;
@@ -2321,16 +2493,21 @@ function addWorkLog(){
   proj().workLogs.push({
     id: nextSeq(), date: $('wl-date').value || todayStr(), crew,
     itemId, villaNo, qty, workers: Number($('wl-workers').value)||0,
-    note: $('wl-note').value.trim(), applied: apply, appliedQty, by: currentUser().name
+    note: $('wl-note').value.trim(), applied: apply, appliedQty, by: currentUser().name, photos
   });
   $('wl-qty').value = ''; $('wl-note').value = '';
+  wlPendingPhotos = []; renderWlPhotoStrip();
   save(); renderAll();
 }
 
 function deleteWorkLog(id){
   const l = proj().workLogs.find(x => x.id === id);
   if (!l) return;
-  if (!confirm('حذف اليومية؟' + (l.applied ? ' سيتم خصم الكمية من نسبة إنجاز البند.' : ''))) return;
+  if (!confirm('حذف اليومية؟' + (l.applied ? ' سيتم خصم الكمية من نسبة إنجاز البند.' : '') + ((l.photos||[]).length ? ' وستحذف صورها.' : ''))) return;
+  (l.photos||[]).forEach(ph => {
+    const file = String(ph.url).split('/').pop();
+    API.req('DELETE', '/api/projects/' + proj().id + '/photos/' + file).catch(() => {});
+  });
   if (l.applied && l.appliedQty > 0) {
     const it = getItem(l.itemId);
     if (it) it.executedQty = Math.max(0, Math.round((it.executedQty - l.appliedQty) * 100) / 100);
@@ -2442,12 +2619,19 @@ async function boot(){
       localStorage.removeItem('azoom_token');
       API.token = '';
       showLogin();
+    } else if (loadOfflineCache()) {
+      hideLogin();
     } else {
       $('app-loading').textContent = '⚠️ تعذر الاتصال بالخادم: ' + e.message + ' — أعد تحميل الصفحة';
     }
   }
 }
 document.addEventListener('DOMContentLoaded', boot);
+
+// تسجيل التطبيق كـ PWA (يتثبت على الجوال من قائمة المتصفح: إضافة إلى الشاشة الرئيسية)
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}); });
+}
 </script>
 </body>
 </html>

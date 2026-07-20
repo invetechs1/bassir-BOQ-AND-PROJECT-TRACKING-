@@ -3,9 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>نظام إدارة المستخلصات والإنتاجية - عزوم المتحدة | SANG Housing</title>
+<title>نظام إدارة المستخلصات والإنتاجية</title>
+<!-- تحميل الخطوط بدون حجب تنفيذ الصفحة (يعمل النظام حتى بدون إنترنت خارجي) -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" media="print" onload="this.media='all'">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
 
   :root {
     --bg: #0d1117; --bg2: #161b22; --bg3: #1c2333; --bg4: #21262d;
@@ -191,6 +192,13 @@
   .invoice-total { font-size: 22px; font-weight: 700; font-family: var(--mono); color: var(--green-bright); margin: 8px 0; }
   .divider { height: 1px; background: var(--border); margin: 14px 0; }
 
+  /* LOGIN */
+  #login-overlay { display: none; position: fixed; inset: 0; background: var(--bg); z-index: 5000; align-items: center; justify-content: center; padding: 20px; }
+  .login-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 32px; width: 100%; max-width: 380px; }
+  .login-logo { width: 56px; height: 56px; margin: 0 auto 14px; background: linear-gradient(135deg, var(--amber), var(--orange)); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 700; color: #000; }
+  .login-err { color: var(--red); font-size: 12px; min-height: 18px; margin-top: 8px; text-align: center; }
+  #app-loading { position: fixed; inset: 0; background: var(--bg); z-index: 4000; display: flex; align-items: center; justify-content: center; color: var(--text2); font-size: 14px; }
+
   .empty-state { text-align: center; padding: 36px; color: var(--text3); }
   .empty-state .icon { font-size: 36px; margin-bottom: 8px; }
 
@@ -204,6 +212,20 @@
 </head>
 <body>
 
+<!-- ===================== LOGIN ===================== -->
+<div id="app-loading">⏳ جاري تحميل النظام...</div>
+<div id="login-overlay">
+  <div class="login-box">
+    <div class="login-logo">ع</div>
+    <div style="text-align:center;font-size:16px;font-weight:700;margin-bottom:4px">نظام إدارة المستخلصات والإنتاجية</div>
+    <div style="text-align:center;font-size:12px;color:var(--text2);margin-bottom:20px">سجّل دخولك للمتابعة</div>
+    <div class="f-field" style="margin-bottom:12px"><label>اسم المستخدم</label><input type="text" id="login-user" autocomplete="username" onkeydown="if(event.key==='Enter')document.getElementById('login-pass').focus()"></div>
+    <div class="f-field" style="margin-bottom:12px"><label>كلمة المرور</label><input type="password" id="login-pass" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <button class="btn btn-amber" style="width:100%" onclick="doLogin()">🔓 دخول</button>
+    <div class="login-err" id="login-err"></div>
+  </div>
+</div>
+
 <!-- ===================== HEADER ===================== -->
 <div class="top-header">
   <div class="logo-area">
@@ -215,7 +237,8 @@
   </div>
   <div class="header-meta">
     <select id="proj-select" class="search-box" style="width:auto;max-width:230px;padding:4px 8px;font-size:12px" onchange="switchProject(this.value)"></select>
-    <button class="tool-btn" id="user-chip" style="border-color:var(--blue);color:var(--blue)" onclick="openSwitchUser()">👤</button>
+    <button class="tool-btn" id="user-chip" style="border-color:var(--blue);color:var(--blue)" onclick="changeMyPassword()" data-tip="تغيير كلمة المرور">👤</button>
+    <button class="tool-btn" style="border-color:var(--red);color:var(--red)" onclick="logout()">🚪 خروج</button>
     <span class="header-badge live" id="save-badge">⬤ حفظ تلقائي</span>
     <button class="tool-btn" onclick="openHelp()">؟ دليل الاستخدام</button>
     <button class="tool-btn" onclick="openSettings()">⚙ إعدادات</button>
@@ -233,7 +256,7 @@
   <div class="nav-tab" data-tab="items" onclick="switchTab('items')">📋 جدول الكميات <span class="tab-count" id="tc-items">0</span></div>
   <div class="nav-tab" data-tab="invoice" onclick="switchTab('invoice')">💰 المستخلصات <span class="tab-count" id="tc-invoice">0</span></div>
   <div class="nav-tab" data-tab="blocked" onclick="switchTab('blocked')">🚫 العوائق <span class="tab-count" id="tc-blocked">0</span></div>
-  <div class="nav-tab" data-tab="villas" onclick="switchTab('villas')">🏠 الفلل <span class="tab-count" id="tc-villas">0</span></div>
+  <div class="nav-tab" data-tab="villas" onclick="switchTab('villas')">🏠 <span id="villas-tab-label">الوحدات</span> <span class="tab-count" id="tc-villas">0</span></div>
   <div class="nav-tab" data-tab="prod" onclick="switchTab('prod')">👷 الإنتاجية <span class="tab-count" id="tc-prod">0</span></div>
 </div>
 
@@ -392,19 +415,19 @@
   <div class="tab-panel" id="tab-villas">
     <div class="filter-bar">
       <span id="villa-filters"></span>
-      <button class="btn btn-amber" onclick="addVilla()">+ إضافة فيلا</button>
-      <button class="btn btn-ghost" onclick="syncFromVillas()" data-tip="يحسب نسبة إنجاز كل بند من متوسط نسب الفلل ويحدث جدول الكميات">🔄 مزامنة نسب البنود من الفلل</button>
+      <button class="btn btn-amber" onclick="addVilla()">+ إضافة <span id="add-villa-label">وحدة</span></button>
+      <button class="btn btn-ghost" onclick="syncFromVillas()" data-tip="يحسب نسبة إنجاز كل بند من متوسط نسب الوحدات ويحدث جدول الكميات">🔄 مزامنة نسب البنود من الوحدات</button>
     </div>
     <div class="villa-grid" id="villa-grid"></div>
     <div id="villa-detail" style="display:none">
       <div class="section-header">
-        <div class="section-title" id="villa-detail-title">تفاصيل الفيلا</div>
+        <div class="section-title" id="villa-detail-title">تفاصيل الوحدة</div>
         <div>
-          <button class="mini-btn red" onclick="deleteVilla()">🗑 حذف الفيلا</button>
+          <button class="mini-btn red" onclick="deleteVilla()">🗑 حذف الوحدة</button>
           <button class="btn btn-ghost" onclick="closeVillaDetail()">← عودة</button>
         </div>
       </div>
-      <div class="alert info">✏️ عدّل نسبة إنجاز كل بند في هذه الفيلا — تنحفظ مباشرة.</div>
+      <div class="alert info">✏️ عدّل نسبة إنجاز كل بند في هذه الوحدة — تنحفظ مباشرة.</div>
       <div class="table-wrap">
         <table>
           <thead><tr><th>البند</th><th>الوصف</th><th>نسبة الإنجاز %</th><th>الحالة العامة للبند</th></tr></thead>
@@ -425,12 +448,12 @@
             <div class="f-field"><label>الفرقة / المسؤول</label><input type="text" id="wl-crew" list="crew-list" placeholder="مثال: فرقة الدهانات أ"><datalist id="crew-list"></datalist></div>
             <div class="f-field"><label>عدد العمال</label><input type="number" id="wl-workers" min="1" value="4"></div>
             <div class="f-field"><label>البند</label><select id="wl-item"></select></div>
-            <div class="f-field"><label>الفيلا (اختياري)</label><select id="wl-villa"></select></div>
+            <div class="f-field"><label id="wl-villa-label">الوحدة (اختياري)</label><select id="wl-villa"></select></div>
             <div class="f-field"><label>الكمية المنفذة اليوم</label><input type="number" id="wl-qty" min="0" step="0.1" placeholder="م² / خ.م / قطعة"></div>
             <div class="f-field full"><label>ملاحظات</label><input type="text" id="wl-note" placeholder="اختياري"></div>
             <div class="f-field full">
               <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--text2)">
-                <input type="checkbox" id="wl-apply" checked style="width:auto"> إضافة الكمية تلقائياً إلى نسبة إنجاز البند (والفيلا إذا محددة)
+                <input type="checkbox" id="wl-apply" checked style="width:auto"> إضافة الكمية تلقائياً إلى نسبة إنجاز البند (والوحدة إذا محددة)
               </label>
             </div>
           </div>
@@ -443,7 +466,7 @@
         </div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>التاريخ</th><th>الفرقة</th><th>البند</th><th>الفيلا</th><th>الكمية</th><th>عمال</th><th>الإنتاجية/عامل</th><th>مضافة للنسبة</th><th>سجلها</th><th></th></tr></thead>
+            <thead><tr><th>التاريخ</th><th>الفرقة</th><th>البند</th><th id="wl-th-villa">الوحدة</th><th>الكمية</th><th>عمال</th><th>الإنتاجية/عامل</th><th>مضافة للنسبة</th><th>سجلها</th><th></th></tr></thead>
             <tbody id="wl-tbody"></tbody>
           </table>
         </div>
@@ -477,13 +500,13 @@
       <div class="f-field full"><label>اسم القسم بالعربي</label><input type="text" id="im-divAr" placeholder="أعمال التشطيبات"></div>
       <div class="f-field full"><label>الوصف *</label><input type="text" id="im-desc"></div>
       <div class="f-field"><label>الوحدة</label><input type="text" id="im-unit" placeholder="م²"></div>
-      <div class="f-field"><label>الكمية / فيلا</label><input type="number" id="im-qtyv" min="0" step="0.01"></div>
+      <div class="f-field"><label>الكمية لكل وحدة (اختياري)</label><input type="number" id="im-qtyv" min="0" step="0.01"></div>
       <div class="f-field"><label>الكمية الكلية *</label><input type="number" id="im-qty" min="0" step="0.01"></div>
       <div class="f-field"><label>سعر الوحدة (ر.س) *</label><input type="number" id="im-rate" min="0" step="0.01"></div>
       <div class="f-field"><label>الكمية المنفذة</label><input type="number" id="im-exec" min="0" step="0.01"></div>
       <div class="f-field"><label>نطاق العمل</label>
         <select id="im-scope">
-          <option value="azoom">ضمن أعمال عزوم</option>
+          <option value="azoom">ضمن نطاق أعمالنا</option>
           <option value="others">خارج النطاق (منفذ سابقاً / مقاول آخر)</option>
           <option value="client_supply">تركيب فقط - توريد من العميل</option>
         </select>
@@ -524,14 +547,16 @@
       <div class="f-field"><label>المقاول الرئيسي</label><input type="text" id="st-client"></div>
       <div class="f-field"><label>الاستشاري</label><input type="text" id="st-consultant"></div>
       <div class="f-field"><label>المقاول من الباطن</label><input type="text" id="st-contractor"></div>
-      <div class="f-field"><label>إجمالي عدد الفلل</label><input type="number" id="st-villas" min="1"></div>
+      <div class="f-field"><label>إجمالي عدد الوحدات</label><input type="number" id="st-villas" min="0"></div>
+      <div class="f-field"><label>مسمى الوحدة (مفرد)</label><input type="text" id="st-unit" placeholder="فيلا / مبنى / قطاع"></div>
+      <div class="f-field"><label>مسمى الوحدات (جمع)</label><input type="text" id="st-units" placeholder="الفلل / المباني / القطاعات"></div>
       <div class="f-field"><label>ضريبة القيمة المضافة %</label><input type="number" id="st-vat" min="0" step="0.5"></div>
       <div class="f-field"><label>محتجز الضمان الافتراضي %</label><input type="number" id="st-ret" min="0" step="0.5"></div>
       <div class="f-field"><label>استرداد الدفعة المقدمة الافتراضي %</label><input type="number" id="st-adv" min="0" step="0.5"></div>
     </div>
     <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
       <button class="btn btn-green" onclick="saveSettings()">💾 حفظ</button>
-      <button class="btn btn-red" onclick="resetDemo()">↺ استرجاع البيانات التجريبية</button>
+      <button class="btn btn-ghost" onclick="resetDemo()">🎓 إضافة مشروع تجريبي للتعلم</button>
       <button class="btn btn-ghost" onclick="closeModal('settings-modal')">إغلاق</button>
     </div>
   </div>
@@ -569,11 +594,22 @@
   <div class="modal">
     <div class="modal-title"><span id="project-modal-title">إضافة مشروع</span><span class="modal-close" onclick="closeModal('project-modal')">✕</span></div>
     <div class="f-grid">
-      <div class="f-field full"><label>اسم المشروع *</label><input type="text" id="pm-name" placeholder="مثال: مشروع فلل الرياض - المرحلة 2"></div>
+      <div class="f-field full"><label>اسم المشروع *</label><input type="text" id="pm-name" placeholder="مثال: مشروع طريق الملك فهد / برج المكاتب / فلل المرحلة 2"></div>
+      <div class="f-field"><label>نوع المشروع</label>
+        <select id="pm-type" onchange="pmTypeChanged()">
+          <option value="residential">🏠 فلل / وحدات سكنية</option>
+          <option value="buildings">🏢 مباني</option>
+          <option value="infra">🏗 بنية تحتية</option>
+          <option value="roads">🛣 طرق</option>
+          <option value="other">📦 أخرى</option>
+        </select>
+      </div>
+      <div class="f-field"><label>مسمى الوحدة (مفرد)</label><input type="text" id="pm-unit" placeholder="فيلا / مبنى / قطاع"></div>
+      <div class="f-field"><label>مسمى الوحدات (جمع)</label><input type="text" id="pm-units" placeholder="الفلل / المباني / القطاعات"></div>
       <div class="f-field"><label>المقاول الرئيسي / العميل</label><input type="text" id="pm-client"></div>
       <div class="f-field"><label>الاستشاري</label><input type="text" id="pm-consultant"></div>
       <div class="f-field"><label>المقاول من الباطن (شركتك)</label><input type="text" id="pm-contractor"></div>
-      <div class="f-field"><label>عدد الفلل / الوحدات</label><input type="number" id="pm-villas" min="0" value="0"></div>
+      <div class="f-field"><label>عدد الوحدات (فيلا/مبنى/قطاع...)</label><input type="number" id="pm-villas" min="0" value="0"></div>
       <div class="f-field"><label>ضريبة القيمة المضافة %</label><input type="number" id="pm-vat" min="0" step="0.5" value="15"></div>
       <div class="f-field"><label>محتجز الضمان %</label><input type="number" id="pm-ret" min="0" step="0.5" value="10"></div>
       <div class="f-field"><label>استرداد الدفعة المقدمة %</label><input type="number" id="pm-adv" min="0" step="0.5" value="0"></div>
@@ -597,28 +633,22 @@
     <div id="users-list" style="margin-bottom:16px"></div>
     <div class="divider"></div>
     <div class="card-title" style="font-size:13px">+ إضافة مستخدم جديد</div>
-    <div class="f-grid" style="grid-template-columns:2fr 1fr 1fr">
+    <div class="f-grid">
       <div class="f-field"><label>الاسم *</label><input type="text" id="us-name" placeholder="م. خالد - مدير مشروع"></div>
+      <div class="f-field"><label>اسم المستخدم للدخول *</label><input type="text" id="us-username" placeholder="khaled" autocomplete="off"></div>
       <div class="f-field"><label>الدور</label>
         <select id="us-role">
           <option value="pm">مدير مشروع</option>
           <option value="owner">مالك / إدارة (كل الصلاحيات)</option>
         </select>
       </div>
-      <div class="f-field"><label>رمز دخول PIN (اختياري)</label><input type="text" id="us-pin" placeholder="مثال: 1234"></div>
+      <div class="f-field"><label>كلمة المرور *</label><input type="text" id="us-pin" placeholder="4 أحرف على الأقل" autocomplete="off"></div>
     </div>
-    <div class="alert warning" style="margin-top:10px;font-size:11px">⚠️ رمز الـ PIN حماية تنظيمية خفيفة داخل الجهاز فقط (لتنظيم العمل بين الفريق) — ليس تشفيراً أمنياً.</div>
+    <div class="alert info" style="margin-top:10px;font-size:11px">💡 مدير المشروع يدخل باسم المستخدم وكلمة المرور من أي جهاز، ويشوف مشاريعه المعينة فقط.</div>
     <div style="display:flex;gap:10px;margin-top:8px">
       <button class="btn btn-green" onclick="addUser()">+ إضافة المستخدم</button>
       <button class="btn btn-ghost" onclick="closeModal('users-modal')">إغلاق</button>
     </div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="switch-user-modal">
-  <div class="modal" style="max-width:420px">
-    <div class="modal-title"><span>👤 تبديل المستخدم</span><span class="modal-close" onclick="closeModal('switch-user-modal')">✕</span></div>
-    <div id="switch-user-list" style="display:flex;flex-direction:column;gap:8px"></div>
   </div>
 </div>
 
@@ -641,10 +671,25 @@
 <script>
 'use strict';
 // ============================================================
-//  STATE & PERSISTENCE
+//  STATE & API PERSISTENCE
 // ============================================================
-const LS_KEY = 'azoom_pm_v1';
 let state = null;
+
+const API = {
+  token: localStorage.getItem('azoom_token') || '',
+  async req(method, url, body, keepalive){
+    const r = await fetch(url, {
+      method,
+      keepalive: !!keepalive,
+      headers: {'Content-Type':'application/json', ...(this.token ? {'Authorization':'Bearer ' + this.token} : {})},
+      body: body !== undefined ? JSON.stringify(body) : undefined
+    });
+    let d = {};
+    try { d = await r.json(); } catch(e) {}
+    if (!r.ok) { const err = new Error(d.error || ('خطأ ' + r.status)); err.status = r.status; err.data = d; throw err; }
+    return d;
+  }
+};
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -657,7 +702,8 @@ const daysAgo = k => { const d = new Date(); d.setDate(d.getDate()-k); return d.
 const ageDays = d => { if (!d) return null; const n = Math.floor((Date.now() - new Date(d + 'T00:00:00').getTime()) / 86400000); return isNaN(n) ? null : Math.max(0, n); };
 const paidAmount = m => (m.payments||[]).reduce((s,p) => s + (Number(p.amount)||0), 0);
 
-function defaultState(){
+// مشروع تجريبي كامل (يضيفه المالك من الإعدادات عند الحاجة)
+function demoProjectData(){
   const items = [
     {id:'2.1', div:'DIV 2', divAr:'أعمال الموقع', desc:'توريد وتركيب إنترلوك (بلاط خرسانة مسبق الصب)', unit:'م²', qtyPerVilla:121, totalQty:11616, unitRate:60, scope:'azoom', predecessors:[], blocker:{active:true, reason:'تأخر أعمال الردم', type:'external', note:'لم يبدأ في كل الفلل - بانتظار اكتمال الردم من المقاول الرئيسي (متوقع 15 يوم)', since:daysAgo(20), expected:''}, executedQty:0, claimedQty:0, notes:''},
     {id:'4.1', div:'DIV 4', divAr:'أعمال البناء', desc:'بلوك خرساني W2 سمك 100مم', unit:'م²', qtyPerVilla:196, totalQty:18816, unitRate:86, scope:'others', predecessors:[], blocker:null, executedQty:0, claimedQty:0, notes:'نُفّذ من قِبل مقاول آخر قبل بدء عزوم'},
@@ -734,104 +780,203 @@ function defaultState(){
   ];
 
   return {
-    meta:{version:2, seq:1000, savedAt:null},
-    users:[
-      {id:1, name:'المالك - الإدارة العامة', role:'owner', pin:''},
-      {id:2, name:'م. مدير مشروع القصيم', role:'pm', pin:''}
-    ],
-    currentUserId:1,
-    currentProjectId:1,
-    projects:[{
-      id:1, managerUserId:2,
-      info:{
-        name:'مشروع SANG السكني - موقع القصيم', client:'Saudi Binladen Group (SBG)', consultant:'Dar Al-Riyadh',
-        contractor:'AZOOM UNITED CO. - عزوم المتحدة', totalVillas:96, vatRate:15, retentionRate:10, advanceRate:0
-      },
-      boqItems:items, villas, villaProgress, mustakhlasat, workLogs, blockerLog:[]
-    }]
+    managerUserId:null,
+    seq:1000,
+    info:{
+      name:'مشروع SANG السكني - موقع القصيم (تجريبي)', client:'Saudi Binladen Group (SBG)', consultant:'Dar Al-Riyadh',
+      contractor:'AZOOM UNITED CO. - عزوم المتحدة', totalVillas:96, vatRate:15, retentionRate:10, advanceRate:0,
+      projectType:'residential', unitLabel:'فيلا', unitsTitle:'الفلل'
+    },
+    boqItems:items, villas, villaProgress, mustakhlasat, workLogs, blockerLog:[]
   };
 }
 
 // ============================================================
-//  MULTI-PROJECT + USERS
+//  MULTI-PROJECT + USERS (المصادقة من الخادم)
 // ============================================================
-const DUMMY_PROJECT = {id:0, managerUserId:null,
-  info:{name:'لا يوجد مشروع', client:'', consultant:'', contractor:'', totalVillas:0, vatRate:15, retentionRate:0, advanceRate:0},
+const DUMMY_PROJECT = {id:0, managerUserId:null, seq:1000,
+  info:{name:'لا يوجد مشروع', client:'', consultant:'', contractor:'', totalVillas:0, vatRate:15, retentionRate:0, advanceRate:0, projectType:'other', unitLabel:'وحدة', unitsTitle:'الوحدات'},
   boqItems:[], villas:[], villaProgress:{}, mustakhlasat:[], workLogs:[], blockerLog:[]};
 
 function currentUser(){
-  return state.users.find(u => u.id === state.currentUserId) || state.users[0];
+  return state.users.find(u => u.id === state.me.id) || state.me;
 }
-const isOwner = () => currentUser().role === 'owner';
-const canAccess = p => isOwner() || p.managerUserId === currentUser().id;
-const accessibleProjects = () => state.projects.filter(canAccess);
+const isOwner = () => state.me.role === 'owner';
+const accessibleProjects = () => state.projects; // الخادم يعيد المشاريع المصرح بها فقط
 const userName = id => { const u = state.users.find(x => x.id === id); return u ? u.name : null; };
 
 function proj(){
-  let p = state.projects.find(x => x.id === state.currentProjectId);
-  if (!p || !canAccess(p)) {
-    p = accessibleProjects()[0] || null;
-    state.currentProjectId = p ? p.id : 0;
+  let p = state ? state.projects.find(x => x.id === state.currentProjectId) : null;
+  if (!p && state && state.projects.length) {
+    p = state.projects[0];
+    state.currentProjectId = p.id;
   }
   return p || DUMMY_PROJECT;
 }
 
+// مسمى الوحدة حسب نوع المشروع (فيلا / مبنى / قطاع طريق ...)
+const UL = () => proj().info.unitLabel || 'وحدة';
+const ULS = () => proj().info.unitsTitle || 'الوحدات';
+const PROJECT_TYPES = {
+  residential: {label:'فلل / وحدات سكنية', unit:'فيلا', units:'الفلل'},
+  buildings:   {label:'مباني', unit:'مبنى', units:'المباني'},
+  infra:       {label:'بنية تحتية', unit:'قطاع', units:'القطاعات'},
+  roads:       {label:'طرق', unit:'قطاع (كم)', units:'القطاعات'},
+  other:       {label:'أخرى', unit:'وحدة', units:'الوحدات'}
+};
+
+// معرّف تسلسلي داخل المشروع الحالي (لليوميات والمستخلصات والدفعات...)
+function nextSeq(){
+  const p = proj();
+  p.seq = (p.seq || 1000) + 1;
+  return p.seq;
+}
+
 function switchProject(id){
   state.currentProjectId = Number(id);
+  localStorage.setItem('azoom_proj', String(state.currentProjectId));
   mbSel = {};
   closeVillaDetail();
-  save(); renderAll();
+  renderAll();
 }
 
-// ترقية البيانات المحفوظة من إصدارات سابقة (إضافة الحقول الجديدة بدون فقدان شيء)
-function migrate(s){
-  s.meta = s.meta || {version:1, seq:1000, savedAt:null};
-  // v1 → v2: تحويل بنية المشروع الواحد إلى مشاريع متعددة
-  if (s.boqItems && !s.projects) {
-    s.projects = [{
-      id:1, managerUserId:null,
-      info: s.project || {name:'مشروع', client:'', consultant:'', contractor:'', totalVillas:0, vatRate:15, retentionRate:0, advanceRate:0},
-      boqItems:s.boqItems, villas:s.villas||[], villaProgress:s.villaProgress||{},
-      mustakhlasat:s.mustakhlasat||[], workLogs:s.workLogs||[], blockerLog:s.blockerLog||[]
-    }];
-    delete s.boqItems; delete s.project; delete s.villas; delete s.villaProgress;
-    delete s.mustakhlasat; delete s.workLogs; delete s.blockerLog;
-    s.currentProjectId = 1;
-  }
-  s.projects = s.projects || [];
-  if (!s.users || !s.users.length) s.users = [{id:1, name:'المالك - الإدارة العامة', role:'owner', pin:''}];
-  if (!s.users.some(u => u.role === 'owner')) s.users[0].role = 'owner';
-  if (!s.users.find(u => u.id === s.currentUserId)) s.currentUserId = s.users[0].id;
-  s.projects.forEach(p => {
-    p.info = p.info || {}; p.blockerLog = p.blockerLog || []; p.workLogs = p.workLogs || [];
-    p.villas = p.villas || []; p.villaProgress = p.villaProgress || {}; p.boqItems = p.boqItems || [];
-    p.mustakhlasat = p.mustakhlasat || [];
-    p.mustakhlasat.forEach(m => { m.payments = m.payments || []; });
-    p.boqItems.forEach(i => {
-      if (i.blocker) { i.blocker.since = i.blocker.since || ''; i.blocker.expected = i.blocker.expected || ''; }
-    });
-  });
-  if (!s.projects.find(p => p.id === s.currentProjectId) && s.projects.length) s.currentProjectId = s.projects[0].id;
-  s.meta.version = 2;
+// ---- الدخول والخروج ----
+function showLogin(){
+  $('app-loading').style.display = 'none';
+  $('login-overlay').style.display = 'flex';
 }
-
-function load(){
+function hideLogin(){
+  $('login-overlay').style.display = 'none';
+  $('app-loading').style.display = 'none';
+}
+async function doLogin(){
+  $('login-err').textContent = '';
   try {
-    const raw = localStorage.getItem(LS_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (!parsed.projects && !parsed.boqItems) throw new Error('صيغة بيانات غير معروفة');
-      state = parsed; migrate(state); return;
-    }
-  } catch(e) { console.warn('failed to load saved state, using defaults', e); }
-  state = defaultState();
+    const d = await API.req('POST', '/api/auth/login', {
+      username: $('login-user').value.trim(),
+      password: $('login-pass').value
+    });
+    API.token = d.token;
+    localStorage.setItem('azoom_token', d.token);
+    $('login-pass').value = '';
+    await refreshState();
+    hideLogin();
+  } catch(e) {
+    $('login-err').textContent = e.message;
+  }
 }
+function logout(){
+  if (!confirm('تسجيل الخروج؟')) return;
+  localStorage.removeItem('azoom_token');
+  API.token = '';
+  location.reload();
+}
+async function changeMyPassword(){
+  const oldPassword = prompt('كلمة المرور الحالية:');
+  if (oldPassword === null) return;
+  const newPassword = prompt('كلمة المرور الجديدة (4 أحرف على الأقل):');
+  if (newPassword === null) return;
+  try {
+    await API.req('PUT', '/api/me/password', {oldPassword, newPassword});
+    alert('تم تغيير كلمة المرور ✅');
+  } catch(e) { alert(e.message); }
+}
+
+// ترقية بيانات مشروع واحد (إضافة الحقول الجديدة بدون فقدان شيء)
+function migrateProject(p){
+  p.info = p.info || {};
+  p.info.projectType = p.info.projectType || 'residential';
+  p.info.unitLabel = p.info.unitLabel || 'فيلا';
+  p.info.unitsTitle = p.info.unitsTitle || 'الفلل';
+  p.seq = p.seq || 1000;
+  p.blockerLog = p.blockerLog || []; p.workLogs = p.workLogs || [];
+  p.villas = p.villas || []; p.villaProgress = p.villaProgress || {}; p.boqItems = p.boqItems || [];
+  p.mustakhlasat = p.mustakhlasat || [];
+  p.mustakhlasat.forEach(m => { m.payments = m.payments || []; });
+  p.boqItems.forEach(i => {
+    if (i.blocker) { i.blocker.since = i.blocker.since || ''; i.blocker.expected = i.blocker.expected || ''; }
+  });
+  return p;
+}
+
+// تحويل نسخة احتياطية قديمة (من إصدار المتصفح) إلى قائمة مشاريع
+function projectsFromLegacyBackup(data){
+  let projects;
+  if (data.projects) projects = data.projects;
+  else if (data.boqItems) {
+    projects = [{
+      managerUserId:null, info:data.project || {name:'مشروع مستورد'},
+      boqItems:data.boqItems, villas:data.villas||[], villaProgress:data.villaProgress||{},
+      mustakhlasat:data.mustakhlasat||[], workLogs:data.workLogs||[], blockerLog:data.blockerLog||[]
+    }];
+  } else return null;
+  return projects.map(p => { const {id, version, ...rest} = p; return migrateProject(rest); });
+}
+
+// ---- تحميل الحالة من الخادم ----
+async function refreshState(){
+  const d = await API.req('GET', '/api/state');
+  d.projects.forEach(migrateProject);
+  const savedProj = Number(localStorage.getItem('azoom_proj') || 0);
+  state = { me: d.me, users: d.users, projects: d.projects, currentProjectId: savedProj };
+  if (!state.projects.find(p => p.id === state.currentProjectId)) {
+    state.currentProjectId = state.projects.length ? state.projects[0].id : 0;
+  }
+  renderAll();
+}
+
+// ---- حفظ تلقائي إلى الخادم مع كشف تعارض التعديلات ----
+let saveTimer = null;
+const dirtyProjects = new Set();
+
 function save(){
-  state.meta.savedAt = new Date().toISOString();
-  try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch(e) { console.error(e); }
-  const t = new Date().toLocaleTimeString('en-GB');
-  $('save-badge').textContent = '⬤ محفوظ ' + t;
+  if (!proj().id) return;
+  dirtyProjects.add(proj().id);
+  $('save-badge').textContent = '⬤ جاري الحفظ...';
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => flushSaves(false), 700);
 }
+
+async function flushSaves(keepalive){
+  for (const id of [...dirtyProjects]) {
+    const p = state.projects.find(x => x.id === id);
+    if (!p) { dirtyProjects.delete(id); continue; }
+    const { version, ...data } = p;
+    try {
+      const r = await API.req('PUT', '/api/projects/' + id, { baseVersion: version, data }, keepalive);
+      p.version = r.version;
+      dirtyProjects.delete(id);
+      $('save-badge').textContent = '⬤ محفوظ ' + new Date().toLocaleTimeString('en-GB');
+    } catch(e) {
+      if (e.status === 409) {
+        dirtyProjects.delete(id);
+        alert('⚠️ تم تعديل هذا المشروع من مستخدم آخر في نفس الوقت. سيتم تحميل آخر نسخة محفوظة.');
+        await refreshState();
+      } else if (e.status === 401) {
+        showLogin();
+      } else {
+        $('save-badge').textContent = '⬤ تعذر الحفظ — إعادة المحاولة...';
+        setTimeout(() => { if (dirtyProjects.size) flushSaves(false); }, 5000);
+      }
+      break;
+    }
+  }
+}
+
+// حفظ ما تبقى عند إغلاق الصفحة
+window.addEventListener('pagehide', () => { if (dirtyProjects.size) flushSaves(true); });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && dirtyProjects.size) flushSaves(true); });
+
+// مزامنة دورية: لو عدّل مستخدم آخر مشروعاً، حدّث تلقائياً
+setInterval(async () => {
+  if (!API.token || !state || dirtyProjects.size) return;
+  try {
+    const v = await API.req('GET', '/api/state/versions');
+    const changed = v.length !== state.projects.length ||
+      v.some(x => { const lp = state.projects.find(p => p.id === x.id); return !lp || lp.version !== x.version; });
+    if (changed && !dirtyProjects.size) await refreshState();
+  } catch(e) {}
+}, 60000);
 
 // ============================================================
 //  DERIVED / COMPUTED
@@ -846,7 +991,7 @@ const remainingValue = it => it.scope === 'others' ? 0 : (1 - itemPct(it)) * amt
 const DONE = 0.995;
 
 const STATUS_META = {
-  others:       {label:'خارج نطاق عزوم', color:'gray',   icon:'⚪'},
+  others:       {label:'خارج النطاق - منفذ سابقاً', color:'gray',   icon:'⚪'},
   by_client:    {label:'بانتظار توريد العميل', color:'purple', icon:'🔷'},
   blocked:      {label:'معيق - عائق خارجي', color:'red',  icon:'⛔'},
   waiting:      {label:'بانتظار أعمال سابقة', color:'orange', icon:'⏳'},
@@ -928,12 +1073,18 @@ function renderHeader(){
   const p = proj();
   const cu = currentUser();
   const mgr = userName(p.managerUserId);
-  $('hd-sub').textContent = p.info.name + (mgr ? ' | مدير المشروع: ' + mgr : '');
+  const tdef = PROJECT_TYPES[p.info.projectType] || PROJECT_TYPES.other;
+  $('hd-sub').textContent = p.info.name + ' (' + tdef.label + ')' + (mgr ? ' | مدير المشروع: ' + mgr : '');
   const list = accessibleProjects();
   $('proj-select').innerHTML = list.length
     ? list.map(x => '<option value="' + x.id + '"' + (x.id === p.id ? ' selected' : '') + '>🗂 ' + esc(x.info.name) + '</option>').join('')
     : '<option>لا يوجد مشروع معين لك</option>';
   $('user-chip').textContent = '👤 ' + cu.name + (cu.role === 'owner' ? ' ★' : '');
+  // مسميات الوحدات حسب نوع المشروع (فيلا / مبنى / قطاع...)
+  $('villas-tab-label').textContent = ULS();
+  $('add-villa-label').textContent = UL();
+  $('wl-villa-label').textContent = UL() + ' (اختياري)';
+  $('wl-th-villa').textContent = UL();
 }
 
 // ============================================================
@@ -954,7 +1105,7 @@ function renderProjects(){
     return '<div class="card' + (isCur ? ' green-b' : '') + '" style="margin-bottom:0">' +
       '<div class="sc-header"><div class="sc-icon" style="background:var(--amber-dim)">🗂</div>' +
       '<div style="flex:1"><div>' + esc(p.info.name) + (isCur ? ' <span class="pill green" style="font-size:9px">الحالي</span>' : '') + '</div>' +
-      '<div style="font-size:11px;color:var(--text2)">' + esc(p.info.client || '—') + ' · ' + p.boqItems.length + ' بند · ' + p.villas.length + ' فيلا</div></div></div>' +
+      '<div style="font-size:11px;color:var(--text2)">' + esc(p.info.client || '—') + ' · ' + p.boqItems.length + ' بند · ' + p.villas.length + ' ' + esc(p.info.unitLabel||'وحدة') + '</div></div></div>' +
       '<div class="sc-item"><span class="sc-item-name">👤 مدير المشروع</span><span class="sc-item-val" style="color:' + (mgr ? 'var(--blue)' : 'var(--red)') + '">' + (mgr ? esc(mgr) : 'غير معيّن ⚠') + '</span></div>' +
       '<div style="margin:8px 0"><div class="villa-prog-bar" style="height:6px"><div class="villa-prog-fill" style="width:' + pct + '%;background:' + barColor + '"></div></div>' +
       '<div style="font-size:11px;font-family:var(--mono);color:' + barColor + '">' + pct.toFixed(1) + '% إنجاز</div></div>' +
@@ -977,6 +1128,9 @@ function openProjectModal(id){
   $('project-modal-title').textContent = p ? 'تعديل مشروع: ' + p.info.name : 'إضافة مشروع جديد';
   $('pm-delete-btn').style.display = p ? '' : 'none';
   $('pm-name').value = p ? p.info.name : '';
+  $('pm-type').value = p ? (p.info.projectType||'residential') : 'residential';
+  $('pm-unit').value = p ? (p.info.unitLabel||'') : PROJECT_TYPES.residential.unit;
+  $('pm-units').value = p ? (p.info.unitsTitle||'') : PROJECT_TYPES.residential.units;
   $('pm-client').value = p ? (p.info.client||'') : '';
   $('pm-consultant').value = p ? (p.info.consultant||'') : '';
   $('pm-contractor').value = p ? (p.info.contractor||'') : (state.projects[0] ? state.projects[0].info.contractor : '');
@@ -994,40 +1148,57 @@ function openProjectModal(id){
   $('project-modal').classList.add('open');
 }
 
-function saveProject(){
+function pmTypeChanged(){
+  const t = PROJECT_TYPES[$('pm-type').value] || PROJECT_TYPES.other;
+  $('pm-unit').value = t.unit;
+  $('pm-units').value = t.units;
+}
+
+async function saveProject(){
   const name = $('pm-name').value.trim();
   if (!name) { alert('اكتب اسم المشروع'); return; }
+  const type = $('pm-type').value;
+  const tdef = PROJECT_TYPES[type] || PROJECT_TYPES.other;
   const info = {
     name, client:$('pm-client').value.trim(), consultant:$('pm-consultant').value.trim(),
     contractor:$('pm-contractor').value.trim(), totalVillas:Number($('pm-villas').value)||0,
-    vatRate:Number($('pm-vat').value)||0, retentionRate:Number($('pm-ret').value)||0, advanceRate:Number($('pm-adv').value)||0
+    vatRate:Number($('pm-vat').value)||0, retentionRate:Number($('pm-ret').value)||0, advanceRate:Number($('pm-adv').value)||0,
+    projectType:type, unitLabel:$('pm-unit').value.trim()||tdef.unit, unitsTitle:$('pm-units').value.trim()||tdef.units
   };
   const managerUserId = Number($('pm-manager').value) || null;
-  if (editingProjectId) {
-    const p = state.projects.find(x => x.id === editingProjectId);
-    p.info = info; p.managerUserId = managerUserId;
-  } else {
-    let boqItems = [];
-    const srcId = Number($('pm-boq-src').value);
-    if (srcId) {
-      const src = state.projects.find(x => x.id === srcId);
-      if (src) boqItems = src.boqItems.map(it => ({...it, predecessors:[...(it.predecessors||[])], blocker:null, executedQty:0, claimedQty:0}));
+  try {
+    if (editingProjectId) {
+      const p = state.projects.find(x => x.id === editingProjectId);
+      p.info = info; p.managerUserId = managerUserId;
+      dirtyProjects.add(p.id);
+      await flushSaves(false);
+    } else {
+      let boqItems = [];
+      const srcId = Number($('pm-boq-src').value);
+      if (srcId) {
+        const src = state.projects.find(x => x.id === srcId);
+        if (src) boqItems = src.boqItems.map(it => ({...it, predecessors:[...(it.predecessors||[])], blocker:null, executedQty:0, claimedQty:0}));
+      }
+      const data = {managerUserId, info, seq:1000, boqItems, villas:[], villaProgress:{}, mustakhlasat:[], workLogs:[], blockerLog:[]};
+      const r = await API.req('POST', '/api/projects', {data});
+      state.projects.push({...data, id:r.id, version:r.version});
+      state.currentProjectId = r.id;
+      localStorage.setItem('azoom_proj', String(r.id));
     }
-    const np = {id: ++state.meta.seq, managerUserId, info, boqItems, villas:[], villaProgress:{}, mustakhlasat:[], workLogs:[], blockerLog:[]};
-    state.projects.push(np);
-    state.currentProjectId = np.id;
-  }
-  closeModal('project-modal'); save(); renderAll();
+    closeModal('project-modal'); renderAll();
+  } catch(e) { alert('تعذر الحفظ: ' + e.message); }
 }
 
-function deleteProject(){
+async function deleteProject(){
   if (!editingProjectId) return;
   const p = state.projects.find(x => x.id === editingProjectId);
-  if (state.projects.length <= 1) { alert('لا يمكن حذف آخر مشروع'); return; }
   if (!confirm('حذف المشروع "' + p.info.name + '" نهائياً بكل بنوده ومستخلصاته ويومياته؟ خذ نسخة احتياطية أولاً!')) return;
   if (!confirm('تأكيد أخير: البيانات لا يمكن استرجاعها بعد الحذف.')) return;
-  state.projects = state.projects.filter(x => x.id !== editingProjectId);
-  closeModal('project-modal'); save(); renderAll();
+  try {
+    await API.req('DELETE', '/api/projects/' + editingProjectId);
+    state.projects = state.projects.filter(x => x.id !== editingProjectId);
+    closeModal('project-modal'); renderAll();
+  } catch(e) { alert(e.message); }
 }
 
 // ============================================================
@@ -1046,61 +1217,48 @@ function renderUsersList(){
     const projects = state.projects.filter(p => p.managerUserId === u.id);
     return '<div class="sc-item"><span class="sc-item-name" style="white-space:normal">' +
       (u.role === 'owner' ? '★ ' : '👤 ') + '<strong style="color:var(--text)">' + esc(u.name) + '</strong> — ' + ROLE_LABELS[u.role] +
-      (u.pin ? ' 🔒' : '') +
+      ' <span style="font-family:var(--mono);font-size:10px;color:var(--text3)">(' + esc(u.username) + ')</span>' +
       (projects.length ? '<br><span style="font-size:11px">يدير: ' + projects.map(p => esc(p.info.name)).join('، ') + '</span>' : '') + '</span>' +
-      '<span><button class="mini-btn" onclick="editUserPin(' + u.id + ')">🔒 PIN</button> ' +
-      (u.id !== state.currentUserId ? '<button class="mini-btn red" onclick="deleteUser(' + u.id + ')">🗑</button>' : '<span class="pill blue" style="font-size:9px">أنت</span>') + '</span></div>';
+      '<span><button class="mini-btn" onclick="resetUserPassword(' + u.id + ')">🔑 كلمة المرور</button> ' +
+      (u.id !== state.me.id ? '<button class="mini-btn red" onclick="deleteUser(' + u.id + ')">🗑</button>' : '<span class="pill blue" style="font-size:9px">أنت</span>') + '</span></div>';
   }).join('');
 }
 
-function addUser(){
+async function addUser(){
   const name = $('us-name').value.trim();
-  if (!name) { alert('اكتب اسم المستخدم'); return; }
-  state.users.push({id: ++state.meta.seq, name, role:$('us-role').value, pin:$('us-pin').value.trim()});
-  $('us-name').value = ''; $('us-pin').value = '';
-  save(); renderUsersList(); renderAll();
+  const username = $('us-username').value.trim();
+  const password = $('us-pin').value.trim();
+  if (!name || !username || !password) { alert('أكمل: الاسم، اسم المستخدم، كلمة المرور'); return; }
+  try {
+    const u = await API.req('POST', '/api/users', {username, name, role:$('us-role').value, password});
+    state.users.push(u);
+    $('us-name').value = ''; $('us-username').value = ''; $('us-pin').value = '';
+    renderUsersList(); renderAll();
+  } catch(e) { alert(e.message); }
 }
 
-function editUserPin(id){
+async function resetUserPassword(id){
   const u = state.users.find(x => x.id === id);
   if (!u) return;
-  const pin = prompt('رمز PIN الجديد لـ "' + u.name + '" (اتركه فارغاً لإلغاء الرمز):', u.pin || '');
-  if (pin === null) return;
-  u.pin = pin.trim();
-  save(); renderUsersList();
+  const password = prompt('كلمة المرور الجديدة لـ "' + u.name + '" (4 أحرف على الأقل):');
+  if (password === null || !password.trim()) return;
+  try {
+    await API.req('PUT', '/api/users/' + id, {password: password.trim()});
+    alert('تم تغيير كلمة المرور ✅');
+  } catch(e) { alert(e.message); }
 }
 
-function deleteUser(id){
+async function deleteUser(id){
   const u = state.users.find(x => x.id === id);
   if (!u) return;
-  if (u.role === 'owner' && state.users.filter(x => x.role === 'owner').length <= 1) { alert('لا يمكن حذف آخر مالك'); return; }
   const projects = state.projects.filter(p => p.managerUserId === id);
   if (!confirm('حذف المستخدم "' + u.name + '"؟' + (projects.length ? ' سيتم إلغاء تعيينه من ' + projects.length + ' مشروع.' : ''))) return;
-  projects.forEach(p => { p.managerUserId = null; });
-  state.users = state.users.filter(x => x.id !== id);
-  save(); renderUsersList(); renderAll();
-}
-
-function openSwitchUser(){
-  $('switch-user-list').innerHTML = state.users.map(u =>
-    '<button class="btn ' + (u.id === state.currentUserId ? 'btn-green' : 'btn-ghost') + '" style="width:100%;text-align:right" onclick="switchUser(' + u.id + ')">' +
-    (u.role === 'owner' ? '★ ' : '👤 ') + esc(u.name) + ' — ' + ROLE_LABELS[u.role] + (u.pin ? ' 🔒' : '') +
-    (u.id === state.currentUserId ? ' (الحالي)' : '') + '</button>').join('');
-  $('switch-user-modal').classList.add('open');
-}
-
-function switchUser(id){
-  const u = state.users.find(x => x.id === id);
-  if (!u) return;
-  if (u.pin) {
-    const entered = prompt('أدخل رمز PIN للمستخدم "' + u.name + '":');
-    if (entered === null) return;
-    if (entered.trim() !== u.pin) { alert('رمز غير صحيح'); return; }
-  }
-  state.currentUserId = id;
-  mbSel = {};
-  closeModal('switch-user-modal');
-  save(); renderAll();
+  try {
+    await API.req('DELETE', '/api/users/' + id);
+    projects.forEach(p => { p.managerUserId = null; p.version++; });
+    state.users = state.users.filter(x => x.id !== id);
+    renderUsersList(); renderAll();
+  } catch(e) { alert(e.message); }
 }
 
 function updateTabCounts(){
@@ -1135,13 +1293,13 @@ function renderKPIs(){
   const t = totals();
   const progressPct = t.azoomScope > 0 ? (t.executed / t.azoomScope * 100) : 0;
   const kpis = [
-    {label:'قيمة نطاق أعمال عزوم', value:money(t.azoomScope), color:'amber', sub:'من إجمالي البنود ' + money(t.contract)},
+    {label:'قيمة نطاق أعمالنا', value:money(t.azoomScope), color:'amber', sub:'من إجمالي البنود ' + money(t.contract)},
     {label:'قيمة الأعمال المنفذة', value:money(t.executed), color:'blue', sub:'نسبة الإنجاز ' + progressPct.toFixed(1) + '%'},
     {label:'مرفوع بمستخلصات سابقة', value:money(t.claimed), color:'teal', sub:proj().mustakhlasat.length + ' مستخلص'},
     {label:'✅ جاهز للرفع الآن (صافي)', value:money(t.net), color:'green', sub:proj().boqItems.filter(i=>netClaimable(i)>1).length + ' بند - المنفذ ناقص المرفوع'},
     {label:'محجوب بعوائق وتسلسل', value:money(t.locked), color:'red', sub:'قيمة الأعمال غير الممكنة حالياً'},
     {label:'💵 محصل نقداً', value:money(t.collected), color:'teal', sub:'متبقي تحصيله ' + money(Math.max(0, t.musNet - t.collected)) + ' من المستخلصات'},
-    {label:'خارج نطاق عزوم', value:money(t.othersVal), color:'purple', sub:'منفذ سابقاً - لا مطالبة'}
+    {label:'خارج نطاقنا (منفذ سابقاً)', value:money(t.othersVal), color:'purple', sub:'لا مطالبة عليها'}
   ];
   $('kpi-grid').innerHTML = kpis.map(k =>
     '<div class="kpi-card ' + k.color + '"><div class="kpi-label">' + k.label + '</div><div class="kpi-value ' + k.color + '">' + k.value + '</div><div class="kpi-sub">' + k.sub + '</div></div>'
@@ -1540,7 +1698,7 @@ function saveMustakhlas(){
   if (!c.lines.length) { alert('حدّد بنود أولاً'); return; }
   if (!confirm('حفظ المستخلص بقيمة ' + money(c.gross) + '؟ سيتم خصم الكميات من الرصيد القابل للرفع.')) return;
   const no = 'MUS-' + String(proj().mustakhlasat.length + 1).padStart(3,'0');
-  const rec = {id: ++state.meta.seq, no, date: $('mb-date').value || todayStr(), status:'submitted',
+  const rec = {id: nextSeq(), no, date: $('mb-date').value || todayStr(), status:'submitted',
     lines:c.lines, gross:c.gross, vatRate:c.vatRate, retRate:c.retRate, advRate:c.advRate,
     vat:c.vat, retention:c.retention, advance:c.advance, net:c.net, notes:$('mb-notes').value.trim(), payments:[], by: currentUser().name};
   c.lines.forEach(l => { const it = getItem(l.itemId); if (it) it.claimedQty = Math.min(it.totalQty, it.claimedQty + l.currQty); });
@@ -1611,7 +1769,7 @@ function savePayment(){
   if (!m) return;
   const amount = Number($('pay-amount').value);
   if (!amount || amount <= 0) { alert('اكتب مبلغ الدفعة'); return; }
-  m.payments.push({id: ++state.meta.seq, date: $('pay-date').value || todayStr(), amount, note: $('pay-note').value.trim(), by: currentUser().name});
+  m.payments.push({id: nextSeq(), date: $('pay-date').value || todayStr(), amount, note: $('pay-note').value.trim(), by: currentUser().name});
   if (paidAmount(m) >= m.net - 1) m.status = 'paid';
   closeModal('pay-modal'); save(); renderAll();
 }
@@ -1820,7 +1978,7 @@ function buildProgressReport(){
     docHeader('تقرير تقدم الأعمال والمستخلصات', todayStr()) +
     sec('1. الملخص المالي') +
     tbl(['البيان','القيمة (ر.س)'],
-      '<tr>' + cell('قيمة نطاق أعمال عزوم') + cell(fmtN(t.azoomScope),'text-align:center;font-family:var(--mono)') + '</tr>' +
+      '<tr>' + cell('قيمة نطاق أعمالنا') + cell(fmtN(t.azoomScope),'text-align:center;font-family:var(--mono)') + '</tr>' +
       '<tr>' + cell('قيمة الأعمال المنفذة (' + progressPct.toFixed(1) + '%)') + cell(fmtN(t.executed),'text-align:center;font-family:var(--mono);color:var(--blue)') + '</tr>' +
       '<tr>' + cell('مرفوع بمستخلصات سابقة') + cell(fmtN(t.claimed),'text-align:center;font-family:var(--mono)') + '</tr>' +
       '<tr>' + cell('<strong>الصافي الجاهز للرفع</strong>') + cell('<strong>' + fmtN(t.net) + '</strong>','text-align:center;font-family:var(--mono);color:var(--green)') + '</tr>' +
@@ -1869,7 +2027,7 @@ function exportItemsCSV(){
 }
 
 function exportLogsCSV(){
-  const rows = [['التاريخ','الفرقة','البند','الوصف','الفيلا','الكمية','الوحدة','عدد العمال','الإنتاجية/عامل','سجلها','ملاحظات']];
+  const rows = [['التاريخ','الفرقة','البند','الوصف','الوحدة/الموقع','الكمية','الوحدة','عدد العمال','الإنتاجية/عامل','سجلها','ملاحظات']];
   [...proj().workLogs].sort((a,b) => a.date.localeCompare(b.date)).forEach(l => {
     const it = getItem(l.itemId);
     rows.push([l.date, l.crew, l.itemId, it ? it.desc : '', l.villaNo || '', l.qty, it ? it.unit : '',
@@ -1959,7 +2117,7 @@ function resolveBlockerGroup(reason){
   if (!items.length) return;
   if (!confirm('تأكيد حل العائق "' + reason + '"؟ سيتم فتح ' + items.length + ' بند للعمل.')) return;
   const sinceDates = items.map(i => i.blocker.since).filter(Boolean).sort();
-  proj().blockerLog.push({id: ++state.meta.seq, reason, type: items[0].blocker.type, items: items.map(i => i.id), since: sinceDates[0] || '', resolvedAt: todayStr(), by: currentUser().name});
+  proj().blockerLog.push({id: nextSeq(), reason, type: items[0].blocker.type, items: items.map(i => i.id), since: sinceDates[0] || '', resolvedAt: todayStr(), by: currentUser().name});
   items.forEach(i => { i.blocker.active = false; });
   save(); renderAll();
 }
@@ -1972,7 +2130,7 @@ let currentVillaNo = null;
 
 function renderVillaFilters(){
   const sheets = [...new Set(proj().villas.map(v => v.sheet))];
-  $('villa-filters').innerHTML = ['<button class="filter-btn' + (currentVillaFilter==='all'?' active':'') + '" onclick="setVillaFilter(\'all\')">كل الفلل</button>']
+  $('villa-filters').innerHTML = ['<button class="filter-btn' + (currentVillaFilter==='all'?' active':'') + '" onclick="setVillaFilter(\'all\')">كل ' + ULS() + '</button>']
     .concat(sheets.map(s => '<button class="filter-btn' + (currentVillaFilter===s?' active':'') + '" onclick="setVillaFilter(\'' + esc(s) + '\')">' + esc(s) + '</button>')).join(' ');
 }
 function setVillaFilter(f){ currentVillaFilter = f; closeVillaDetail(); renderVillaFilters(); renderVillaGrid(); }
@@ -1998,7 +2156,7 @@ function renderVillaGrid(){
     const pct = wTot > 0 ? wSum/wTot*100 : 0;
     const barColor = pct >= 80 ? 'var(--green)' : pct >= 40 ? 'var(--amber)' : 'var(--red)';
     return '<div class="villa-card" onclick="showVillaDetail(\'' + esc(v.no) + '\')">' +
-      '<div class="villa-no">فيلا #' + esc(v.no) + '</div><div class="villa-sheet">' + esc(v.sheet) + '</div>' +
+      '<div class="villa-no">' + esc(UL()) + ' ' + esc(v.no) + '</div><div class="villa-sheet">' + esc(v.sheet) + '</div>' +
       '<div class="villa-prog-bar"><div class="villa-prog-fill" style="width:' + pct + '%;background:' + barColor + '"></div></div>' +
       '<div style="font-size:11px;font-family:var(--mono);color:' + barColor + ';margin-bottom:6px">' + pct.toFixed(0) + '% (مرجّح بالقيمة)</div>' +
       '<div class="villa-status-row"><span class="villa-stat vs-done">' + done + ' مكتمل</span><span class="villa-stat vs-prog">' + prog + ' جاري</span><span class="villa-stat vs-blocked">' + blockedC + ' معيق</span></div>' +
@@ -2012,7 +2170,7 @@ function showVillaDetail(no){
   if (!v) return;
   $('villa-grid').style.display = 'none';
   $('villa-detail').style.display = 'block';
-  $('villa-detail-title').textContent = 'تفاصيل فيلا #' + no + ' - ' + v.sheet;
+  $('villa-detail-title').textContent = 'تفاصيل ' + UL() + ' ' + no + ' - ' + v.sheet;
   $('villa-detail-tbody').innerHTML = proj().boqItems.filter(i => i.scope !== 'others').map(it => {
     const p = villaPct(it.id, no);
     return '<tr>' +
@@ -2037,9 +2195,9 @@ function closeVillaDetail(){
 }
 
 function addVilla(){
-  const no = prompt('رقم الفيلا:');
+  const no = prompt('رقم / اسم ' + UL() + ':');
   if (!no) return;
-  if (proj().villas.find(v => v.no === no.trim())) { alert('الفيلا موجودة مسبقاً'); return; }
+  if (proj().villas.find(v => v.no === no.trim())) { alert(UL() + ' موجودة مسبقاً'); return; }
   const sheet = prompt('المخطط / الشيت (مثال C36):', 'C37') || '—';
   proj().villas.push({no:no.trim(), sheet:sheet.trim()});
   save(); renderVillaFilters(); renderVillaGrid(); updateTabCounts();
@@ -2047,7 +2205,7 @@ function addVilla(){
 
 function deleteVilla(){
   if (!currentVillaNo) return;
-  if (!confirm('حذف فيلا #' + currentVillaNo + ' وكل نسبها؟')) return;
+  if (!confirm('حذف ' + UL() + ' ' + currentVillaNo + ' وكل نسبها؟')) return;
   proj().villas = proj().villas.filter(v => v.no !== currentVillaNo);
   Object.values(proj().villaProgress).forEach(vp => { delete vp[currentVillaNo]; });
   closeVillaDetail(); save(); renderAll();
@@ -2055,7 +2213,7 @@ function deleteVilla(){
 
 function syncFromVillas(){
   if (!proj().villas.length) { alert('لا توجد فلل'); return; }
-  if (!confirm('سيتم إعادة حساب نسبة إنجاز كل بند من متوسط نسب الفلل المسجلة (' + proj().villas.length + ' فيلا). متابعة؟')) return;
+  if (!confirm('سيتم إعادة حساب نسبة إنجاز كل بند من متوسط نسب الوحدات المسجلة (' + proj().villas.length + ' ' + UL() + '). متابعة؟')) return;
   proj().boqItems.forEach(it => {
     if (it.scope === 'others') return;
     const vp = proj().villaProgress[it.id];
@@ -2074,7 +2232,7 @@ function renderProd(){
   $('crew-list').innerHTML = [...new Set(proj().workLogs.map(l => l.crew))].map(c => '<option value="' + esc(c) + '">').join('');
   $('wl-item').innerHTML = proj().boqItems.filter(i => i.scope !== 'others').map(i =>
     '<option value="' + esc(i.id) + '">' + esc(i.id) + ' - ' + esc(i.desc.substring(0,40)) + '</option>').join('');
-  $('wl-villa').innerHTML = '<option value="">— بدون فيلا محددة —</option>' + proj().villas.map(v => '<option value="' + esc(v.no) + '">' + esc(v.no) + ' (' + esc(v.sheet) + ')</option>').join('');
+  $('wl-villa').innerHTML = '<option value="">— بدون ' + UL() + ' محددة —</option>' + proj().villas.map(v => '<option value="' + esc(v.no) + '">' + esc(v.no) + ' (' + esc(v.sheet) + ')</option>').join('');
 
   const logs = [...proj().workLogs].sort((a,b) => b.date.localeCompare(a.date) || b.id - a.id);
   $('wl-tbody').innerHTML = logs.slice(0, 60).map(l => {
@@ -2161,7 +2319,7 @@ function addWorkLog(){
     }
   }
   proj().workLogs.push({
-    id: ++state.meta.seq, date: $('wl-date').value || todayStr(), crew,
+    id: nextSeq(), date: $('wl-date').value || todayStr(), crew,
     itemId, villaNo, qty, workers: Number($('wl-workers').value)||0,
     note: $('wl-note').value.trim(), applied: apply, appliedQty, by: currentUser().name
   });
@@ -2195,6 +2353,7 @@ function openSettings(){
   const p = proj().info;
   $('st-name').value = p.name; $('st-client').value = p.client; $('st-consultant').value = p.consultant;
   $('st-contractor').value = p.contractor; $('st-villas').value = p.totalVillas;
+  $('st-unit').value = p.unitLabel || ''; $('st-units').value = p.unitsTitle || '';
   $('st-vat').value = p.vatRate; $('st-ret').value = p.retentionRate; $('st-adv').value = p.advanceRate;
   $('settings-modal').classList.add('open');
 }
@@ -2203,36 +2362,58 @@ function saveSettings(){
   p.name = $('st-name').value.trim(); p.client = $('st-client').value.trim();
   p.consultant = $('st-consultant').value.trim(); p.contractor = $('st-contractor').value.trim();
   p.totalVillas = Number($('st-villas').value)||0;
+  p.unitLabel = $('st-unit').value.trim() || p.unitLabel || 'وحدة';
+  p.unitsTitle = $('st-units').value.trim() || p.unitsTitle || 'الوحدات';
   p.vatRate = Number($('st-vat').value)||0; p.retentionRate = Number($('st-ret').value)||0; p.advanceRate = Number($('st-adv').value)||0;
   $('mb-ret').value = p.retentionRate; $('mb-adv').value = p.advanceRate;
   closeModal('settings-modal'); save(); renderAll();
 }
-function resetDemo(){
-  if (!isOwner()) { alert('استرجاع البيانات التجريبية صلاحية المالك فقط'); return; }
-  if (!confirm('سيتم مسح كل بياناتك الحالية (جميع المشاريع والمستخدمين) والرجوع للبيانات التجريبية. خذ نسخة احتياطية أولاً! متابعة؟')) return;
-  state = defaultState();
-  closeModal('settings-modal'); save(); renderAll();
+async function resetDemo(){
+  if (!isOwner()) { alert('صلاحية المالك فقط'); return; }
+  if (!confirm('إضافة مشروع تجريبي كامل (مشروع SANG بفلله وبنوده ويومياته) للتعرف على النظام؟')) return;
+  try {
+    const data = demoProjectData();
+    const r = await API.req('POST', '/api/projects', {data});
+    state.projects.push({...data, id:r.id, version:r.version});
+    state.currentProjectId = r.id;
+    localStorage.setItem('azoom_proj', String(r.id));
+    closeModal('settings-modal'); renderAll();
+  } catch(e) { alert(e.message); }
 }
 function exportJSON(){
-  const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'azoom-boq-backup-' + todayStr() + '.json';
-  a.click();
-  URL.revokeObjectURL(a.href);
+  if (isOwner()) { // نسخة كاملة من الخادم
+    fetch('/api/backup', {headers:{'Authorization':'Bearer ' + API.token}})
+      .then(r => r.blob())
+      .then(b => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(b);
+        a.download = 'azoom-backup-' + todayStr() + '.json';
+        a.click();
+        URL.revokeObjectURL(a.href);
+      })
+      .catch(e => alert('تعذر التصدير: ' + e.message));
+  } else {
+    const blob = new Blob([JSON.stringify({projects: state.projects}, null, 2)], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'azoom-projects-' + todayStr() + '.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
 }
 function importJSON(input){
   const file = input.files[0];
   if (!file) return;
+  if (!isOwner()) { alert('الاستيراد صلاحية المالك فقط'); input.value=''; return; }
   const reader = new FileReader();
-  reader.onload = e => {
+  reader.onload = async e => {
     try {
       const data = JSON.parse(e.target.result);
-      if (!data.projects && !data.boqItems) throw new Error('صيغة الملف غير صحيحة');
-      if (!confirm('استبدال البيانات الحالية (جميع المشاريع) بالملف المستورد؟')) return;
-      state = data;
-      migrate(state);
-      save(); renderAll();
+      const projects = projectsFromLegacyBackup(data);
+      if (!projects) throw new Error('صيغة الملف غير صحيحة');
+      if (!confirm('استبدال جميع المشاريع على الخادم بمحتوى الملف (' + projects.length + ' مشروع)؟ المستخدمون لن يتأثروا.')) { input.value=''; return; }
+      await API.req('POST', '/api/restore', {projects});
+      await refreshState();
       alert('تم الاستيراد بنجاح ✅');
     } catch(err) { alert('فشل الاستيراد: ' + err.message); }
     input.value = '';
@@ -2251,10 +2432,22 @@ document.querySelectorAll('.modal-overlay').forEach(ov => {
 // ============================================================
 //  BOOT
 // ============================================================
-document.addEventListener('DOMContentLoaded', () => {
-  load();
-  renderAll();
-});
+async function boot(){
+  if (!API.token) { showLogin(); return; }
+  try {
+    await refreshState();
+    hideLogin();
+  } catch(e) {
+    if (e.status === 401) {
+      localStorage.removeItem('azoom_token');
+      API.token = '';
+      showLogin();
+    } else {
+      $('app-loading').textContent = '⚠️ تعذر الاتصال بالخادم: ' + e.message + ' — أعد تحميل الصفحة';
+    }
+  }
+}
+document.addEventListener('DOMContentLoaded', boot);
 </script>
 </body>
 </html>

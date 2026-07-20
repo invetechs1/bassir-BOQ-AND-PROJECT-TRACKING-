@@ -1,0 +1,17 @@
+{
+  "name": "azoom-project-tracking",
+  "version": "2.0.0",
+  "description": "نظام إدارة جداول الكميات والمستخلصات والإنتاجية - متعدد المشاريع والمستخدمين",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2"
+  }
+}

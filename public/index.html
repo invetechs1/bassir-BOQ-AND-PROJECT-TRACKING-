@@ -56,7 +56,7 @@
 
   .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(195px, 1fr)); gap: 12px; margin-bottom: 24px; }
   .kpi-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; position: relative; overflow: hidden; }
-  .kpi-card::before { content: ''; position: absolute; top: 0; right: 0; width: 3px; height: 100%; }
+  .kpi-card::before { content: ''; position: absolute; top: 0; inset-inline-start: 0; width: 3px; height: 100%; }
   .kpi-card.green::before { background: var(--green); } .kpi-card.amber::before { background: var(--amber); }
   .kpi-card.red::before { background: var(--red); } .kpi-card.blue::before { background: var(--blue); }
   .kpi-card.purple::before { background: var(--purple); } .kpi-card.orange::before { background: var(--orange); }
@@ -85,12 +85,12 @@
 
   .table-wrap { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; overflow: auto; margin-bottom: 20px; }
   table { width: 100%; border-collapse: collapse; }
-  th { padding: 9px 12px; background: var(--bg3); color: var(--text2); font-size: 11px; font-weight: 600; text-align: right; border-bottom: 1px solid var(--border); white-space: nowrap; position: sticky; top: 0; }
+  th { padding: 9px 12px; background: var(--bg3); color: var(--text2); font-size: 11px; font-weight: 600; text-align: start; border-bottom: 1px solid var(--border); white-space: nowrap; position: sticky; top: 0; }
   td { padding: 8px 12px; border-bottom: 1px solid var(--border2); font-size: 13px; vertical-align: middle; }
   tr:last-child td { border-bottom: none; }
   tbody tr:hover td { background: var(--bg3); }
   .item-no { font-family: var(--mono); font-size: 12px; color: var(--amber); font-weight: 600; white-space: nowrap; }
-  .amount { font-family: var(--mono); font-size: 12px; text-align: left; white-space: nowrap; }
+  .amount { font-family: var(--mono); font-size: 12px; text-align: end; white-space: nowrap; }
   .amount.claimable { color: var(--green-bright); font-weight: 600; }
   .amount.blocked { color: var(--red); }
   .amount.muted { color: var(--text3); }
@@ -148,10 +148,10 @@
 
   .bar-chart { display: flex; flex-direction: column; gap: 8px; }
   .bar-row { display: flex; align-items: center; gap: 10px; }
-  .bar-label { width: 170px; font-size: 12px; color: var(--text2); text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bar-label { width: 170px; font-size: 12px; color: var(--text2); text-align: start; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .bar-track { flex: 1; height: 20px; background: var(--bg3); border-radius: 4px; overflow: hidden; position: relative; }
-  .bar-fill { height: 100%; border-radius: 4px; display: flex; align-items: center; padding-right: 6px; justify-content: flex-end; font-size: 10px; font-weight: 600; color: #000; min-width: fit-content; }
-  .bar-amount { width: 150px; font-size: 11px; font-family: var(--mono); color: var(--text3); text-align: left; white-space: nowrap; }
+  .bar-fill { height: 100%; border-radius: 4px; display: flex; align-items: center; padding-inline-start: 6px; justify-content: flex-end; font-size: 10px; font-weight: 600; color: #000; min-width: fit-content; }
+  .bar-amount { width: 150px; font-size: 11px; font-family: var(--mono); color: var(--text3); text-align: end; white-space: nowrap; }
 
   .villa-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; margin-bottom: 20px; }
   .villa-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; cursor: pointer; transition: all 0.2s; }
@@ -213,7 +213,7 @@
   .photo-strip { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
   .photo-thumb { width: 54px; height: 54px; border-radius: 6px; object-fit: cover; border: 1px solid var(--border); cursor: pointer; }
   .photo-thumb-wrap { position: relative; }
-  .photo-thumb-x { position: absolute; top: -6px; left: -6px; width: 18px; height: 18px; border-radius: 50%; background: var(--red); color: #fff; border: none; font-size: 11px; cursor: pointer; line-height: 1; }
+  .photo-thumb-x { position: absolute; top: -6px; inset-inline-end: -6px; width: 18px; height: 18px; border-radius: 50%; background: var(--red); color: #fff; border: none; font-size: 11px; cursor: pointer; line-height: 1; }
   .log-photo { width: 30px; height: 30px; border-radius: 4px; object-fit: cover; border: 1px solid var(--border); cursor: pointer; vertical-align: middle; }
   .gallery-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
   .gallery-item { position: relative; cursor: pointer; }
@@ -260,53 +260,54 @@
 <body>
 
 <!-- ===================== LOGIN ===================== -->
-<div id="app-loading">⏳ جاري تحميل النظام...</div>
+<div id="app-loading" data-i18n="⏳ جاري تحميل النظام...">⏳ جاري تحميل النظام...</div>
 <div id="login-overlay">
   <div class="login-box">
     <div class="login-logo">ع</div>
-    <div style="text-align:center;font-size:16px;font-weight:700;margin-bottom:4px">نظام إدارة المستخلصات والإنتاجية</div>
-    <div style="text-align:center;font-size:12px;color:var(--text2);margin-bottom:20px">سجّل دخولك للمتابعة</div>
-    <div class="f-field" style="margin-bottom:12px"><label>اسم المستخدم</label><input type="text" id="login-user" autocomplete="username" onkeydown="if(event.key==='Enter')document.getElementById('login-pass').focus()"></div>
-    <div class="f-field" style="margin-bottom:12px"><label>كلمة المرور</label><input type="password" id="login-pass" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
-    <button class="btn btn-amber" style="width:100%" onclick="doLogin()">🔓 دخول</button>
+    <div style="text-align:center;font-size:16px;font-weight:700;margin-bottom:4px" data-i18n="نظام إدارة المستخلصات والإنتاجية">نظام إدارة المستخلصات والإنتاجية</div>
+    <div style="text-align:center;font-size:12px;color:var(--text2);margin-bottom:20px" data-i18n="سجّل دخولك للمتابعة">سجّل دخولك للمتابعة</div>
+    <div class="f-field" style="margin-bottom:12px"><label data-i18n="اسم المستخدم">اسم المستخدم</label><input type="text" id="login-user" autocomplete="username" onkeydown="if(event.key==='Enter')document.getElementById('login-pass').focus()"></div>
+    <div class="f-field" style="margin-bottom:12px"><label data-i18n="كلمة المرور">كلمة المرور</label><input type="password" id="login-pass" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <button class="btn btn-amber" style="width:100%" onclick="doLogin()" data-i18n="🔓 دخول">🔓 دخول</button>
     <div class="login-err" id="login-err"></div>
   </div>
 </div>
 
-<div id="offline-banner">📴 وضع بدون اتصال — عرض آخر بيانات محفوظة (للقراءة فقط) · <a href="#" onclick="retryOnline();return false" style="color:var(--amber);font-weight:700">إعادة المحاولة</a></div>
+<div id="offline-banner"><span data-i18n="📴 وضع بدون اتصال — عرض آخر بيانات محفوظة (للقراءة فقط) ·">📴 وضع بدون اتصال — عرض آخر بيانات محفوظة (للقراءة فقط) ·</span> <a href="#" onclick="retryOnline();return false" style="color:var(--amber);font-weight:700" data-i18n="إعادة المحاولة">إعادة المحاولة</a></div>
 
 <!-- ===================== HEADER ===================== -->
 <div class="top-header">
   <div class="logo-area">
     <div class="logo-icon">ع</div>
     <div class="logo-text">
-      <h1 id="hd-title">نظام إدارة المستخلصات والإنتاجية</h1>
+      <h1 id="hd-title" data-i18n="نظام إدارة المستخلصات والإنتاجية">نظام إدارة المستخلصات والإنتاجية</h1>
       <p id="hd-sub"></p>
     </div>
   </div>
   <div class="header-meta">
     <select id="proj-select" class="search-box" style="width:auto;max-width:230px;padding:4px 8px;font-size:12px" onchange="switchProject(this.value)"></select>
-    <button class="tool-btn" id="user-chip" style="border-color:var(--blue);color:var(--blue)" onclick="changeMyPassword()" data-tip="تغيير كلمة المرور">👤</button>
-    <button class="tool-btn" style="border-color:var(--red);color:var(--red)" onclick="logout()">🚪 خروج</button>
-    <span class="header-badge live" id="save-badge">⬤ حفظ تلقائي</span>
-    <button class="tool-btn" onclick="openHelp()">؟ دليل الاستخدام</button>
-    <button class="tool-btn" onclick="openSettings()">⚙ إعدادات</button>
-    <button class="tool-btn" onclick="exportJSON()">⬇ نسخة احتياطية</button>
-    <button class="tool-btn" onclick="document.getElementById('import-file').click()">⬆ استيراد</button>
+    <button class="tool-btn" id="lang-switch" style="border-color:var(--purple);color:var(--purple)" onclick="toggleLang()">🌐 English</button>
+    <button class="tool-btn" id="user-chip" style="border-color:var(--blue);color:var(--blue)" onclick="changeMyPassword()" data-i18n-tip="تغيير كلمة المرور" data-tip="تغيير كلمة المرور">👤</button>
+    <button class="tool-btn" style="border-color:var(--red);color:var(--red)" onclick="logout()" data-i18n="🚪 خروج">🚪 خروج</button>
+    <span class="header-badge live" id="save-badge" data-i18n="⬤ حفظ تلقائي">⬤ حفظ تلقائي</span>
+    <button class="tool-btn" onclick="openHelp()" data-i18n="؟ دليل الاستخدام">؟ دليل الاستخدام</button>
+    <button class="tool-btn" onclick="openSettings()" data-i18n="⚙ إعدادات">⚙ إعدادات</button>
+    <button class="tool-btn" onclick="exportJSON()" data-i18n="⬇ نسخة احتياطية">⬇ نسخة احتياطية</button>
+    <button class="tool-btn" onclick="document.getElementById('import-file').click()" data-i18n="⬆ استيراد">⬆ استيراد</button>
     <input type="file" id="import-file" accept=".json" style="display:none" onchange="importJSON(this)">
   </div>
 </div>
 
 <!-- ===================== NAV ===================== -->
 <div class="nav-tabs">
-  <div class="nav-tab" data-tab="projects" onclick="switchTab('projects')">🗂 المشاريع <span class="tab-count" id="tc-projects">0</span></div>
-  <div class="nav-tab active" data-tab="dashboard" onclick="switchTab('dashboard')">📊 لوحة التحكم</div>
-  <div class="nav-tab" data-tab="plan" onclick="switchTab('plan')">🧭 خطة العمل <span class="tab-count" id="tc-plan">0</span></div>
-  <div class="nav-tab" data-tab="items" onclick="switchTab('items')">📋 جدول الكميات <span class="tab-count" id="tc-items">0</span></div>
-  <div class="nav-tab" data-tab="invoice" onclick="switchTab('invoice')">💰 المستخلصات <span class="tab-count" id="tc-invoice">0</span></div>
-  <div class="nav-tab" data-tab="blocked" onclick="switchTab('blocked')">🚫 العوائق <span class="tab-count" id="tc-blocked">0</span></div>
+  <div class="nav-tab" data-tab="projects" onclick="switchTab('projects')"><span data-i18n="🗂 المشاريع">🗂 المشاريع</span> <span class="tab-count" id="tc-projects">0</span></div>
+  <div class="nav-tab active" data-tab="dashboard" onclick="switchTab('dashboard')"><span data-i18n="📊 لوحة التحكم">📊 لوحة التحكم</span></div>
+  <div class="nav-tab" data-tab="plan" onclick="switchTab('plan')"><span data-i18n="🧭 خطة العمل">🧭 خطة العمل</span> <span class="tab-count" id="tc-plan">0</span></div>
+  <div class="nav-tab" data-tab="items" onclick="switchTab('items')"><span data-i18n="📋 جدول الكميات">📋 جدول الكميات</span> <span class="tab-count" id="tc-items">0</span></div>
+  <div class="nav-tab" data-tab="invoice" onclick="switchTab('invoice')"><span data-i18n="💰 المستخلصات">💰 المستخلصات</span> <span class="tab-count" id="tc-invoice">0</span></div>
+  <div class="nav-tab" data-tab="blocked" onclick="switchTab('blocked')"><span data-i18n="🚫 العوائق">🚫 العوائق</span> <span class="tab-count" id="tc-blocked">0</span></div>
   <div class="nav-tab" data-tab="villas" onclick="switchTab('villas')">🏠 <span id="villas-tab-label">الوحدات</span> <span class="tab-count" id="tc-villas">0</span></div>
-  <div class="nav-tab" data-tab="prod" onclick="switchTab('prod')">👷 الإنتاجية <span class="tab-count" id="tc-prod">0</span></div>
+  <div class="nav-tab" data-tab="prod" onclick="switchTab('prod')"><span data-i18n="👷 الإنتاجية">👷 الإنتاجية</span> <span class="tab-count" id="tc-prod">0</span></div>
 </div>
 
 <div class="main">
@@ -314,8 +315,8 @@
   <!-- ===================== PROJECTS ===================== -->
   <div class="tab-panel" id="tab-projects">
     <div class="filter-bar">
-      <button class="btn btn-amber" id="btn-add-project" onclick="openProjectModal(null)">+ إضافة مشروع</button>
-      <button class="btn btn-ghost" id="btn-users-manage" onclick="openUsersManage()">👥 إدارة المستخدمين ومدراء المشاريع</button>
+      <button class="btn btn-amber" id="btn-add-project" onclick="openProjectModal(null)" data-i18n="+ إضافة مشروع">+ إضافة مشروع</button>
+      <button class="btn btn-ghost" id="btn-users-manage" onclick="openUsersManage()" data-i18n="👥 إدارة المستخدمين ومدراء المشاريع">👥 إدارة المستخدمين ومدراء المشاريع</button>
     </div>
     <div id="pm-notice"></div>
     <div class="status-cards" id="projects-grid"></div>
@@ -327,29 +328,29 @@
     <div class="two-col">
       <div>
         <div class="card">
-          <div class="card-title"><span>💵 التنفيذ والمطالبة حسب القسم</span></div>
+          <div class="card-title"><span data-i18n="💵 التنفيذ والمطالبة حسب القسم">💵 التنفيذ والمطالبة حسب القسم</span></div>
           <div class="bar-chart" id="div-chart"></div>
         </div>
         <div class="card">
-          <div class="card-title"><span>📌 توزيع قيمة البنود حسب الحالة</span></div>
+          <div class="card-title"><span data-i18n="📌 توزيع قيمة البنود حسب الحالة">📌 توزيع قيمة البنود حسب الحالة</span></div>
           <div class="bar-chart" id="status-chart"></div>
         </div>
       </div>
       <div>
         <div class="card">
-          <div class="card-title">⚡ إجراءات سريعة</div>
+          <div class="card-title" data-i18n="⚡ إجراءات سريعة">⚡ إجراءات سريعة</div>
           <div style="display:flex;flex-direction:column;gap:8px;">
-            <button class="btn btn-green" onclick="quickBuildInvoice()">💰 ابنِ مستخلص من الجاهز الآن</button>
-            <button class="btn btn-amber" onclick="switchTab('plan')">🧭 وش أشتغل اليوم؟</button>
-            <button class="btn btn-ghost" onclick="switchTab('blocked')">🚫 عرض العوائق وأثرها</button>
-            <button class="btn btn-ghost" onclick="switchTab('prod')">👷 سجّل إنتاجية اليوم</button>
-            <button class="btn btn-ghost" onclick="buildProgressReport()">📄 تقرير تقدم شامل (طباعة)</button>
-            <button class="btn btn-ghost" onclick="genBlockerLetter()">✉️ خطاب إشعار تعثر</button>
+            <button class="btn btn-green" onclick="quickBuildInvoice()" data-i18n="💰 ابنِ مستخلص من الجاهز الآن">💰 ابنِ مستخلص من الجاهز الآن</button>
+            <button class="btn btn-amber" onclick="switchTab('plan')" data-i18n="🧭 وش أشتغل اليوم؟">🧭 وش أشتغل اليوم؟</button>
+            <button class="btn btn-ghost" onclick="switchTab('blocked')" data-i18n="🚫 عرض العوائق وأثرها">🚫 عرض العوائق وأثرها</button>
+            <button class="btn btn-ghost" onclick="switchTab('prod')" data-i18n="👷 سجّل إنتاجية اليوم">👷 سجّل إنتاجية اليوم</button>
+            <button class="btn btn-ghost" onclick="buildProgressReport()" data-i18n="📄 تقرير تقدم شامل (طباعة)">📄 تقرير تقدم شامل (طباعة)</button>
+            <button class="btn btn-ghost" onclick="genBlockerLetter()" data-i18n="✉️ خطاب إشعار تعثر">✉️ خطاب إشعار تعثر</button>
           </div>
         </div>
         <div id="alerts-area"></div>
         <div class="card green-b">
-          <div class="card-title" style="color:var(--green-bright)">✅ ملخص المطالبات</div>
+          <div class="card-title" style="color:var(--green-bright)" data-i18n="✅ ملخص المطالبات">✅ ملخص المطالبات</div>
           <div id="claim-summary"></div>
         </div>
       </div>
@@ -358,24 +359,24 @@
 
   <!-- ===================== ACTION PLAN ===================== -->
   <div class="tab-panel" id="tab-plan">
-    <div class="alert info">🧭 هذه الصفحة تجاوب على سؤال: <strong>"وش أشتغل الحين عشان أرفع مستخلص أكبر؟"</strong> — مرتبة حسب الأولوية المالية.</div>
+    <div class="alert info"><span data-i18n="🧭 هذه الصفحة تجاوب على سؤال:">🧭 هذه الصفحة تجاوب على سؤال:</span> <strong data-i18n='"وش أشتغل الحين عشان أرفع مستخلص أكبر؟"'>"وش أشتغل الحين عشان أرفع مستخلص أكبر؟"</strong> <span data-i18n="— مرتبة حسب الأولوية المالية.">— مرتبة حسب الأولوية المالية.</span></div>
     <div id="plan-content"></div>
   </div>
 
   <!-- ===================== BOQ ITEMS ===================== -->
   <div class="tab-panel" id="tab-items">
     <div class="filter-bar">
-      <input type="text" class="search-box" placeholder="🔍 بحث بالوصف أو رقم البند..." id="search-items" oninput="renderItemsTable()">
+      <input type="text" class="search-box" placeholder="🔍 بحث بالوصف أو رقم البند..." data-i18n-ph="🔍 بحث بالوصف أو رقم البند..." id="search-items" oninput="renderItemsTable()">
       <span id="items-filters"></span>
-      <button class="btn btn-ghost" style="margin-right:auto" onclick="exportItemsCSV()">⬇ Excel</button>
-      <button class="btn btn-amber" onclick="openItemModal(null)">+ إضافة بند</button>
+      <button class="btn btn-ghost" style="margin-inline-start:auto" onclick="exportItemsCSV()">⬇ Excel</button>
+      <button class="btn btn-amber" onclick="openItemModal(null)" data-i18n="+ إضافة بند">+ إضافة بند</button>
     </div>
     <div class="table-wrap">
       <table>
         <thead>
           <tr>
-            <th>البند</th><th>الوصف</th><th>الوحدة</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th>
-            <th>نسبة التنفيذ</th><th>مرفوع %</th><th>صافي للمطالبة</th><th>الحالة</th><th>العائق / يعتمد على</th><th></th>
+            <th data-i18n="البند">البند</th><th data-i18n="الوصف">الوصف</th><th data-i18n="الوحدة">الوحدة</th><th data-i18n="الكمية">الكمية</th><th data-i18n="السعر">السعر</th><th data-i18n="الإجمالي">الإجمالي</th>
+            <th data-i18n="نسبة التنفيذ">نسبة التنفيذ</th><th data-i18n="مرفوع %">مرفوع %</th><th data-i18n="صافي للمطالبة">صافي للمطالبة</th><th data-i18n="الحالة">الحالة</th><th data-i18n="العائق / يعتمد على">العائق / يعتمد على</th><th></th>
           </tr>
         </thead>
         <tbody id="items-tbody"></tbody>
@@ -386,51 +387,51 @@
 
   <!-- ===================== MUSTAKHLAS ===================== -->
   <div class="tab-panel" id="tab-invoice">
-    <div class="alert info">💡 الكميات المقترحة = المنفذ − المرفوع سابقاً (المستخلص الجاري). عدّل كمية المطالبة لكل بند إذا حاب، ثم احفظ المستخلص ليتم تسجيله وخصمه من الرصيد القابل للرفع.</div>
+    <div class="alert info" data-i18n="💡 الكميات المقترحة = المنفذ − المرفوع سابقاً (المستخلص الجاري). عدّل كمية المطالبة لكل بند إذا حاب، ثم احفظ المستخلص ليتم تسجيله وخصمه من الرصيد القابل للرفع.">💡 الكميات المقترحة = المنفذ − المرفوع سابقاً (المستخلص الجاري). عدّل كمية المطالبة لكل بند إذا حاب، ثم احفظ المستخلص ليتم تسجيله وخصمه من الرصيد القابل للرفع.</div>
     <div class="two-col">
       <div>
         <div class="filter-bar">
-          <button class="btn btn-green" onclick="mbSelectAll()">✅ تحديد كل الجاهز</button>
-          <button class="btn btn-ghost" onclick="mbClear()">إلغاء التحديد</button>
+          <button class="btn btn-green" onclick="mbSelectAll()" data-i18n="✅ تحديد كل الجاهز">✅ تحديد كل الجاهز</button>
+          <button class="btn btn-ghost" onclick="mbClear()" data-i18n="إلغاء التحديد">إلغاء التحديد</button>
         </div>
         <div class="table-wrap">
           <table>
             <thead>
-              <tr><th>✓</th><th>البند</th><th>الوصف</th><th>الوحدة</th><th>السعر</th><th>منفذ</th><th>مرفوع سابقاً</th><th>كمية المطالبة الآن</th><th>قيمة المطالبة</th></tr>
+              <tr><th>✓</th><th data-i18n="البند">البند</th><th data-i18n="الوصف">الوصف</th><th data-i18n="الوحدة">الوحدة</th><th data-i18n="السعر">السعر</th><th data-i18n="منفذ">منفذ</th><th data-i18n="مرفوع سابقاً">مرفوع سابقاً</th><th data-i18n="كمية المطالبة الآن">كمية المطالبة الآن</th><th data-i18n="قيمة المطالبة">قيمة المطالبة</th></tr>
             </thead>
             <tbody id="mb-tbody"></tbody>
           </table>
         </div>
 
         <div class="section-header">
-          <div class="section-title"><span class="dot" style="background:var(--teal)"></span> سجل المستخلصات المرفوعة</div>
+          <div class="section-title"><span class="dot" style="background:var(--teal)"></span> <span data-i18n="سجل المستخلصات المرفوعة">سجل المستخلصات المرفوعة</span></div>
         </div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>رقم</th><th>التاريخ</th><th>عدد البنود</th><th>قيمة الأعمال</th><th>صافي المستحق</th><th>المحصل</th><th>الحالة</th><th>إجراءات</th></tr></thead>
+            <thead><tr><th data-i18n="رقم">رقم</th><th data-i18n="التاريخ">التاريخ</th><th data-i18n="عدد البنود">عدد البنود</th><th data-i18n="قيمة الأعمال">قيمة الأعمال</th><th data-i18n="صافي المستحق">صافي المستحق</th><th data-i18n="المحصل">المحصل</th><th data-i18n="الحالة">الحالة</th><th data-i18n="إجراءات">إجراءات</th></tr></thead>
             <tbody id="mus-history-tbody"></tbody>
           </table>
         </div>
         <div class="card">
-          <div class="card-title">📈 قيمة المستخلصات المرفوعة حسب الشهر</div>
+          <div class="card-title" data-i18n="📈 قيمة المستخلصات المرفوعة حسب الشهر">📈 قيمة المستخلصات المرفوعة حسب الشهر</div>
           <div class="bar-chart" id="mus-monthly"></div>
         </div>
       </div>
       <div>
         <div class="invoice-sidebar">
-          <div class="card-title" style="color:var(--green-bright)">💰 ملخص المستخلص <span class="pill green" id="mb-count">0 بند</span></div>
+          <div class="card-title" style="color:var(--green-bright)"><span data-i18n="💰 ملخص المستخلص">💰 ملخص المستخلص</span> <span class="pill green" id="mb-count">0 بند</span></div>
           <div class="f-grid" style="grid-template-columns:1fr 1fr;">
-            <div class="f-field"><label>تاريخ المستخلص</label><input type="date" id="mb-date"></div>
-            <div class="f-field"><label>ملاحظات</label><input type="text" id="mb-notes" placeholder="اختياري"></div>
-            <div class="f-field"><label>محتجز ضمان %</label><input type="number" id="mb-ret" min="0" max="100" step="0.5"></div>
-            <div class="f-field"><label>استرداد دفعة مقدمة %</label><input type="number" id="mb-adv" min="0" max="100" step="0.5"></div>
+            <div class="f-field"><label data-i18n="تاريخ المستخلص">تاريخ المستخلص</label><input type="date" id="mb-date"></div>
+            <div class="f-field"><label data-i18n="ملاحظات">ملاحظات</label><input type="text" id="mb-notes" placeholder="اختياري" data-i18n-ph="اختياري"></div>
+            <div class="f-field"><label data-i18n="محتجز ضمان %">محتجز ضمان %</label><input type="number" id="mb-ret" min="0" max="100" step="0.5"></div>
+            <div class="f-field"><label data-i18n="استرداد دفعة مقدمة %">استرداد دفعة مقدمة %</label><input type="number" id="mb-adv" min="0" max="100" step="0.5"></div>
           </div>
           <div class="divider"></div>
           <div id="mb-totals"></div>
           <div class="divider"></div>
           <div style="display:flex;flex-direction:column;gap:8px">
-            <button class="btn btn-green" onclick="saveMustakhlas()">💾 حفظ ورفع المستخلص</button>
-            <button class="btn btn-ghost" onclick="previewMustakhlas()">👁 معاينة الوثيقة</button>
+            <button class="btn btn-green" onclick="saveMustakhlas()" data-i18n="💾 حفظ ورفع المستخلص">💾 حفظ ورفع المستخلص</button>
+            <button class="btn btn-ghost" onclick="previewMustakhlas()" data-i18n="👁 معاينة الوثيقة">👁 معاينة الوثيقة</button>
           </div>
         </div>
       </div>
@@ -439,23 +440,23 @@
 
   <!-- ===================== BLOCKED ===================== -->
   <div class="tab-panel" id="tab-blocked">
-    <div class="alert danger">⚠️ حل هذه العوائق = فتح شغل جديد ومستخلصات أكبر. مرتبة حسب القيمة المالية المحجوبة (المباشرة + الأعمال التي تعتمد عليها).</div>
+    <div class="alert danger" data-i18n="⚠️ حل هذه العوائق = فتح شغل جديد ومستخلصات أكبر. مرتبة حسب القيمة المالية المحجوبة (المباشرة + الأعمال التي تعتمد عليها).">⚠️ حل هذه العوائق = فتح شغل جديد ومستخلصات أكبر. مرتبة حسب القيمة المالية المحجوبة (المباشرة + الأعمال التي تعتمد عليها).</div>
     <div class="filter-bar">
-      <button class="btn btn-amber" onclick="genBlockerLetter()">✉️ توليد خطاب إشعار تعثر للمقاول الرئيسي</button>
+      <button class="btn btn-amber" onclick="genBlockerLetter()" data-i18n="✉️ توليد خطاب إشعار تعثر للمقاول الرئيسي">✉️ توليد خطاب إشعار تعثر للمقاول الرئيسي</button>
     </div>
     <div class="status-cards" id="blocker-groups"></div>
     <div class="section-header">
-      <div class="section-title"><span class="dot" style="background:var(--orange)"></span> بنود بانتظار أعمال سابقة (تسلسل فني)</div>
+      <div class="section-title"><span class="dot" style="background:var(--orange)"></span> <span data-i18n="بنود بانتظار أعمال سابقة (تسلسل فني)">بنود بانتظار أعمال سابقة (تسلسل فني)</span></div>
     </div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>البند</th><th>الوصف</th><th>ينتظر</th><th>سلسلة الاعتماد</th><th>القيمة المنتظرة</th></tr></thead>
+        <thead><tr><th data-i18n="البند">البند</th><th data-i18n="الوصف">الوصف</th><th data-i18n="ينتظر">ينتظر</th><th data-i18n="سلسلة الاعتماد">سلسلة الاعتماد</th><th data-i18n="القيمة المنتظرة">القيمة المنتظرة</th></tr></thead>
         <tbody id="waiting-tbody"></tbody>
         <tfoot id="waiting-tfoot"></tfoot>
       </table>
     </div>
     <div class="section-header">
-      <div class="section-title"><span class="dot" style="background:var(--green)"></span> سجل العوائق المحلولة</div>
+      <div class="section-title"><span class="dot" style="background:var(--green)"></span> <span data-i18n="سجل العوائق المحلولة">سجل العوائق المحلولة</span></div>
     </div>
     <div class="card" id="blocker-log-list"></div>
   </div>
@@ -464,22 +465,22 @@
   <div class="tab-panel" id="tab-villas">
     <div class="filter-bar">
       <span id="villa-filters"></span>
-      <button class="btn btn-amber" onclick="addVilla()">+ إضافة <span id="add-villa-label">وحدة</span></button>
-      <button class="btn btn-ghost" onclick="syncFromVillas()" data-tip="يحسب نسبة إنجاز كل بند من متوسط نسب الوحدات ويحدث جدول الكميات">🔄 مزامنة نسب البنود من الوحدات</button>
+      <button class="btn btn-amber" onclick="addVilla()"><span data-i18n="+ إضافة">+ إضافة</span> <span id="add-villa-label">وحدة</span></button>
+      <button class="btn btn-ghost" onclick="syncFromVillas()" data-tip="يحسب نسبة إنجاز كل بند من متوسط نسب الوحدات ويحدث جدول الكميات" data-i18n-tip="يحسب نسبة إنجاز كل بند من متوسط نسب الوحدات ويحدث جدول الكميات" data-i18n="🔄 مزامنة نسب البنود من الوحدات">🔄 مزامنة نسب البنود من الوحدات</button>
     </div>
     <div class="villa-grid" id="villa-grid"></div>
     <div id="villa-detail" style="display:none">
       <div class="section-header">
         <div class="section-title" id="villa-detail-title">تفاصيل الوحدة</div>
         <div>
-          <button class="mini-btn red" onclick="deleteVilla()">🗑 حذف الوحدة</button>
-          <button class="btn btn-ghost" onclick="closeVillaDetail()">← عودة</button>
+          <button class="mini-btn red" onclick="deleteVilla()" data-i18n="🗑 حذف الوحدة">🗑 حذف الوحدة</button>
+          <button class="btn btn-ghost" onclick="closeVillaDetail()" data-i18n="← عودة">← عودة</button>
         </div>
       </div>
-      <div class="alert info">✏️ عدّل نسبة إنجاز كل بند في هذه الوحدة — تنحفظ مباشرة.</div>
+      <div class="alert info" data-i18n="✏️ عدّل نسبة إنجاز كل بند في هذه الوحدة — تنحفظ مباشرة.">✏️ عدّل نسبة إنجاز كل بند في هذه الوحدة — تنحفظ مباشرة.</div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>البند</th><th>الوصف</th><th>نسبة الإنجاز %</th><th>الحالة العامة للبند</th></tr></thead>
+          <thead><tr><th data-i18n="البند">البند</th><th data-i18n="الوصف">الوصف</th><th data-i18n="نسبة الإنجاز %">نسبة الإنجاز %</th><th data-i18n="الحالة العامة للبند">الحالة العامة للبند</th></tr></thead>
           <tbody id="villa-detail-tbody"></tbody>
         </table>
       </div>
@@ -491,55 +492,55 @@
     <div class="two-col">
       <div>
         <div class="card blue-b">
-          <div class="card-title">📝 تسجيل يومية عمل</div>
+          <div class="card-title" data-i18n="📝 تسجيل يومية عمل">📝 تسجيل يومية عمل</div>
           <div class="f-grid" style="grid-template-columns:repeat(3,1fr)">
-            <div class="f-field"><label>التاريخ</label><input type="date" id="wl-date"></div>
-            <div class="f-field"><label>الفرقة / المسؤول</label><input type="text" id="wl-crew" list="crew-list" placeholder="مثال: فرقة الدهانات أ"><datalist id="crew-list"></datalist></div>
-            <div class="f-field"><label>عدد العمال</label><input type="number" id="wl-workers" min="1" value="4"></div>
-            <div class="f-field"><label>البند</label><select id="wl-item"></select></div>
+            <div class="f-field"><label data-i18n="التاريخ">التاريخ</label><input type="date" id="wl-date"></div>
+            <div class="f-field"><label data-i18n="الفرقة / المسؤول">الفرقة / المسؤول</label><input type="text" id="wl-crew" list="crew-list" placeholder="مثال: فرقة الدهانات أ" data-i18n-ph="مثال: فرقة الدهانات أ"><datalist id="crew-list"></datalist></div>
+            <div class="f-field"><label data-i18n="عدد العمال">عدد العمال</label><input type="number" id="wl-workers" min="1" value="4"></div>
+            <div class="f-field"><label data-i18n="البند">البند</label><select id="wl-item"></select></div>
             <div class="f-field"><label id="wl-villa-label">الوحدة (اختياري)</label><select id="wl-villa"></select></div>
-            <div class="f-field"><label>الكمية المنفذة اليوم</label><input type="number" id="wl-qty" min="0" step="0.1" placeholder="م² / خ.م / قطعة"></div>
-            <div class="f-field full"><label>ملاحظات</label><input type="text" id="wl-note" placeholder="اختياري"></div>
+            <div class="f-field"><label data-i18n="الكمية المنفذة اليوم">الكمية المنفذة اليوم</label><input type="number" id="wl-qty" min="0" step="0.1" placeholder="م² / خ.م / قطعة"></div>
+            <div class="f-field full"><label data-i18n="ملاحظات">ملاحظات</label><input type="text" id="wl-note" placeholder="اختياري" data-i18n-ph="اختياري"></div>
             <div class="f-field full">
-              <label>📷 صور من الموقع (اختياري — من الكاميرا أو الاستوديو)</label>
+              <label data-i18n="📷 صور من الموقع (اختياري — من الكاميرا أو الاستوديو)">📷 صور من الموقع (اختياري — من الكاميرا أو الاستوديو)</label>
               <input type="file" id="wl-photos" accept="image/*" multiple capture="environment" onchange="wlPhotosPicked(this)">
               <div class="photo-strip" id="wl-photo-strip"></div>
             </div>
             <div class="f-field full">
               <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--text2)">
-                <input type="checkbox" id="wl-apply" checked style="width:auto"> إضافة الكمية تلقائياً إلى نسبة إنجاز البند (والوحدة إذا محددة)
+                <input type="checkbox" id="wl-apply" checked style="width:auto"> <span data-i18n="إضافة الكمية تلقائياً إلى نسبة إنجاز البند (والوحدة إذا محددة)">إضافة الكمية تلقائياً إلى نسبة إنجاز البند (والوحدة إذا محددة)</span>
               </label>
             </div>
           </div>
-          <button class="btn btn-blue" style="margin-top:10px" onclick="addWorkLog()">+ إضافة اليومية</button>
+          <button class="btn btn-blue" style="margin-top:10px" onclick="addWorkLog()" data-i18n="+ إضافة اليومية">+ إضافة اليومية</button>
         </div>
 
         <div class="section-header">
-          <div class="section-title"><span class="dot" style="background:var(--blue)"></span> سجل اليوميات</div>
+          <div class="section-title"><span class="dot" style="background:var(--blue)"></span> <span data-i18n="سجل اليوميات">سجل اليوميات</span></div>
           <button class="mini-btn" onclick="exportLogsCSV()">⬇ Excel</button>
         </div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>التاريخ</th><th>الفرقة</th><th>البند</th><th id="wl-th-villa">الوحدة</th><th>الكمية</th><th>عمال</th><th>الإنتاجية/عامل</th><th>📷</th><th>مضافة للنسبة</th><th>سجلها</th><th></th></tr></thead>
+            <thead><tr><th data-i18n="التاريخ">التاريخ</th><th data-i18n="الفرقة">الفرقة</th><th data-i18n="البند">البند</th><th id="wl-th-villa">الوحدة</th><th data-i18n="الكمية">الكمية</th><th data-i18n="عمال">عمال</th><th data-i18n="الإنتاجية/عامل">الإنتاجية/عامل</th><th>📷</th><th data-i18n="مضافة للنسبة">مضافة للنسبة</th><th data-i18n="سجلها">سجلها</th><th></th></tr></thead>
             <tbody id="wl-tbody"></tbody>
           </table>
         </div>
       </div>
       <div>
         <div class="card">
-          <div class="card-title">📈 إنتاجية آخر 14 يوم (كميات)</div>
+          <div class="card-title" data-i18n="📈 إنتاجية آخر 14 يوم (كميات)">📈 إنتاجية آخر 14 يوم (كميات)</div>
           <div class="bar-chart" id="prod-daily-chart"></div>
         </div>
         <div class="card">
-          <div class="card-title">👷 ملخص الفرق</div>
+          <div class="card-title" data-i18n="👷 ملخص الفرق">👷 ملخص الفرق</div>
           <div id="crew-summary"></div>
         </div>
         <div class="card">
-          <div class="card-title">⏱ معدلات البنود وتوقع الإنجاز</div>
+          <div class="card-title" data-i18n="⏱ معدلات البنود وتوقع الإنجاز">⏱ معدلات البنود وتوقع الإنجاز</div>
           <div id="item-rates"></div>
         </div>
         <div class="card">
-          <div class="card-title">📷 أحدث صور الموقع</div>
+          <div class="card-title" data-i18n="📷 أحدث صور الموقع">📷 أحدث صور الموقع</div>
           <div class="gallery-grid" id="site-gallery"></div>
         </div>
       </div>
@@ -553,69 +554,69 @@
   <div class="modal">
     <div class="modal-title"><span id="item-modal-title">تعديل بند</span><span class="modal-close" onclick="closeModal('item-modal')">✕</span></div>
     <div class="f-grid">
-      <div class="f-field"><label>رقم البند *</label><input type="text" id="im-id"></div>
-      <div class="f-field"><label>القسم</label><input type="text" id="im-div" list="div-list" placeholder="DIV 9"><datalist id="div-list"></datalist></div>
-      <div class="f-field full"><label>اسم القسم بالعربي</label><input type="text" id="im-divAr" placeholder="أعمال التشطيبات"></div>
-      <div class="f-field full"><label>الوصف *</label><input type="text" id="im-desc"></div>
-      <div class="f-field"><label>الوحدة</label><input type="text" id="im-unit" placeholder="م²"></div>
-      <div class="f-field"><label>الكمية لكل وحدة (اختياري)</label><input type="number" id="im-qtyv" min="0" step="0.01"></div>
-      <div class="f-field"><label>الكمية الكلية *</label><input type="number" id="im-qty" min="0" step="0.01"></div>
-      <div class="f-field"><label>سعر الوحدة (ر.س) *</label><input type="number" id="im-rate" min="0" step="0.01"></div>
-      <div class="f-field"><label>الكمية المنفذة</label><input type="number" id="im-exec" min="0" step="0.01"></div>
-      <div class="f-field"><label>نطاق العمل</label>
+      <div class="f-field"><label data-i18n="رقم البند *">رقم البند *</label><input type="text" id="im-id"></div>
+      <div class="f-field"><label data-i18n="القسم">القسم</label><input type="text" id="im-div" list="div-list" placeholder="DIV 9"><datalist id="div-list"></datalist></div>
+      <div class="f-field full"><label data-i18n="اسم القسم بالعربي">اسم القسم بالعربي</label><input type="text" id="im-divAr" placeholder="أعمال التشطيبات"></div>
+      <div class="f-field full"><label data-i18n="الوصف *">الوصف *</label><input type="text" id="im-desc"></div>
+      <div class="f-field"><label data-i18n="الوحدة">الوحدة</label><input type="text" id="im-unit" placeholder="م²"></div>
+      <div class="f-field"><label data-i18n="الكمية لكل وحدة (اختياري)">الكمية لكل وحدة (اختياري)</label><input type="number" id="im-qtyv" min="0" step="0.01"></div>
+      <div class="f-field"><label data-i18n="الكمية الكلية *">الكمية الكلية *</label><input type="number" id="im-qty" min="0" step="0.01"></div>
+      <div class="f-field"><label data-i18n="سعر الوحدة (ر.س) *">سعر الوحدة (ر.س) *</label><input type="number" id="im-rate" min="0" step="0.01"></div>
+      <div class="f-field"><label data-i18n="الكمية المنفذة">الكمية المنفذة</label><input type="number" id="im-exec" min="0" step="0.01"></div>
+      <div class="f-field"><label data-i18n="نطاق العمل">نطاق العمل</label>
         <select id="im-scope">
-          <option value="azoom">ضمن نطاق أعمالنا</option>
-          <option value="others">خارج النطاق (منفذ سابقاً / مقاول آخر)</option>
-          <option value="client_supply">تركيب فقط - توريد من العميل</option>
+          <option value="azoom" data-i18n="ضمن نطاق أعمالنا">ضمن نطاق أعمالنا</option>
+          <option value="others" data-i18n="خارج النطاق (منفذ سابقاً / مقاول آخر)">خارج النطاق (منفذ سابقاً / مقاول آخر)</option>
+          <option value="client_supply" data-i18n="تركيب فقط - توريد من العميل">تركيب فقط - توريد من العميل</option>
         </select>
       </div>
-      <div class="f-field full"><label>يعتمد على البنود (لا يمكن البدء قبل اكتمالها)</label><div class="pred-list" id="im-preds"></div></div>
+      <div class="f-field full"><label data-i18n="يعتمد على البنود (لا يمكن البدء قبل اكتمالها)">يعتمد على البنود (لا يمكن البدء قبل اكتمالها)</label><div class="pred-list" id="im-preds"></div></div>
       <div class="f-field full">
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
-          <input type="checkbox" id="im-blk" style="width:auto"> يوجد عائق خارجي يمنع العمل
+          <input type="checkbox" id="im-blk" style="width:auto"> <span data-i18n="يوجد عائق خارجي يمنع العمل">يوجد عائق خارجي يمنع العمل</span>
         </label>
       </div>
-      <div class="f-field"><label>سبب العائق</label><input type="text" id="im-blk-reason" placeholder="مثال: تأخر الردم"></div>
-      <div class="f-field"><label>نوع العائق</label>
+      <div class="f-field"><label data-i18n="سبب العائق">سبب العائق</label><input type="text" id="im-blk-reason" placeholder="مثال: تأخر الردم" data-i18n-ph="مثال: تأخر الردم"></div>
+      <div class="f-field"><label data-i18n="نوع العائق">نوع العائق</label>
         <select id="im-blk-type">
-          <option value="external">عائق خارجي (طرف آخر)</option>
-          <option value="material">مواد غير متوفرة</option>
-          <option value="client_supply">توريد العميل</option>
-          <option value="other">أخرى</option>
+          <option value="external" data-i18n="عائق خارجي (طرف آخر)">عائق خارجي (طرف آخر)</option>
+          <option value="material" data-i18n="مواد غير متوفرة">مواد غير متوفرة</option>
+          <option value="client_supply" data-i18n="توريد العميل">توريد العميل</option>
+          <option value="other" data-i18n="أخرى">أخرى</option>
         </select>
       </div>
-      <div class="f-field"><label>تاريخ بداية العائق</label><input type="date" id="im-blk-since"></div>
-      <div class="f-field"><label>التاريخ المتوقع للحل</label><input type="date" id="im-blk-expected"></div>
-      <div class="f-field full"><label>تفاصيل العائق</label><input type="text" id="im-blk-note"></div>
-      <div class="f-field full"><label>ملاحظات</label><textarea id="im-notes" rows="2"></textarea></div>
+      <div class="f-field"><label data-i18n="تاريخ بداية العائق">تاريخ بداية العائق</label><input type="date" id="im-blk-since"></div>
+      <div class="f-field"><label data-i18n="التاريخ المتوقع للحل">التاريخ المتوقع للحل</label><input type="date" id="im-blk-expected"></div>
+      <div class="f-field full"><label data-i18n="تفاصيل العائق">تفاصيل العائق</label><input type="text" id="im-blk-note"></div>
+      <div class="f-field full"><label data-i18n="ملاحظات">ملاحظات</label><textarea id="im-notes" rows="2"></textarea></div>
     </div>
     <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
-      <button class="btn btn-green" onclick="saveItem()">💾 حفظ البند</button>
-      <button class="btn btn-red" id="im-delete-btn" onclick="deleteItem()">🗑 حذف البند</button>
-      <button class="btn btn-ghost" onclick="closeModal('item-modal')">إلغاء</button>
+      <button class="btn btn-green" onclick="saveItem()" data-i18n="💾 حفظ البند">💾 حفظ البند</button>
+      <button class="btn btn-red" id="im-delete-btn" onclick="deleteItem()" data-i18n="🗑 حذف البند">🗑 حذف البند</button>
+      <button class="btn btn-ghost" onclick="closeModal('item-modal')" data-i18n="إلغاء">إلغاء</button>
     </div>
   </div>
 </div>
 
 <div class="modal-overlay" id="settings-modal">
   <div class="modal">
-    <div class="modal-title"><span>⚙ إعدادات المشروع الحالي</span><span class="modal-close" onclick="closeModal('settings-modal')">✕</span></div>
+    <div class="modal-title"><span data-i18n="⚙ إعدادات المشروع الحالي">⚙ إعدادات المشروع الحالي</span><span class="modal-close" onclick="closeModal('settings-modal')">✕</span></div>
     <div class="f-grid">
-      <div class="f-field full"><label>اسم المشروع</label><input type="text" id="st-name"></div>
-      <div class="f-field"><label>المقاول الرئيسي</label><input type="text" id="st-client"></div>
-      <div class="f-field"><label>الاستشاري</label><input type="text" id="st-consultant"></div>
-      <div class="f-field"><label>المقاول من الباطن</label><input type="text" id="st-contractor"></div>
-      <div class="f-field"><label>إجمالي عدد الوحدات</label><input type="number" id="st-villas" min="0"></div>
-      <div class="f-field"><label>مسمى الوحدة (مفرد)</label><input type="text" id="st-unit" placeholder="فيلا / مبنى / قطاع"></div>
-      <div class="f-field"><label>مسمى الوحدات (جمع)</label><input type="text" id="st-units" placeholder="الفلل / المباني / القطاعات"></div>
-      <div class="f-field"><label>ضريبة القيمة المضافة %</label><input type="number" id="st-vat" min="0" step="0.5"></div>
-      <div class="f-field"><label>محتجز الضمان الافتراضي %</label><input type="number" id="st-ret" min="0" step="0.5"></div>
-      <div class="f-field"><label>استرداد الدفعة المقدمة الافتراضي %</label><input type="number" id="st-adv" min="0" step="0.5"></div>
+      <div class="f-field full"><label data-i18n="اسم المشروع">اسم المشروع</label><input type="text" id="st-name"></div>
+      <div class="f-field"><label data-i18n="المقاول الرئيسي">المقاول الرئيسي</label><input type="text" id="st-client"></div>
+      <div class="f-field"><label data-i18n="الاستشاري">الاستشاري</label><input type="text" id="st-consultant"></div>
+      <div class="f-field"><label data-i18n="المقاول من الباطن">المقاول من الباطن</label><input type="text" id="st-contractor"></div>
+      <div class="f-field"><label data-i18n="إجمالي عدد الوحدات">إجمالي عدد الوحدات</label><input type="number" id="st-villas" min="0"></div>
+      <div class="f-field"><label data-i18n="مسمى الوحدة (مفرد)">مسمى الوحدة (مفرد)</label><input type="text" id="st-unit" placeholder="فيلا / مبنى / قطاع"></div>
+      <div class="f-field"><label data-i18n="مسمى الوحدات (جمع)">مسمى الوحدات (جمع)</label><input type="text" id="st-units" placeholder="الفلل / المباني / القطاعات"></div>
+      <div class="f-field"><label data-i18n="ضريبة القيمة المضافة %">ضريبة القيمة المضافة %</label><input type="number" id="st-vat" min="0" step="0.5"></div>
+      <div class="f-field"><label data-i18n="محتجز الضمان الافتراضي %">محتجز الضمان الافتراضي %</label><input type="number" id="st-ret" min="0" step="0.5"></div>
+      <div class="f-field"><label data-i18n="استرداد الدفعة المقدمة الافتراضي %">استرداد الدفعة المقدمة الافتراضي %</label><input type="number" id="st-adv" min="0" step="0.5"></div>
     </div>
     <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
-      <button class="btn btn-green" onclick="saveSettings()">💾 حفظ</button>
-      <button class="btn btn-ghost" onclick="resetDemo()">🎓 إضافة مشروع تجريبي للتعلم</button>
-      <button class="btn btn-ghost" onclick="closeModal('settings-modal')">إغلاق</button>
+      <button class="btn btn-green" onclick="saveSettings()" data-i18n="💾 حفظ">💾 حفظ</button>
+      <button class="btn btn-ghost" onclick="resetDemo()" data-i18n="🎓 إضافة مشروع تجريبي للتعلم">🎓 إضافة مشروع تجريبي للتعلم</button>
+      <button class="btn btn-ghost" onclick="closeModal('settings-modal')" data-i18n="إغلاق">إغلاق</button>
     </div>
   </div>
 </div>
@@ -625,25 +626,25 @@
     <div class="modal-title"><span id="doc-title">📄 وثيقة المستخلص</span><span class="modal-close" onclick="closeModal('doc-modal')">✕</span></div>
     <div id="doc-content"></div>
     <div style="display:flex;gap:10px;margin-top:16px">
-      <button class="btn btn-green" onclick="printDoc()">🖨️ طباعة / PDF</button>
-      <button class="btn btn-ghost" id="doc-csv-btn" onclick="exportDocCSV()">⬇ تصدير Excel (CSV)</button>
-      <button class="btn btn-ghost" onclick="closeModal('doc-modal')">إغلاق</button>
+      <button class="btn btn-green" onclick="printDoc()" data-i18n="🖨️ طباعة / PDF">🖨️ طباعة / PDF</button>
+      <button class="btn btn-ghost" id="doc-csv-btn" onclick="exportDocCSV()" data-i18n="⬇ تصدير Excel (CSV)">⬇ تصدير Excel (CSV)</button>
+      <button class="btn btn-ghost" onclick="closeModal('doc-modal')" data-i18n="إغلاق">إغلاق</button>
     </div>
   </div>
 </div>
 
 <div class="modal-overlay" id="pay-modal">
   <div class="modal" style="max-width:420px">
-    <div class="modal-title"><span>💵 تسجيل دفعة مستلمة</span><span class="modal-close" onclick="closeModal('pay-modal')">✕</span></div>
+    <div class="modal-title"><span data-i18n="💵 تسجيل دفعة مستلمة">💵 تسجيل دفعة مستلمة</span><span class="modal-close" onclick="closeModal('pay-modal')">✕</span></div>
     <div class="f-grid" style="grid-template-columns:1fr">
       <div class="f-field"><label id="pay-info" style="font-size:12px;color:var(--text2)"></label></div>
-      <div class="f-field"><label>تاريخ الاستلام</label><input type="date" id="pay-date"></div>
-      <div class="f-field"><label>المبلغ (ر.س)</label><input type="number" id="pay-amount" min="0" step="0.01"></div>
-      <div class="f-field"><label>ملاحظات</label><input type="text" id="pay-note" placeholder="حوالة بنكية / شيك..."></div>
+      <div class="f-field"><label data-i18n="تاريخ الاستلام">تاريخ الاستلام</label><input type="date" id="pay-date"></div>
+      <div class="f-field"><label data-i18n="المبلغ (ر.س)">المبلغ (ر.س)</label><input type="number" id="pay-amount" min="0" step="0.01"></div>
+      <div class="f-field"><label data-i18n="ملاحظات">ملاحظات</label><input type="text" id="pay-note" placeholder="حوالة بنكية / شيك..." data-i18n-ph="حوالة بنكية / شيك..."></div>
     </div>
     <div style="display:flex;gap:10px;margin-top:16px">
-      <button class="btn btn-green" onclick="savePayment()">💾 حفظ الدفعة</button>
-      <button class="btn btn-ghost" onclick="closeModal('pay-modal')">إلغاء</button>
+      <button class="btn btn-green" onclick="savePayment()" data-i18n="💾 حفظ الدفعة">💾 حفظ الدفعة</button>
+      <button class="btn btn-ghost" onclick="closeModal('pay-modal')" data-i18n="إلغاء">إلغاء</button>
     </div>
   </div>
 </div>
@@ -652,60 +653,60 @@
   <div class="modal">
     <div class="modal-title"><span id="project-modal-title">إضافة مشروع</span><span class="modal-close" onclick="closeModal('project-modal')">✕</span></div>
     <div class="f-grid">
-      <div class="f-field full"><label>اسم المشروع *</label><input type="text" id="pm-name" placeholder="مثال: مشروع طريق الملك فهد / برج المكاتب / فلل المرحلة 2"></div>
-      <div class="f-field"><label>نوع المشروع</label>
+      <div class="f-field full"><label data-i18n="اسم المشروع *">اسم المشروع *</label><input type="text" id="pm-name" placeholder="مثال: مشروع طريق الملك فهد / برج المكاتب / فلل المرحلة 2" data-i18n-ph="مثال: مشروع طريق الملك فهد / برج المكاتب / فلل المرحلة 2"></div>
+      <div class="f-field"><label data-i18n="نوع المشروع">نوع المشروع</label>
         <select id="pm-type" onchange="pmTypeChanged()">
-          <option value="residential">🏠 فلل / وحدات سكنية</option>
-          <option value="buildings">🏢 مباني</option>
-          <option value="infra">🏗 بنية تحتية</option>
-          <option value="roads">🛣 طرق</option>
-          <option value="other">📦 أخرى</option>
+          <option value="residential" data-i18n="🏠 فلل / وحدات سكنية">🏠 فلل / وحدات سكنية</option>
+          <option value="buildings" data-i18n="🏢 مباني">🏢 مباني</option>
+          <option value="infra" data-i18n="🏗 بنية تحتية">🏗 بنية تحتية</option>
+          <option value="roads" data-i18n="🛣 طرق">🛣 طرق</option>
+          <option value="other" data-i18n="📦 أخرى">📦 أخرى</option>
         </select>
       </div>
-      <div class="f-field"><label>مسمى الوحدة (مفرد)</label><input type="text" id="pm-unit" placeholder="فيلا / مبنى / قطاع"></div>
-      <div class="f-field"><label>مسمى الوحدات (جمع)</label><input type="text" id="pm-units" placeholder="الفلل / المباني / القطاعات"></div>
-      <div class="f-field"><label>المقاول الرئيسي / العميل</label><input type="text" id="pm-client"></div>
-      <div class="f-field"><label>الاستشاري</label><input type="text" id="pm-consultant"></div>
-      <div class="f-field"><label>المقاول من الباطن (شركتك)</label><input type="text" id="pm-contractor"></div>
-      <div class="f-field"><label>عدد الوحدات (فيلا/مبنى/قطاع...)</label><input type="number" id="pm-villas" min="0" value="0"></div>
-      <div class="f-field"><label>ضريبة القيمة المضافة %</label><input type="number" id="pm-vat" min="0" step="0.5" value="15"></div>
-      <div class="f-field"><label>محتجز الضمان %</label><input type="number" id="pm-ret" min="0" step="0.5" value="10"></div>
-      <div class="f-field"><label>استرداد الدفعة المقدمة %</label><input type="number" id="pm-adv" min="0" step="0.5" value="0"></div>
-      <div class="f-field"><label>👤 مدير المشروع المسؤول</label><select id="pm-manager"></select></div>
-      <div class="f-field" id="pm-boq-src-wrap"><label>جدول الكميات</label>
+      <div class="f-field"><label data-i18n="مسمى الوحدة (مفرد)">مسمى الوحدة (مفرد)</label><input type="text" id="pm-unit" placeholder="فيلا / مبنى / قطاع"></div>
+      <div class="f-field"><label data-i18n="مسمى الوحدات (جمع)">مسمى الوحدات (جمع)</label><input type="text" id="pm-units" placeholder="الفلل / المباني / القطاعات"></div>
+      <div class="f-field"><label data-i18n="المقاول الرئيسي / العميل">المقاول الرئيسي / العميل</label><input type="text" id="pm-client"></div>
+      <div class="f-field"><label data-i18n="الاستشاري">الاستشاري</label><input type="text" id="pm-consultant"></div>
+      <div class="f-field"><label data-i18n="المقاول من الباطن (شركتك)">المقاول من الباطن (شركتك)</label><input type="text" id="pm-contractor"></div>
+      <div class="f-field"><label data-i18n="عدد الوحدات (فيلا/مبنى/قطاع...)">عدد الوحدات (فيلا/مبنى/قطاع...)</label><input type="number" id="pm-villas" min="0" value="0"></div>
+      <div class="f-field"><label data-i18n="ضريبة القيمة المضافة %">ضريبة القيمة المضافة %</label><input type="number" id="pm-vat" min="0" step="0.5" value="15"></div>
+      <div class="f-field"><label data-i18n="محتجز الضمان %">محتجز الضمان %</label><input type="number" id="pm-ret" min="0" step="0.5" value="10"></div>
+      <div class="f-field"><label data-i18n="استرداد الدفعة المقدمة %">استرداد الدفعة المقدمة %</label><input type="number" id="pm-adv" min="0" step="0.5" value="0"></div>
+      <div class="f-field"><label data-i18n="👤 مدير المشروع المسؤول">👤 مدير المشروع المسؤول</label><select id="pm-manager"></select></div>
+      <div class="f-field" id="pm-boq-src-wrap"><label data-i18n="جدول الكميات">جدول الكميات</label>
         <select id="pm-boq-src"></select>
       </div>
     </div>
-    <div class="alert info" style="margin-top:12px;font-size:12px">💡 مدير المشروع يشوف مشاريعه فقط عند تسجيل دخوله، ويقدر يسجل اليوميات ويحدّث النسب ويرفع المستخلصات. أضف المدراء من "إدارة المستخدمين".</div>
+    <div class="alert info" style="margin-top:12px;font-size:12px"><span data-i18n='💡 مدير المشروع يشوف مشاريعه فقط عند تسجيل دخوله، ويقدر يسجل اليوميات ويحدّث النسب ويرفع المستخلصات. أضف المدراء من "إدارة المستخدمين".'>💡 مدير المشروع يشوف مشاريعه فقط عند تسجيل دخوله، ويقدر يسجل اليوميات ويحدّث النسب ويرفع المستخلصات. أضف المدراء من "إدارة المستخدمين".</span></div>
     <div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap">
-      <button class="btn btn-green" onclick="saveProject()">💾 حفظ المشروع</button>
-      <button class="btn btn-red" id="pm-delete-btn" onclick="deleteProject()">🗑 حذف المشروع</button>
-      <button class="btn btn-ghost" onclick="closeModal('project-modal')">إلغاء</button>
+      <button class="btn btn-green" onclick="saveProject()" data-i18n="💾 حفظ المشروع">💾 حفظ المشروع</button>
+      <button class="btn btn-red" id="pm-delete-btn" onclick="deleteProject()" data-i18n="🗑 حذف المشروع">🗑 حذف المشروع</button>
+      <button class="btn btn-ghost" onclick="closeModal('project-modal')" data-i18n="إلغاء">إلغاء</button>
     </div>
   </div>
 </div>
 
 <div class="modal-overlay" id="users-modal">
   <div class="modal">
-    <div class="modal-title"><span>👥 إدارة المستخدمين ومدراء المشاريع</span><span class="modal-close" onclick="closeModal('users-modal')">✕</span></div>
+    <div class="modal-title"><span data-i18n="👥 إدارة المستخدمين ومدراء المشاريع">👥 إدارة المستخدمين ومدراء المشاريع</span><span class="modal-close" onclick="closeModal('users-modal')">✕</span></div>
     <div id="users-list" style="margin-bottom:16px"></div>
     <div class="divider"></div>
-    <div class="card-title" style="font-size:13px">+ إضافة مستخدم جديد</div>
+    <div class="card-title" style="font-size:13px" data-i18n="+ إضافة مستخدم جديد">+ إضافة مستخدم جديد</div>
     <div class="f-grid">
-      <div class="f-field"><label>الاسم *</label><input type="text" id="us-name" placeholder="م. خالد - مدير مشروع"></div>
-      <div class="f-field"><label>اسم المستخدم للدخول *</label><input type="text" id="us-username" placeholder="khaled" autocomplete="off"></div>
-      <div class="f-field"><label>الدور</label>
+      <div class="f-field"><label data-i18n="الاسم *">الاسم *</label><input type="text" id="us-name" placeholder="م. خالد - مدير مشروع" data-i18n-ph="م. خالد - مدير مشروع"></div>
+      <div class="f-field"><label data-i18n="اسم المستخدم للدخول *">اسم المستخدم للدخول *</label><input type="text" id="us-username" placeholder="khaled" autocomplete="off"></div>
+      <div class="f-field"><label data-i18n="الدور">الدور</label>
         <select id="us-role">
-          <option value="pm">مدير مشروع</option>
-          <option value="owner">مالك / إدارة (كل الصلاحيات)</option>
+          <option value="pm" data-i18n="مدير مشروع">مدير مشروع</option>
+          <option value="owner" data-i18n="مالك / إدارة (كل الصلاحيات)">مالك / إدارة (كل الصلاحيات)</option>
         </select>
       </div>
-      <div class="f-field"><label>كلمة المرور *</label><input type="text" id="us-pin" placeholder="4 أحرف على الأقل" autocomplete="off"></div>
+      <div class="f-field"><label data-i18n="كلمة المرور *">كلمة المرور *</label><input type="text" id="us-pin" placeholder="4 أحرف على الأقل" data-i18n-ph="4 أحرف على الأقل" autocomplete="off"></div>
     </div>
-    <div class="alert info" style="margin-top:10px;font-size:11px">💡 مدير المشروع يدخل باسم المستخدم وكلمة المرور من أي جهاز، ويشوف مشاريعه المعينة فقط.</div>
+    <div class="alert info" style="margin-top:10px;font-size:11px" data-i18n="💡 مدير المشروع يدخل باسم المستخدم وكلمة المرور من أي جهاز، ويشوف مشاريعه المعينة فقط.">💡 مدير المشروع يدخل باسم المستخدم وكلمة المرور من أي جهاز، ويشوف مشاريعه المعينة فقط.</div>
     <div style="display:flex;gap:10px;margin-top:8px">
-      <button class="btn btn-green" onclick="addUser()">+ إضافة المستخدم</button>
-      <button class="btn btn-ghost" onclick="closeModal('users-modal')">إغلاق</button>
+      <button class="btn btn-green" onclick="addUser()" data-i18n="+ إضافة المستخدم">+ إضافة المستخدم</button>
+      <button class="btn btn-ghost" onclick="closeModal('users-modal')" data-i18n="إغلاق">إغلاق</button>
     </div>
   </div>
 </div>
@@ -717,24 +718,86 @@
 
 <div class="modal-overlay" id="help-modal">
   <div class="modal">
-    <div class="modal-title"><span>؟ كيف تستخدم النظام</span><span class="modal-close" onclick="closeModal('help-modal')">✕</span></div>
+    <div class="modal-title"><span data-i18n="؟ كيف تستخدم النظام">؟ كيف تستخدم النظام</span><span class="modal-close" onclick="closeModal('help-modal')">✕</span></div>
     <div style="font-size:13px;color:var(--text2);display:flex;flex-direction:column;gap:10px">
-      <div>🔁 <strong style="color:var(--text)">دورة العمل اليومية:</strong></div>
-      <div>1️⃣ <strong style="color:var(--blue)">الإنتاجية:</strong> سجّل يوميات الشغل (فرقة + بند + كمية) — النظام يحدّث نسب الإنجاز تلقائياً ويحسب معدل إنتاج كل فرقة.</div>
-      <div>2️⃣ <strong style="color:var(--amber)">خطة العمل:</strong> شوف وش الجاهز للرفع، وش تشتغل عليه الحين، وأي عائق لو انحل يفتح لك أكبر مبلغ.</div>
-      <div>3️⃣ <strong style="color:var(--green)">المستخلصات:</strong> النظام يقترح الكميات (المنفذ − المرفوع سابقاً)، احفظ المستخلص واطبعه، ويسجل في التاريخ ويخصم من الرصيد.</div>
-      <div>4️⃣ <strong style="color:var(--red)">العوائق:</strong> سجّل أي عائق على البند (من نافذة تعديل البند)، والنظام يحسب الأثر المالي المباشر + الأعمال المعتمدة عليه.</div>
-      <div>🗂 <strong style="color:var(--purple)">تعدد المشاريع:</strong> من تبويب المشاريع أضف مشاريعك (مع نسخ جدول كميات من مشروع موجود إذا حاب)، وعيّن لكل مشروع مديره. بدّل بين المشاريع من القائمة أعلى الصفحة.</div>
-      <div>👤 <strong style="color:var(--blue)">المستخدمون:</strong> المالك يشوف كل المشاريع ويديرها، ومدير المشروع يشوف مشاريعه فقط ويسجل اليوميات ويرفع المستخلصات — وكل عملية تنختم باسم من سواها. من "إدارة المستخدمين" تضيف المدراء وتحط لهم رمز PIN.</div>
-      <div>📱 <strong style="color:var(--green-bright)">تثبيت التطبيق على الجوال:</strong> افتح رابط النظام من متصفح الجوال ثم: أندرويد (Chrome) → قائمة ⋮ → "إضافة إلى الشاشة الرئيسية" · آيفون (Safari) → زر المشاركة → "Add to Home Screen". يشتغل كتطبيق كامل، ولو انقطع النت يعرض آخر بيانات للقراءة.</div>
-      <div>📷 <strong style="color:var(--amber)">صور الموقع:</strong> مع كل يومية تقدر ترفق صور من كاميرا الجوال مباشرة — تنضغط تلقائياً وترتبط باليومية وتظهر في معرض الصور.</div>
-      <div>💾 بياناتك تنحفظ تلقائياً على الخادم. المالك يقدر يأخذ <strong style="color:var(--text)">نسخة احتياطية JSON</strong> كاملة من الزر أعلى الصفحة.</div>
+      <div>🔁 <strong style="color:var(--text)" data-i18n="دورة العمل اليومية:">دورة العمل اليومية:</strong></div>
+      <div>1️⃣ <strong style="color:var(--blue)" data-i18n="الإنتاجية:">الإنتاجية:</strong> <span data-i18n="سجّل يوميات الشغل (فرقة + بند + كمية) — النظام يحدّث نسب الإنجاز تلقائياً ويحسب معدل إنتاج كل فرقة.">سجّل يوميات الشغل (فرقة + بند + كمية) — النظام يحدّث نسب الإنجاز تلقائياً ويحسب معدل إنتاج كل فرقة.</span></div>
+      <div>2️⃣ <strong style="color:var(--amber)" data-i18n="خطة العمل:">خطة العمل:</strong> <span data-i18n="شوف وش الجاهز للرفع، وش تشتغل عليه الحين، وأي عائق لو انحل يفتح لك أكبر مبلغ.">شوف وش الجاهز للرفع، وش تشتغل عليه الحين، وأي عائق لو انحل يفتح لك أكبر مبلغ.</span></div>
+      <div>3️⃣ <strong style="color:var(--green)" data-i18n="المستخلصات:">المستخلصات:</strong> <span data-i18n="النظام يقترح الكميات (المنفذ − المرفوع سابقاً)، احفظ المستخلص واطبعه، ويسجل في التاريخ ويخصم من الرصيد.">النظام يقترح الكميات (المنفذ − المرفوع سابقاً)، احفظ المستخلص واطبعه، ويسجل في التاريخ ويخصم من الرصيد.</span></div>
+      <div>4️⃣ <strong style="color:var(--red)" data-i18n="العوائق:">العوائق:</strong> <span data-i18n="سجّل أي عائق على البند (من نافذة تعديل البند)، والنظام يحسب الأثر المالي المباشر + الأعمال المعتمدة عليه.">سجّل أي عائق على البند (من نافذة تعديل البند)، والنظام يحسب الأثر المالي المباشر + الأعمال المعتمدة عليه.</span></div>
+      <div>🗂 <strong style="color:var(--purple)" data-i18n="تعدد المشاريع:">تعدد المشاريع:</strong> <span data-i18n="من تبويب المشاريع أضف مشاريعك (مع نسخ جدول كميات من مشروع موجود إذا حاب)، وعيّن لكل مشروع مديره. بدّل بين المشاريع من القائمة أعلى الصفحة.">من تبويب المشاريع أضف مشاريعك (مع نسخ جدول كميات من مشروع موجود إذا حاب)، وعيّن لكل مشروع مديره. بدّل بين المشاريع من القائمة أعلى الصفحة.</span></div>
+      <div>👤 <strong style="color:var(--blue)" data-i18n="المستخدمون:">المستخدمون:</strong> <span data-i18n='المالك يشوف كل المشاريع ويديرها، ومدير المشروع يشوف مشاريعه فقط ويسجل اليوميات ويرفع المستخلصات — وكل عملية تنختم باسم من سواها. من "إدارة المستخدمين" تضيف المدراء وتحط لهم رمز PIN.'>المالك يشوف كل المشاريع ويديرها، ومدير المشروع يشوف مشاريعه فقط ويسجل اليوميات ويرفع المستخلصات — وكل عملية تنختم باسم من سواها. من "إدارة المستخدمين" تضيف المدراء وتحط لهم رمز PIN.</span></div>
+      <div>📱 <strong style="color:var(--green-bright)" data-i18n="تثبيت التطبيق على الجوال:">تثبيت التطبيق على الجوال:</strong> <span data-i18n='افتح رابط النظام من متصفح الجوال ثم: أندرويد (Chrome) → قائمة ⋮ → "إضافة إلى الشاشة الرئيسية" · آيفون (Safari) → زر المشاركة → "Add to Home Screen". يشتغل كتطبيق كامل، ولو انقطع النت يعرض آخر بيانات للقراءة.'>افتح رابط النظام من متصفح الجوال ثم: أندرويد (Chrome) → قائمة ⋮ → "إضافة إلى الشاشة الرئيسية" · آيفون (Safari) → زر المشاركة → "Add to Home Screen". يشتغل كتطبيق كامل، ولو انقطع النت يعرض آخر بيانات للقراءة.</span></div>
+      <div>📷 <strong style="color:var(--amber)" data-i18n="صور الموقع:">صور الموقع:</strong> <span data-i18n="مع كل يومية تقدر ترفق صور من كاميرا الجوال مباشرة — تنضغط تلقائياً وترتبط باليومية وتظهر في معرض الصور.">مع كل يومية تقدر ترفق صور من كاميرا الجوال مباشرة — تنضغط تلقائياً وترتبط باليومية وتظهر في معرض الصور.</span></div>
+      <div>💾 <span data-i18n="بياناتك تنحفظ تلقائياً على الخادم. المالك يقدر يأخذ">بياناتك تنحفظ تلقائياً على الخادم. المالك يقدر يأخذ</span> <strong style="color:var(--text)" data-i18n="نسخة احتياطية JSON">نسخة احتياطية JSON</strong> <span data-i18n="كاملة من الزر أعلى الصفحة.">كاملة من الزر أعلى الصفحة.</span></div>
     </div>
   </div>
 </div>
 
 <script>
 'use strict';
+// ============================================================
+//  I18N — Arabic is the source language; I18N_EN maps exact Arabic
+//  UI strings to English. Translations are added near the section
+//  that uses them via Object.assign(I18N_EN, {...}).
+// ============================================================
+let LANG = localStorage.getItem('azoom_lang') || 'ar';
+const I18N_EN = {};
+function T(s){
+  if (LANG !== 'en') return s;
+  return Object.prototype.hasOwnProperty.call(I18N_EN, s) ? I18N_EN[s] : s;
+}
+function applyDir(){
+  document.documentElement.lang = LANG;
+  document.documentElement.dir = LANG === 'en' ? 'ltr' : 'rtl';
+  $('lang-switch').textContent = LANG === 'en' ? '🌐 العربية' : '🌐 English';
+  document.title = T(document.title);
+}
+function translateStaticDOM(){
+  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = T(el.getAttribute('data-i18n')); });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = T(el.getAttribute('data-i18n-ph')); });
+  document.querySelectorAll('[data-i18n-tip]').forEach(el => { el.setAttribute('data-tip', T(el.getAttribute('data-i18n-tip'))); });
+}
+function toggleLang(){
+  LANG = LANG === 'ar' ? 'en' : 'ar';
+  localStorage.setItem('azoom_lang', LANG);
+  applyDir();
+  translateStaticDOM();
+  if (state) renderAll();
+}
+
+// رسائل أخطاء الخادم (يرسل الخادم كوداً ثابتاً، والترجمة هنا)
+const ERR_CODES = {
+  unauthorized: {ar:'يجب تسجيل الدخول', en:'You must log in'},
+  owner_only: {ar:'هذه صلاحية المالك فقط', en:'Owner permission only'},
+  rate_limited: {ar:'محاولات كثيرة — انتظر 10 دقائق', en:'Too many attempts — wait 10 minutes'},
+  invalid_credentials: {ar:'اسم المستخدم أو كلمة المرور غير صحيحة', en:'Incorrect username or password'},
+  password_too_short: {ar:'كلمة المرور قصيرة (4 أحرف على الأقل)', en:'Password too short (at least 4 characters)'},
+  wrong_current_password: {ar:'كلمة المرور الحالية غير صحيحة', en:'Current password is incorrect'},
+  project_data_incomplete: {ar:'بيانات المشروع ناقصة', en:'Project data incomplete'},
+  project_not_found: {ar:'المشروع غير موجود', en:'Project not found'},
+  no_project_access: {ar:'لا تملك صلاحية على هذا المشروع', en:'You do not have access to this project'},
+  no_access: {ar:'لا تملك صلاحية', en:'You do not have permission'},
+  data_incomplete: {ar:'بيانات ناقصة', en:'Incomplete data'},
+  fill_username_name_password: {ar:'أكمل: اسم المستخدم، الاسم، كلمة المرور', en:'Fill in: username, name, password'},
+  username_taken: {ar:'اسم المستخدم موجود مسبقاً', en:'Username already exists'},
+  user_not_found: {ar:'المستخدم غير موجود', en:'User not found'},
+  cannot_demote_last_owner: {ar:'لا يمكن تنزيل صلاحية آخر مالك', en:'Cannot demote the last owner'},
+  cannot_delete_self: {ar:'لا يمكنك حذف نفسك', en:'You cannot delete yourself'},
+  cannot_delete_last_owner: {ar:'لا يمكن حذف آخر مالك', en:'Cannot delete the last owner'},
+  unsupported_image_format: {ar:'صيغة الصورة غير مدعومة (jpeg/png/webp)', en:'Unsupported image format (jpeg/png/webp)'},
+  image_too_large: {ar:'الصورة كبيرة جداً (الحد 8MB)', en:'Image too large (8MB limit)'},
+  invalid_filename: {ar:'اسم ملف غير صالح', en:'Invalid file name'},
+  no_projects_in_file: {ar:'لا توجد مشاريع في الملف', en:'No projects found in the file'},
+  conflict: {ar:'تعارض تعديلات', en:'Edit conflict'},
+  'not found': {ar:'غير موجود', en:'Not found'}
+};
+function ERR_MSG(code){
+  const m = ERR_CODES[code];
+  if (!m) return code;
+  return LANG === 'en' ? m.en : m.ar;
+}
+
 // ============================================================
 //  STATE & API PERSISTENCE
 // ============================================================
@@ -751,7 +814,7 @@ const API = {
     });
     let d = {};
     try { d = await r.json(); } catch(e) {}
-    if (!r.ok) { const err = new Error(d.error || ('خطأ ' + r.status)); err.status = r.status; err.data = d; throw err; }
+    if (!r.ok) { const err = new Error(ERR_MSG(d.error) || ((LANG==='en'?'Error ':'خطأ ') + r.status)); err.status = r.status; err.data = d; throw err; }
     return d;
   }
 };
@@ -761,7 +824,7 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt
 const clamp = (n,a,b) => Math.min(b, Math.max(a, Number(n)||0));
 const fmtN = n => Number(n||0).toLocaleString('en-US',{maximumFractionDigits:0});
 const fmtQ = n => Number(n||0).toLocaleString('en-US',{maximumFractionDigits:1});
-const money = n => fmtN(n) + ' ر.س';
+const money = n => fmtN(n) + (LANG === 'en' ? ' SAR' : ' ر.س');
 const todayStr = () => new Date().toISOString().slice(0,10);
 const daysAgo = k => { const d = new Date(); d.setDate(d.getDate()-k); return d.toISOString().slice(0,10); };
 const ageDays = d => { if (!d) return null; const n = Math.floor((Date.now() - new Date(d + 'T00:00:00').getTime()) / 86400000); return isNaN(n) ? null : Math.max(0, n); };
@@ -862,6 +925,32 @@ function demoProjectData(){
 const DUMMY_PROJECT = {id:0, managerUserId:null, seq:1000,
   info:{name:'لا يوجد مشروع', client:'', consultant:'', contractor:'', totalVillas:0, vatRate:15, retentionRate:0, advanceRate:0, projectType:'other', unitLabel:'وحدة', unitsTitle:'الوحدات'},
   boqItems:[], villas:[], villaProgress:{}, mustakhlasat:[], workLogs:[], blockerLog:[]};
+Object.assign(I18N_EN, {
+  'نظام إدارة المستخلصات والإنتاجية':'Claims & Productivity Management System',
+  '⏳ جاري تحميل النظام...':'⏳ Loading system...',
+  'سجّل دخولك للمتابعة':'Sign in to continue',
+  'اسم المستخدم':'Username',
+  'كلمة المرور':'Password',
+  '🔓 دخول':'🔓 Login',
+  '📴 وضع بدون اتصال — عرض آخر بيانات محفوظة (للقراءة فقط) ·':'📴 Offline mode — showing last saved data (read-only) ·',
+  'إعادة المحاولة':'Retry',
+  '🚪 خروج':'🚪 Logout',
+  '⬤ حفظ تلقائي':'⬤ Auto-save',
+  '؟ دليل الاستخدام':'؟ User guide',
+  '⚙ إعدادات':'⚙ Settings',
+  '⬇ نسخة احتياطية':'⬇ Backup',
+  '⬆ استيراد':'⬆ Import',
+  '🗂 المشاريع':'🗂 Projects',
+  '📊 لوحة التحكم':'📊 Dashboard',
+  '🧭 خطة العمل':'🧭 Action Plan',
+  '📋 جدول الكميات':'📋 BOQ',
+  '💰 المستخلصات':'💰 Claims',
+  '🚫 العوائق':'🚫 Blockers',
+  '👷 الإنتاجية':'👷 Productivity',
+  'لا يوجد مشروع':'No project',
+  'وحدة':'Unit',
+  'الوحدات':'Units'
+});
 
 function currentUser(){
   return state.users.find(u => u.id === state.me.id) || state.me;
@@ -931,21 +1020,27 @@ async function doLogin(){
   }
 }
 function logout(){
-  if (!confirm('تسجيل الخروج؟')) return;
+  if (!confirm(T('تسجيل الخروج؟'))) return;
   localStorage.removeItem('azoom_token');
   API.token = '';
   location.reload();
 }
 async function changeMyPassword(){
-  const oldPassword = prompt('كلمة المرور الحالية:');
+  const oldPassword = prompt(T('كلمة المرور الحالية:'));
   if (oldPassword === null) return;
-  const newPassword = prompt('كلمة المرور الجديدة (4 أحرف على الأقل):');
+  const newPassword = prompt(T('كلمة المرور الجديدة (4 أحرف على الأقل):'));
   if (newPassword === null) return;
   try {
     await API.req('PUT', '/api/me/password', {oldPassword, newPassword});
-    alert('تم تغيير كلمة المرور ✅');
+    alert(T('تم تغيير كلمة المرور ✅'));
   } catch(e) { alert(e.message); }
 }
+Object.assign(I18N_EN, {
+  'تسجيل الخروج؟':'Log out?',
+  'كلمة المرور الحالية:':'Current password:',
+  'كلمة المرور الجديدة (4 أحرف على الأقل):':'New password (at least 4 characters):',
+  'تم تغيير كلمة المرور ✅':'Password changed ✅'
+});
 
 // ترقية بيانات مشروع واحد (إضافة الحقول الجديدة بدون فقدان شيء)
 function migrateProject(p){
@@ -1013,8 +1108,9 @@ function loadOfflineCache(){
 }
 
 async function retryOnline(){
-  try { await refreshState(); } catch(e) { alert('لا يزال الاتصال متعذراً'); }
+  try { await refreshState(); } catch(e) { alert(T('لا يزال الاتصال متعذراً')); }
 }
+Object.assign(I18N_EN, { 'لا يزال الاتصال متعذراً':'Still unable to connect' });
 window.addEventListener('online', () => { if (offlineMode) retryOnline(); });
 
 // ---- حفظ تلقائي إلى الخادم مع كشف تعارض التعديلات ----
@@ -1023,9 +1119,9 @@ const dirtyProjects = new Set();
 
 function save(){
   if (!proj().id) return;
-  if (offlineMode) { alert('📴 أنت في وضع بدون اتصال — التعديلات غير ممكنة حتى عودة الاتصال بالخادم.'); return; }
+  if (offlineMode) { alert(T('📴 أنت في وضع بدون اتصال — التعديلات غير ممكنة حتى عودة الاتصال بالخادم.')); return; }
   dirtyProjects.add(proj().id);
-  $('save-badge').textContent = '⬤ جاري الحفظ...';
+  $('save-badge').textContent = T('⬤ جاري الحفظ...');
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => flushSaves(false), 700);
 }
@@ -1039,22 +1135,29 @@ async function flushSaves(keepalive){
       const r = await API.req('PUT', '/api/projects/' + id, { baseVersion: version, data }, keepalive);
       p.version = r.version;
       dirtyProjects.delete(id);
-      $('save-badge').textContent = '⬤ محفوظ ' + new Date().toLocaleTimeString('en-GB');
+      $('save-badge').textContent = T('⬤ محفوظ') + ' ' + new Date().toLocaleTimeString('en-GB');
     } catch(e) {
       if (e.status === 409) {
         dirtyProjects.delete(id);
-        alert('⚠️ تم تعديل هذا المشروع من مستخدم آخر في نفس الوقت. سيتم تحميل آخر نسخة محفوظة.');
+        alert(T('⚠️ تم تعديل هذا المشروع من مستخدم آخر في نفس الوقت. سيتم تحميل آخر نسخة محفوظة.'));
         await refreshState();
       } else if (e.status === 401) {
         showLogin();
       } else {
-        $('save-badge').textContent = '⬤ تعذر الحفظ — إعادة المحاولة...';
+        $('save-badge').textContent = T('⬤ تعذر الحفظ — إعادة المحاولة...');
         setTimeout(() => { if (dirtyProjects.size) flushSaves(false); }, 5000);
       }
       break;
     }
   }
 }
+Object.assign(I18N_EN, {
+  '📴 أنت في وضع بدون اتصال — التعديلات غير ممكنة حتى عودة الاتصال بالخادم.':'📴 You are offline — changes are not possible until the connection to the server returns.',
+  '⬤ جاري الحفظ...':'⬤ Saving...',
+  '⬤ محفوظ':'⬤ Saved',
+  '⚠️ تم تعديل هذا المشروع من مستخدم آخر في نفس الوقت. سيتم تحميل آخر نسخة محفوظة.':'⚠️ This project was edited by another user at the same time. The latest saved version will be loaded.',
+  '⬤ تعذر الحفظ — إعادة المحاولة...':'⬤ Save failed — retrying...'
+});
 
 // حفظ ما تبقى عند إغلاق الصفحة
 window.addEventListener('pagehide', () => { if (dirtyProjects.size) flushSaves(true); });
@@ -1093,6 +1196,16 @@ const STATUS_META = {
   done:         {label:'مكتمل', color:'green',  icon:'✅'},
   claimed_full: {label:'مكتمل ومرفوع', color:'teal',   icon:'📤'}
 };
+Object.assign(I18N_EN, {
+  'خارج النطاق - منفذ سابقاً':'Out of scope - previously done',
+  'بانتظار توريد العميل':'Awaiting client supply',
+  'معيق - عائق خارجي':'Blocked - external issue',
+  'بانتظار أعمال سابقة':'Awaiting prior work',
+  'متاح للبدء الآن':'Available to start now',
+  'قيد التنفيذ':'In progress',
+  'مكتمل':'Complete',
+  'مكتمل ومرفوع':'Complete and claimed'
+});
 
 function statusOf(it){
   if (it.scope === 'others') return 'others';
@@ -1167,18 +1280,28 @@ function renderHeader(){
   const cu = currentUser();
   const mgr = userName(p.managerUserId);
   const tdef = PROJECT_TYPES[p.info.projectType] || PROJECT_TYPES.other;
-  $('hd-sub').textContent = p.info.name + ' (' + tdef.label + ')' + (mgr ? ' | مدير المشروع: ' + mgr : '');
+  $('hd-sub').textContent = p.info.name + ' (' + T(tdef.label) + ')' + (mgr ? ' | ' + T('مدير المشروع') + ': ' + mgr : '');
   const list = accessibleProjects();
   $('proj-select').innerHTML = list.length
     ? list.map(x => '<option value="' + x.id + '"' + (x.id === p.id ? ' selected' : '') + '>🗂 ' + esc(x.info.name) + '</option>').join('')
-    : '<option>لا يوجد مشروع معين لك</option>';
+    : '<option>' + T('لا يوجد مشروع معين لك') + '</option>';
   $('user-chip').textContent = '👤 ' + cu.name + (cu.role === 'owner' ? ' ★' : '');
   // مسميات الوحدات حسب نوع المشروع (فيلا / مبنى / قطاع...)
   $('villas-tab-label').textContent = ULS();
   $('add-villa-label').textContent = UL();
-  $('wl-villa-label').textContent = UL() + ' (اختياري)';
+  $('wl-villa-label').textContent = UL() + ' (' + T('اختياري') + ')';
   $('wl-th-villa').textContent = UL();
 }
+Object.assign(I18N_EN, {
+  'مدير المشروع':'Project manager',
+  'لا يوجد مشروع معين لك':'No project assigned to you',
+  'اختياري':'Optional',
+  'فلل / وحدات سكنية':'Villas / residential units',
+  'مباني':'Buildings',
+  'بنية تحتية':'Infrastructure',
+  'طرق':'Roads',
+  'أخرى':'Other'
+});
 
 // ============================================================
 //  PROJECTS TAB
@@ -1188,7 +1311,7 @@ function renderProjects(){
   $('btn-add-project').style.display = isOwner() ? '' : 'none';
   $('btn-users-manage').style.display = isOwner() ? '' : 'none';
   $('pm-notice').innerHTML = isOwner() ? '' :
-    '<div class="alert info">👤 أنت مسجل كمدير مشروع — تظهر لك مشاريعك المعينة فقط.</div>';
+    '<div class="alert info">👤 ' + T('أنت مسجل كمدير مشروع — تظهر لك مشاريعك المعينة فقط.') + '</div>';
   $('projects-grid').innerHTML = list.map(p => {
     const t = totalsFor(p);
     const pct = t.azoomScope > 0 ? t.executed / t.azoomScope * 100 : 0;
@@ -1197,28 +1320,44 @@ function renderProjects(){
     const isCur = p.id === proj().id;
     return '<div class="card' + (isCur ? ' green-b' : '') + '" style="margin-bottom:0">' +
       '<div class="sc-header"><div class="sc-icon" style="background:var(--amber-dim)">🗂</div>' +
-      '<div style="flex:1"><div>' + esc(p.info.name) + (isCur ? ' <span class="pill green" style="font-size:9px">الحالي</span>' : '') + '</div>' +
-      '<div style="font-size:11px;color:var(--text2)">' + esc(p.info.client || '—') + ' · ' + p.boqItems.length + ' بند · ' + p.villas.length + ' ' + esc(p.info.unitLabel||'وحدة') + '</div></div></div>' +
-      '<div class="sc-item"><span class="sc-item-name">👤 مدير المشروع</span><span class="sc-item-val" style="color:' + (mgr ? 'var(--blue)' : 'var(--red)') + '">' + (mgr ? esc(mgr) : 'غير معيّن ⚠') + '</span></div>' +
+      '<div style="flex:1"><div>' + esc(p.info.name) + (isCur ? ' <span class="pill green" style="font-size:9px">' + T('الحالي') + '</span>' : '') + '</div>' +
+      '<div style="font-size:11px;color:var(--text2)">' + esc(p.info.client || '—') + ' · ' + p.boqItems.length + ' ' + T('بند') + ' · ' + p.villas.length + ' ' + esc(p.info.unitLabel||'وحدة') + '</div></div></div>' +
+      '<div class="sc-item"><span class="sc-item-name">👤 ' + T('مدير المشروع') + '</span><span class="sc-item-val" style="color:' + (mgr ? 'var(--blue)' : 'var(--red)') + '">' + (mgr ? esc(mgr) : T('غير معيّن ⚠')) + '</span></div>' +
       '<div style="margin:8px 0"><div class="villa-prog-bar" style="height:6px"><div class="villa-prog-fill" style="width:' + pct + '%;background:' + barColor + '"></div></div>' +
-      '<div style="font-size:11px;font-family:var(--mono);color:' + barColor + '">' + pct.toFixed(1) + '% إنجاز</div></div>' +
-      '<div class="sc-item"><span class="sc-item-name">قيمة النطاق</span><span class="sc-item-val">' + money(t.azoomScope) + '</span></div>' +
-      '<div class="sc-item"><span class="sc-item-name">✅ جاهز للرفع</span><span class="sc-item-val" style="color:var(--green-bright)">' + money(t.net) + '</span></div>' +
-      '<div class="sc-item"><span class="sc-item-name">⛔ بنود معيقة</span><span class="sc-item-val" style="color:' + (t.blockedCount ? 'var(--red)' : 'var(--text3)') + '">' + t.blockedCount + '</span></div>' +
-      '<div class="sc-item"><span class="sc-item-name">📤 مستخلصات / محصل</span><span class="sc-item-val" style="color:var(--teal)">' + p.mustakhlasat.length + ' · ' + money(t.collected) + '</span></div>' +
+      '<div style="font-size:11px;font-family:var(--mono);color:' + barColor + '">' + pct.toFixed(1) + '% ' + T('إنجاز') + '</div></div>' +
+      '<div class="sc-item"><span class="sc-item-name">' + T('قيمة النطاق') + '</span><span class="sc-item-val">' + money(t.azoomScope) + '</span></div>' +
+      '<div class="sc-item"><span class="sc-item-name">✅ ' + T('جاهز للرفع') + '</span><span class="sc-item-val" style="color:var(--green-bright)">' + money(t.net) + '</span></div>' +
+      '<div class="sc-item"><span class="sc-item-name">⛔ ' + T('بنود معيقة') + '</span><span class="sc-item-val" style="color:' + (t.blockedCount ? 'var(--red)' : 'var(--text3)') + '">' + t.blockedCount + '</span></div>' +
+      '<div class="sc-item"><span class="sc-item-name">📤 ' + T('مستخلصات / محصل') + '</span><span class="sc-item-val" style="color:var(--teal)">' + p.mustakhlasat.length + ' · ' + money(t.collected) + '</span></div>' +
       '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">' +
-      '<button class="btn btn-green" style="flex:1;font-size:12px;padding:6px" onclick="switchProject(' + p.id + ');switchTab(\'dashboard\')">📂 فتح المشروع</button>' +
-      (isOwner() ? '<button class="mini-btn" onclick="openProjectModal(' + p.id + ')">✏️ تعديل / تعيين مدير</button>' : '') +
+      '<button class="btn btn-green" style="flex:1;font-size:12px;padding:6px" onclick="switchProject(' + p.id + ');switchTab(\'dashboard\')">📂 ' + T('فتح المشروع') + '</button>' +
+      (isOwner() ? '<button class="mini-btn" onclick="openProjectModal(' + p.id + ')">✏️ ' + T('تعديل / تعيين مدير') + '</button>' : '') +
       '</div></div>';
-  }).join('') || '<div class="empty-state"><div class="icon">🗂</div><p>لا توجد مشاريع' + (isOwner() ? ' — أضف مشروعك الأول' : ' معينة لك — راجع الإدارة') + '</p></div>';
+  }).join('') || '<div class="empty-state"><div class="icon">🗂</div><p>' + T('لا توجد مشاريع') + (isOwner() ? T(' — أضف مشروعك الأول') : T(' معينة لك — راجع الإدارة')) + '</p></div>';
 }
+Object.assign(I18N_EN, {
+  'أنت مسجل كمدير مشروع — تظهر لك مشاريعك المعينة فقط.':'You are signed in as a project manager — only your assigned projects are shown.',
+  'الحالي':'Current',
+  'بند':'item',
+  'غير معيّن ⚠':'Not assigned ⚠',
+  'إنجاز':'progress',
+  'قيمة النطاق':'Scope value',
+  'جاهز للرفع':'Ready to claim',
+  'بنود معيقة':'Blocked items',
+  'مستخلصات / محصل':'Claims / collected',
+  'فتح المشروع':'Open project',
+  'تعديل / تعيين مدير':'Edit / assign manager',
+  'لا توجد مشاريع':'No projects',
+  ' — أضف مشروعك الأول':' — add your first project',
+  ' معينة لك — راجع الإدارة':' assigned to you — check with the admin'
+});
 
 let editingProjectId = null;
 function openProjectModal(id){
-  if (!isOwner()) { alert('إضافة وتعديل المشاريع صلاحية المالك فقط'); return; }
+  if (!isOwner()) { alert(T('إضافة وتعديل المشاريع صلاحية المالك فقط')); return; }
   editingProjectId = id;
   const p = id ? state.projects.find(x => x.id === id) : null;
-  $('project-modal-title').textContent = p ? 'تعديل مشروع: ' + p.info.name : 'إضافة مشروع جديد';
+  $('project-modal-title').textContent = p ? T('تعديل مشروع:') + ' ' + p.info.name : T('إضافة مشروع جديد');
   $('pm-delete-btn').style.display = p ? '' : 'none';
   $('pm-name').value = p ? p.info.name : '';
   $('pm-type').value = p ? (p.info.projectType||'residential') : 'residential';
@@ -1231,12 +1370,12 @@ function openProjectModal(id){
   $('pm-vat').value = p ? p.info.vatRate : 15;
   $('pm-ret').value = p ? p.info.retentionRate : 10;
   $('pm-adv').value = p ? p.info.advanceRate : 0;
-  $('pm-manager').innerHTML = '<option value="">— بدون مدير معيّن —</option>' +
-    state.users.map(u => '<option value="' + u.id + '"' + (p && p.managerUserId === u.id ? ' selected' : '') + '>' + esc(u.name) + (u.role === 'owner' ? ' (مالك)' : '') + '</option>').join('');
+  $('pm-manager').innerHTML = '<option value="">' + T('— بدون مدير معيّن —') + '</option>' +
+    state.users.map(u => '<option value="' + u.id + '"' + (p && p.managerUserId === u.id ? ' selected' : '') + '>' + esc(u.name) + (u.role === 'owner' ? ' (' + T('مالك') + ')' : '') + '</option>').join('');
   $('pm-boq-src-wrap').style.display = p ? 'none' : '';
   if (!p) {
-    $('pm-boq-src').innerHTML = '<option value="">جدول كميات فارغ (أضف البنود يدوياً)</option>' +
-      state.projects.map(x => '<option value="' + x.id + '">نسخ بنود من: ' + esc(x.info.name) + ' (بدون نسب التنفيذ)</option>').join('');
+    $('pm-boq-src').innerHTML = '<option value="">' + T('جدول كميات فارغ (أضف البنود يدوياً)') + '</option>' +
+      state.projects.map(x => '<option value="' + x.id + '">' + T('نسخ بنود من:') + ' ' + esc(x.info.name) + ' ' + T('(بدون نسب التنفيذ)') + '</option>').join('');
   }
   $('project-modal').classList.add('open');
 }
@@ -1249,7 +1388,7 @@ function pmTypeChanged(){
 
 async function saveProject(){
   const name = $('pm-name').value.trim();
-  if (!name) { alert('اكتب اسم المشروع'); return; }
+  if (!name) { alert(T('اكتب اسم المشروع')); return; }
   const type = $('pm-type').value;
   const tdef = PROJECT_TYPES[type] || PROJECT_TYPES.other;
   const info = {
@@ -1279,20 +1418,35 @@ async function saveProject(){
       localStorage.setItem('azoom_proj', String(r.id));
     }
     closeModal('project-modal'); renderAll();
-  } catch(e) { alert('تعذر الحفظ: ' + e.message); }
+  } catch(e) { alert(T('تعذر الحفظ:') + ' ' + e.message); }
 }
 
 async function deleteProject(){
   if (!editingProjectId) return;
   const p = state.projects.find(x => x.id === editingProjectId);
-  if (!confirm('حذف المشروع "' + p.info.name + '" نهائياً بكل بنوده ومستخلصاته ويومياته؟ خذ نسخة احتياطية أولاً!')) return;
-  if (!confirm('تأكيد أخير: البيانات لا يمكن استرجاعها بعد الحذف.')) return;
+  if (!confirm(T('حذف المشروع "') + p.info.name + T('" نهائياً بكل بنوده ومستخلصاته ويومياته؟ خذ نسخة احتياطية أولاً!'))) return;
+  if (!confirm(T('تأكيد أخير: البيانات لا يمكن استرجاعها بعد الحذف.'))) return;
   try {
     await API.req('DELETE', '/api/projects/' + editingProjectId);
     state.projects = state.projects.filter(x => x.id !== editingProjectId);
     closeModal('project-modal'); renderAll();
   } catch(e) { alert(e.message); }
 }
+Object.assign(I18N_EN, {
+  'إضافة وتعديل المشاريع صلاحية المالك فقط':'Adding and editing projects is owner-only',
+  'تعديل مشروع:':'Edit project:',
+  'إضافة مشروع جديد':'Add new project',
+  '— بدون مدير معيّن —':'— No manager assigned —',
+  'مالك':'Owner',
+  'جدول كميات فارغ (أضف البنود يدوياً)':'Empty BOQ (add items manually)',
+  'نسخ بنود من:':'Copy items from:',
+  '(بدون نسب التنفيذ)':'(without execution percentages)',
+  'اكتب اسم المشروع':'Enter the project name',
+  'تعذر الحفظ:':'Save failed:',
+  'حذف المشروع "':'Permanently delete project "',
+  '" نهائياً بكل بنوده ومستخلصاته ويومياته؟ خذ نسخة احتياطية أولاً!':'" along with all its items, claims and logs? Take a backup first!',
+  'تأكيد أخير: البيانات لا يمكن استرجاعها بعد الحذف.':'Final confirmation: this data cannot be recovered after deletion.'
+});
 
 // ============================================================
 //  USERS
@@ -1300,7 +1454,7 @@ async function deleteProject(){
 const ROLE_LABELS = {owner:'مالك / إدارة', pm:'مدير مشروع'};
 
 function openUsersManage(){
-  if (!isOwner()) { alert('إدارة المستخدمين صلاحية المالك فقط'); return; }
+  if (!isOwner()) { alert(T('إدارة المستخدمين صلاحية المالك فقط')); return; }
   renderUsersList();
   $('users-modal').classList.add('open');
 }
@@ -1309,11 +1463,11 @@ function renderUsersList(){
   $('users-list').innerHTML = state.users.map(u => {
     const projects = state.projects.filter(p => p.managerUserId === u.id);
     return '<div class="sc-item"><span class="sc-item-name" style="white-space:normal">' +
-      (u.role === 'owner' ? '★ ' : '👤 ') + '<strong style="color:var(--text)">' + esc(u.name) + '</strong> — ' + ROLE_LABELS[u.role] +
+      (u.role === 'owner' ? '★ ' : '👤 ') + '<strong style="color:var(--text)">' + esc(u.name) + '</strong> — ' + T(ROLE_LABELS[u.role]) +
       ' <span style="font-family:var(--mono);font-size:10px;color:var(--text3)">(' + esc(u.username) + ')</span>' +
-      (projects.length ? '<br><span style="font-size:11px">يدير: ' + projects.map(p => esc(p.info.name)).join('، ') + '</span>' : '') + '</span>' +
-      '<span><button class="mini-btn" onclick="resetUserPassword(' + u.id + ')">🔑 كلمة المرور</button> ' +
-      (u.id !== state.me.id ? '<button class="mini-btn red" onclick="deleteUser(' + u.id + ')">🗑</button>' : '<span class="pill blue" style="font-size:9px">أنت</span>') + '</span></div>';
+      (projects.length ? '<br><span style="font-size:11px">' + T('يدير:') + ' ' + projects.map(p => esc(p.info.name)).join('، ') + '</span>' : '') + '</span>' +
+      '<span><button class="mini-btn" onclick="resetUserPassword(' + u.id + ')">🔑 ' + T('كلمة المرور') + '</button> ' +
+      (u.id !== state.me.id ? '<button class="mini-btn red" onclick="deleteUser(' + u.id + ')">🗑</button>' : '<span class="pill blue" style="font-size:9px">' + T('أنت') + '</span>') + '</span></div>';
   }).join('');
 }
 
@@ -1321,7 +1475,7 @@ async function addUser(){
   const name = $('us-name').value.trim();
   const username = $('us-username').value.trim();
   const password = $('us-pin').value.trim();
-  if (!name || !username || !password) { alert('أكمل: الاسم، اسم المستخدم، كلمة المرور'); return; }
+  if (!name || !username || !password) { alert(T('أكمل: الاسم، اسم المستخدم، كلمة المرور')); return; }
   try {
     const u = await API.req('POST', '/api/users', {username, name, role:$('us-role').value, password});
     state.users.push(u);
@@ -1333,11 +1487,11 @@ async function addUser(){
 async function resetUserPassword(id){
   const u = state.users.find(x => x.id === id);
   if (!u) return;
-  const password = prompt('كلمة المرور الجديدة لـ "' + u.name + '" (4 أحرف على الأقل):');
+  const password = prompt(T('كلمة المرور الجديدة لـ "') + u.name + T('" (4 أحرف على الأقل):'));
   if (password === null || !password.trim()) return;
   try {
     await API.req('PUT', '/api/users/' + id, {password: password.trim()});
-    alert('تم تغيير كلمة المرور ✅');
+    alert(T('تم تغيير كلمة المرور ✅'));
   } catch(e) { alert(e.message); }
 }
 
@@ -1345,7 +1499,7 @@ async function deleteUser(id){
   const u = state.users.find(x => x.id === id);
   if (!u) return;
   const projects = state.projects.filter(p => p.managerUserId === id);
-  if (!confirm('حذف المستخدم "' + u.name + '"؟' + (projects.length ? ' سيتم إلغاء تعيينه من ' + projects.length + ' مشروع.' : ''))) return;
+  if (!confirm(T('حذف المستخدم "') + u.name + T('"؟') + (projects.length ? T(' سيتم إلغاء تعيينه من') + ' ' + projects.length + ' ' + T('مشروع.') : ''))) return;
   try {
     await API.req('DELETE', '/api/users/' + id);
     projects.forEach(p => { p.managerUserId = null; p.version++; });
@@ -1353,6 +1507,22 @@ async function deleteUser(id){
     renderUsersList(); renderAll();
   } catch(e) { alert(e.message); }
 }
+Object.assign(I18N_EN, {
+  'مالك / إدارة':'Owner / admin',
+  'مدير مشروع':'Project manager',
+  'إدارة المستخدمين صلاحية المالك فقط':'Managing users is owner-only',
+  'يدير:':'Manages:',
+  'كلمة المرور':'Password',
+  'أنت':'You',
+  'أكمل: الاسم، اسم المستخدم، كلمة المرور':'Fill in: name, username, password',
+  'كلمة المرور الجديدة لـ "':'New password for "',
+  '" (4 أحرف على الأقل):':'" (at least 4 characters):',
+  'تم تغيير كلمة المرور ✅':'Password changed ✅',
+  'حذف المستخدم "':'Delete user "',
+  '"؟':'"?',
+  ' سيتم إلغاء تعيينه من':' They will be unassigned from',
+  'مشروع.':'project(s).'
+});
 
 function updateTabCounts(){
   $('tc-projects').textContent = accessibleProjects().length;
@@ -1372,7 +1542,7 @@ function switchTab(id){
 
 function statusPill(st){
   const m = STATUS_META[st];
-  return '<span class="pill ' + m.color + '">' + m.icon + ' ' + m.label + '</span>';
+  return '<span class="pill ' + m.color + '">' + m.icon + ' ' + T(m.label) + '</span>';
 }
 function pctBar(pct, color){
   const c = color || (pct >= DONE ? 'green' : pct > 0 ? 'amber' : 'red');
@@ -1386,18 +1556,35 @@ function renderKPIs(){
   const t = totals();
   const progressPct = t.azoomScope > 0 ? (t.executed / t.azoomScope * 100) : 0;
   const kpis = [
-    {label:'قيمة نطاق أعمالنا', value:money(t.azoomScope), color:'amber', sub:'من إجمالي البنود ' + money(t.contract)},
-    {label:'قيمة الأعمال المنفذة', value:money(t.executed), color:'blue', sub:'نسبة الإنجاز ' + progressPct.toFixed(1) + '%'},
-    {label:'مرفوع بمستخلصات سابقة', value:money(t.claimed), color:'teal', sub:proj().mustakhlasat.length + ' مستخلص'},
-    {label:'✅ جاهز للرفع الآن (صافي)', value:money(t.net), color:'green', sub:proj().boqItems.filter(i=>netClaimable(i)>1).length + ' بند - المنفذ ناقص المرفوع'},
-    {label:'محجوب بعوائق وتسلسل', value:money(t.locked), color:'red', sub:'قيمة الأعمال غير الممكنة حالياً'},
-    {label:'💵 محصل نقداً', value:money(t.collected), color:'teal', sub:'متبقي تحصيله ' + money(Math.max(0, t.musNet - t.collected)) + ' من المستخلصات'},
-    {label:'خارج نطاقنا (منفذ سابقاً)', value:money(t.othersVal), color:'purple', sub:'لا مطالبة عليها'}
+    {label:'قيمة نطاق أعمالنا', value:money(t.azoomScope), color:'amber', sub:T('من إجمالي البنود') + ' ' + money(t.contract)},
+    {label:'قيمة الأعمال المنفذة', value:money(t.executed), color:'blue', sub:T('نسبة الإنجاز') + ' ' + progressPct.toFixed(1) + '%'},
+    {label:'مرفوع بمستخلصات سابقة', value:money(t.claimed), color:'teal', sub:proj().mustakhlasat.length + ' ' + T('مستخلص')},
+    {label:'✅ جاهز للرفع الآن (صافي)', value:money(t.net), color:'green', sub:proj().boqItems.filter(i=>netClaimable(i)>1).length + ' ' + T('بند - المنفذ ناقص المرفوع')},
+    {label:'محجوب بعوائق وتسلسل', value:money(t.locked), color:'red', sub:T('قيمة الأعمال غير الممكنة حالياً')},
+    {label:'💵 محصل نقداً', value:money(t.collected), color:'teal', sub:T('متبقي تحصيله') + ' ' + money(Math.max(0, t.musNet - t.collected)) + ' ' + T('من المستخلصات')},
+    {label:'خارج نطاقنا (منفذ سابقاً)', value:money(t.othersVal), color:'purple', sub:T('لا مطالبة عليها')}
   ];
   $('kpi-grid').innerHTML = kpis.map(k =>
-    '<div class="kpi-card ' + k.color + '"><div class="kpi-label">' + k.label + '</div><div class="kpi-value ' + k.color + '">' + k.value + '</div><div class="kpi-sub">' + k.sub + '</div></div>'
+    '<div class="kpi-card ' + k.color + '"><div class="kpi-label">' + T(k.label) + '</div><div class="kpi-value ' + k.color + '">' + k.value + '</div><div class="kpi-sub">' + k.sub + '</div></div>'
   ).join('');
 }
+Object.assign(I18N_EN, {
+  'قيمة نطاق أعمالنا':'Value of our scope',
+  'من إجمالي البنود':'of total items',
+  'قيمة الأعمال المنفذة':'Value of executed work',
+  'نسبة الإنجاز':'Progress',
+  'مرفوع بمستخلصات سابقة':'Claimed in previous claims',
+  'مستخلص':'claim',
+  '✅ جاهز للرفع الآن (صافي)':'✅ Ready to claim now (net)',
+  'بند - المنفذ ناقص المرفوع':'item(s) - executed minus claimed',
+  'محجوب بعوائق وتسلسل':'Locked by blockers and sequence',
+  'قيمة الأعمال غير الممكنة حالياً':'Value of work not currently possible',
+  '💵 محصل نقداً':'💵 Collected in cash',
+  'متبقي تحصيله':'Remaining to collect',
+  'من المستخلصات':'from claims',
+  'خارج نطاقنا (منفذ سابقاً)':'Out of our scope (previously done)',
+  'لا مطالبة عليها':'No claim applies'
+});
 
 function renderCharts(){
   // by division: executed vs total (azoom scope)
@@ -1416,7 +1603,7 @@ function renderCharts(){
     return '<div class="bar-row"><div class="bar-label">' + esc(dv) + ' - ' + esc(d.name) + '</div>' +
       '<div class="bar-track" style="width:' + Math.max(20, d.total/maxT*100) + '%"><div class="bar-fill" style="width:' + p + '%;background:linear-gradient(90deg,var(--green),var(--teal))">' + label + '</div></div>' +
       '<div class="bar-amount">' + fmtN(d.exec) + ' / ' + fmtN(d.total) + '</div></div>';
-  }).join('') || '<div class="empty-state"><p>لا توجد بيانات</p></div>';
+  }).join('') || '<div class="empty-state"><p>' + T('لا توجد بيانات') + '</p></div>';
 
   // by status
   const stG = {};
@@ -1430,9 +1617,9 @@ function renderCharts(){
   const order = ['done','claimed_full','partial','available','waiting','blocked','by_client','others'];
   $('status-chart').innerHTML = order.filter(st => stG[st]).map(st => {
     const m = STATUS_META[st];
-    return '<div class="bar-row"><div class="bar-label">' + m.icon + ' ' + m.label + '</div>' +
+    return '<div class="bar-row"><div class="bar-label">' + m.icon + ' ' + T(m.label) + '</div>' +
       '<div class="bar-track"><div class="bar-fill" style="width:' + (stG[st]/maxS*100) + '%;background:' + colorVar[st] + '"></div></div>' +
-      '<div class="bar-amount">' + fmtN(stG[st]) + ' ر.س</div></div>';
+      '<div class="bar-amount">' + money(stG[st]) + '</div></div>';
   }).join('');
 }
 
@@ -1441,10 +1628,10 @@ function renderAlerts(){
   const blockedItems = proj().boqItems.filter(i => statusOf(i) === 'blocked');
   const reasons = [...new Set(blockedItems.map(i => i.blocker.reason))];
   let html = '';
-  if (t.net > 1) html += '<div class="alert success">✅ <div>عندك <strong>' + money(t.net) + '</strong> جاهزة للرفع الآن — روح لتبويب المستخلصات.</div></div>';
-  if (blockedItems.length) html += '<div class="alert danger">⛔ <div><strong>' + blockedItems.length + ' بند</strong> موقوف بعوائق خارجية (' + reasons.map(esc).join('، ') + ') — راجع تبويب العوائق للأثر المالي.</div></div>';
+  if (t.net > 1) html += '<div class="alert success">✅ <div>' + T('عندك') + ' <strong>' + money(t.net) + '</strong> ' + T('جاهزة للرفع الآن — روح لتبويب المستخلصات.') + '</div></div>';
+  if (blockedItems.length) html += '<div class="alert danger">⛔ <div><strong>' + blockedItems.length + ' ' + T('بند') + '</strong> ' + T('موقوف بعوائق خارجية') + ' (' + reasons.map(esc).join('، ') + ') — ' + T('راجع تبويب العوائق للأثر المالي.') + '</div></div>';
   const stale = proj().boqItems.filter(i => statusOf(i) === 'available');
-  if (stale.length) html += '<div class="alert warning">▶ <div><strong>' + stale.length + ' بند</strong> متاح تبدأ فيه الحين بدون أي عائق — بقيمة ' + money(stale.reduce((s,i)=>s+remainingValue(i),0)) + '.</div></div>';
+  if (stale.length) html += '<div class="alert warning">▶ <div><strong>' + stale.length + ' ' + T('بند') + '</strong> ' + T('متاح تبدأ فيه الحين بدون أي عائق — بقيمة') + ' ' + money(stale.reduce((s,i)=>s+remainingValue(i),0)) + '.</div></div>';
   $('alerts-area').innerHTML = html;
 }
 
@@ -1452,12 +1639,25 @@ function renderClaimSummary(){
   const t = totals();
   const vat = t.net * proj().info.vatRate/100;
   $('claim-summary').innerHTML =
-    '<div class="sc-item"><span class="sc-item-name">إجمالي المنفذ</span><span class="sc-item-val" style="color:var(--blue)">' + money(t.executed) + '</span></div>' +
-    '<div class="sc-item"><span class="sc-item-name">مرفوع بمستخلصات سابقة</span><span class="sc-item-val" style="color:var(--teal)">− ' + money(t.claimed) + '</span></div>' +
-    '<div class="sc-item"><span class="sc-item-name" style="font-weight:700">الصافي الجاهز للرفع</span><span class="sc-item-val" style="color:var(--green-bright);font-size:13px">' + money(t.net) + '</span></div>' +
-    '<div class="sc-item"><span class="sc-item-name">+ ضريبة ' + proj().info.vatRate + '%</span><span class="sc-item-val">' + money(vat) + '</span></div>' +
-    '<div class="sc-item"><span class="sc-item-name" style="font-weight:700">الإجمالي شامل الضريبة</span><span class="sc-item-val" style="color:var(--green-bright);font-weight:700;font-size:13px">' + money(t.net + vat) + '</span></div>';
+    '<div class="sc-item"><span class="sc-item-name">' + T('إجمالي المنفذ') + '</span><span class="sc-item-val" style="color:var(--blue)">' + money(t.executed) + '</span></div>' +
+    '<div class="sc-item"><span class="sc-item-name">' + T('مرفوع بمستخلصات سابقة') + '</span><span class="sc-item-val" style="color:var(--teal)">− ' + money(t.claimed) + '</span></div>' +
+    '<div class="sc-item"><span class="sc-item-name" style="font-weight:700">' + T('الصافي الجاهز للرفع') + '</span><span class="sc-item-val" style="color:var(--green-bright);font-size:13px">' + money(t.net) + '</span></div>' +
+    '<div class="sc-item"><span class="sc-item-name">+ ' + T('ضريبة') + ' ' + proj().info.vatRate + '%</span><span class="sc-item-val">' + money(vat) + '</span></div>' +
+    '<div class="sc-item"><span class="sc-item-name" style="font-weight:700">' + T('الإجمالي شامل الضريبة') + '</span><span class="sc-item-val" style="color:var(--green-bright);font-weight:700;font-size:13px">' + money(t.net + vat) + '</span></div>';
 }
+Object.assign(I18N_EN, {
+  'لا توجد بيانات':'No data',
+  'عندك':'You have',
+  'جاهزة للرفع الآن — روح لتبويب المستخلصات.':'ready to claim now — go to the Claims tab.',
+  'موقوف بعوائق خارجية':'blocked by external issues',
+  'راجع تبويب العوائق للأثر المالي.':'check the Blockers tab for the financial impact.',
+  'متاح تبدأ فيه الحين بدون أي عائق — بقيمة':'available to start now with no blockers — worth',
+  'إجمالي المنفذ':'Total executed',
+  'مرفوع بمستخلصات سابقة':'Claimed in previous claims',
+  'الصافي الجاهز للرفع':'Net ready to claim',
+  'ضريبة':'VAT',
+  'الإجمالي شامل الضريبة':'Total including VAT'
+});
 
 function quickBuildInvoice(){ switchTab('invoice'); mbSelectAll(); }
 
@@ -1514,42 +1714,42 @@ function renderPlan(){
 
   // 1 — claim now
   const netTotal = claimable.reduce((s,i) => s + netClaimable(i), 0);
-  html += '<div class="card green-b"><div class="card-title"><span>1️⃣ ✅ ارفع مستخلص الآن — صافي جاهز: <span style="color:var(--green-bright);font-family:var(--mono)">' + money(netTotal) + '</span></span>' +
-    '<button class="btn btn-green" onclick="quickBuildInvoice()">💰 ابنِ المستخلص</button></div>';
+  html += '<div class="card green-b"><div class="card-title"><span>1️⃣ ✅ ' + T('ارفع مستخلص الآن — صافي جاهز:') + ' <span style="color:var(--green-bright);font-family:var(--mono)">' + money(netTotal) + '</span></span>' +
+    '<button class="btn btn-green" onclick="quickBuildInvoice()">💰 ' + T('ابنِ المستخلص') + '</button></div>';
   html += claimable.length ? claimable.slice(0,10).map(i =>
-    '<div class="sc-item"><span class="sc-item-name"><span class="item-no">' + esc(i.id) + '</span> ' + esc(i.desc) + ' <span style="color:var(--text3)">(' + (itemPct(i)*100).toFixed(0) + '% منفذ / ' + (claimedPct(i)*100).toFixed(0) + '% مرفوع)</span></span>' +
+    '<div class="sc-item"><span class="sc-item-name"><span class="item-no">' + esc(i.id) + '</span> ' + esc(i.desc) + ' <span style="color:var(--text3)">(' + (itemPct(i)*100).toFixed(0) + '% ' + T('منفذ') + ' / ' + (claimedPct(i)*100).toFixed(0) + '% ' + T('مرفوع') + ')</span></span>' +
     '<span class="sc-item-val" style="color:var(--green-bright)">' + money(netClaimable(i)) + '</span></div>').join('')
-    : '<div class="empty-state" style="padding:16px"><p>لا يوجد شيء جاهز للرفع حالياً — سجّل تنفيذ أولاً</p></div>';
-  if (claimable.length > 10) html += '<div class="sc-item"><span class="sc-item-name">+ ' + (claimable.length-10) + ' بنود أخرى...</span></div>';
+    : '<div class="empty-state" style="padding:16px"><p>' + T('لا يوجد شيء جاهز للرفع حالياً — سجّل تنفيذ أولاً') + '</p></div>';
+  if (claimable.length > 10) html += '<div class="sc-item"><span class="sc-item-name">+ ' + (claimable.length-10) + ' ' + T('بنود أخرى...') + '</span></div>';
   html += '</div>';
 
   // 2 — work on now
-  html += '<div class="card blue-b"><div class="card-title"><span>2️⃣ 🔨 اشتغل على هذي البنود الحين (بدون عوائق) — كل نسبة تنفيذ تتحول مطالبة</span></div>';
+  html += '<div class="card blue-b"><div class="card-title"><span>2️⃣ 🔨 ' + T('اشتغل على هذي البنود الحين (بدون عوائق) — كل نسبة تنفيذ تتحول مطالبة') + '</span></div>';
   html += workNow.length ? workNow.map(i => {
     const st = statusOf(i);
     const perPct = amt(i)/100;
     return '<div class="sc-item"><span class="sc-item-name"><span class="item-no">' + esc(i.id) + '</span> ' + esc(i.desc) + ' ' + statusPill(st) + '</span>' +
-      '<span class="sc-item-val">متبقي <span style="color:var(--amber)">' + money(remainingValue(i)) + '</span> · كل 1% = ' + money(perPct) + '</span></div>';
-  }).join('') : '<div class="empty-state" style="padding:16px"><p>لا توجد بنود متاحة — كل الشغل إما مكتمل أو معلق بعوائق</p></div>';
+      '<span class="sc-item-val">' + T('متبقي') + ' <span style="color:var(--amber)">' + money(remainingValue(i)) + '</span> · ' + T('كل 1% =') + ' ' + money(perPct) + '</span></div>';
+  }).join('') : '<div class="empty-state" style="padding:16px"><p>' + T('لا توجد بنود متاحة — كل الشغل إما مكتمل أو معلق بعوائق') + '</p></div>';
   html += '</div>';
 
   // 3 — blockers priority
-  html += '<div class="card red-b"><div class="card-title"><span>3️⃣ ⛔ طالب بحل هذي العوائق (مرتبة بالأثر المالي)</span></div>';
+  html += '<div class="card red-b"><div class="card-title"><span>3️⃣ ⛔ ' + T('طالب بحل هذي العوائق (مرتبة بالأثر المالي)') + '</span></div>';
   html += blockerRows.length ? blockerRows.map(b =>
     '<div class="sc-item" style="align-items:flex-start"><span class="sc-item-name" style="white-space:normal"><strong style="color:var(--red)">' + esc(b.reason) + '</strong><br>' +
-    '<span style="font-size:11px">يوقف مباشرة ' + b.direct.length + ' بند (' + money(b.directVal) + ')' +
-    (b.downItems.length ? ' + يمنع بعده ' + b.downItems.length + ' بند (' + money(b.downVal) + ')' : '') + '</span></span>' +
-    '<span class="sc-item-val" style="color:var(--red);font-size:13px">🔓 يفتح ' + money(b.total) + '</span></div>').join('')
-    : '<div class="empty-state" style="padding:16px"><p>لا توجد عوائق خارجية 🎉</p></div>';
+    '<span style="font-size:11px">' + T('يوقف مباشرة') + ' ' + b.direct.length + ' ' + T('بند') + ' (' + money(b.directVal) + ')' +
+    (b.downItems.length ? ' + ' + T('يمنع بعده') + ' ' + b.downItems.length + ' ' + T('بند') + ' (' + money(b.downVal) + ')' : '') + '</span></span>' +
+    '<span class="sc-item-val" style="color:var(--red);font-size:13px">🔓 ' + T('يفتح') + ' ' + money(b.total) + '</span></div>').join('')
+    : '<div class="empty-state" style="padding:16px"><p>' + T('لا توجد عوائق خارجية 🎉') + '</p></div>';
   html += '</div>';
 
   // 4 — sequence unlocks
-  html += '<div class="card orange-b"><div class="card-title"><span>4️⃣ ⛓ خلّص هذي البنود عشان تفتح اللي بعدها</span></div>';
+  html += '<div class="card orange-b"><div class="card-title"><span>4️⃣ ⛓ ' + T('خلّص هذي البنود عشان تفتح اللي بعدها') + '</span></div>';
   html += seqRows.length ? seqRows.map(g =>
-    '<div class="sc-item" style="align-items:flex-start"><span class="sc-item-name" style="white-space:normal">خلّص <span class="item-no">' + esc(g.root.id) + '</span> ' + esc(g.root.desc) + ' <span style="color:var(--amber)">(' + (itemPct(g.root)*100).toFixed(0) + '%)</span><br>' +
-    '<span style="font-size:11px">يفتح: ' + g.items.map(i => '<span class="item-no">' + esc(i.id) + '</span>').join('، ') + '</span></span>' +
+    '<div class="sc-item" style="align-items:flex-start"><span class="sc-item-name" style="white-space:normal">' + T('خلّص') + ' <span class="item-no">' + esc(g.root.id) + '</span> ' + esc(g.root.desc) + ' <span style="color:var(--amber)">(' + (itemPct(g.root)*100).toFixed(0) + '%)</span><br>' +
+    '<span style="font-size:11px">' + T('يفتح:') + ' ' + g.items.map(i => '<span class="item-no">' + esc(i.id) + '</span>').join('، ') + '</span></span>' +
     '<span class="sc-item-val" style="color:var(--orange)">🔓 ' + money(g.unlockVal) + '</span></div>').join('')
-    : '<div class="empty-state" style="padding:16px"><p>لا توجد بنود منتظرة على تسلسل</p></div>';
+    : '<div class="empty-state" style="padding:16px"><p>' + T('لا توجد بنود منتظرة على تسلسل') + '</p></div>';
   html += '</div>';
 
   // 5 — forecast from productivity rates
@@ -1564,17 +1764,45 @@ function renderPlan(){
       return {it:i, rate:r, remaining, eta, weekly};
     }).sort((a,b) => b.weekly - a.weekly);
   const weeklyTotal = forecastRows.reduce((s,f) => s + f.weekly, 0);
-  html += '<div class="card teal-b" style="border-color:rgba(57,208,216,0.4)"><div class="card-title"><span>5️⃣ 📈 توقع نمو المطالبات حسب معدل إنتاجك الفعلي' +
-    (forecastRows.length ? ' — تضيف أسبوعياً ≈ <span style="color:var(--teal);font-family:var(--mono)">' + money(weeklyTotal) + '</span>' : '') + '</span></div>';
+  html += '<div class="card teal-b" style="border-color:rgba(57,208,216,0.4)"><div class="card-title"><span>5️⃣ 📈 ' + T('توقع نمو المطالبات حسب معدل إنتاجك الفعلي') +
+    (forecastRows.length ? ' — ' + T('تضيف أسبوعياً ≈') + ' <span style="color:var(--teal);font-family:var(--mono)">' + money(weeklyTotal) + '</span>' : '') + '</span></div>';
   html += forecastRows.length ? forecastRows.map(f =>
     '<div class="sc-item" style="align-items:flex-start"><span class="sc-item-name" style="white-space:normal"><span class="item-no">' + esc(f.it.id) + '</span> ' + esc(f.it.desc) + '<br>' +
-    '<span style="font-size:11px">معدل ' + fmtQ(f.rate) + ' ' + esc(f.it.unit) + '/يوم · متبقي ' + fmtQ(f.remaining) + ' · يكتمل خلال ≈ ' + f.eta + ' يوم</span></span>' +
-    '<span class="sc-item-val" style="color:var(--teal)">+ ' + money(f.weekly) + ' /أسبوع</span></div>').join('')
-    : '<div class="empty-state" style="padding:16px"><p>سجّل يوميات العمل في تبويب الإنتاجية ليحسب النظام التوقع تلقائياً</p></div>';
+    '<span style="font-size:11px">' + T('معدل') + ' ' + fmtQ(f.rate) + ' ' + esc(f.it.unit) + '/' + T('يوم') + ' · ' + T('متبقي') + ' ' + fmtQ(f.remaining) + ' · ' + T('يكتمل خلال ≈') + ' ' + f.eta + ' ' + T('يوم') + '</span></span>' +
+    '<span class="sc-item-val" style="color:var(--teal)">+ ' + money(f.weekly) + ' /' + T('أسبوع') + '</span></div>').join('')
+    : '<div class="empty-state" style="padding:16px"><p>' + T('سجّل يوميات العمل في تبويب الإنتاجية ليحسب النظام التوقع تلقائياً') + '</p></div>';
   html += '</div>';
 
   $('plan-content').innerHTML = html;
 }
+Object.assign(I18N_EN, {
+  'ارفع مستخلص الآن — صافي جاهز:':'Submit a claim now — net ready:',
+  'ابنِ المستخلص':'Build the claim',
+  'منفذ':'executed',
+  'مرفوع':'claimed',
+  'لا يوجد شيء جاهز للرفع حالياً — سجّل تنفيذ أولاً':'Nothing ready to claim right now — log execution first',
+  'بنود أخرى...':'more item(s)...',
+  'اشتغل على هذي البنود الحين (بدون عوائق) — كل نسبة تنفيذ تتحول مطالبة':'Work on these items now (no blockers) — every percent of progress becomes a claim',
+  'متبقي':'Remaining',
+  'كل 1% =':'each 1% =',
+  'لا توجد بنود متاحة — كل الشغل إما مكتمل أو معلق بعوائق':'No items available — all work is either complete or blocked',
+  'طالب بحل هذي العوائق (مرتبة بالأثر المالي)':'Push to resolve these blockers (ranked by financial impact)',
+  'يوقف مباشرة':'Directly stops',
+  'يمنع بعده':'and blocks after it',
+  'يفتح':'unlocks',
+  'لا توجد عوائق خارجية 🎉':'No external blockers 🎉',
+  'خلّص هذي البنود عشان تفتح اللي بعدها':'Finish these items to unlock what comes after',
+  'خلّص':'Finish',
+  'يفتح:':'unlocks:',
+  'لا توجد بنود منتظرة على تسلسل':'No items waiting on a sequence',
+  'توقع نمو المطالبات حسب معدل إنتاجك الفعلي':'Forecasted claim growth from your actual production rate',
+  'تضيف أسبوعياً ≈':'adding weekly ≈',
+  'معدل':'Rate',
+  'يوم':'day',
+  'يكتمل خلال ≈':'completes in ≈',
+  'أسبوع':'week',
+  'سجّل يوميات العمل في تبويب الإنتاجية ليحسب النظام التوقع تلقائياً':'Log work in the Productivity tab so the system can calculate the forecast automatically'
+});
 
 // ============================================================
 //  BOQ ITEMS TABLE
@@ -1586,9 +1814,20 @@ const FILTERS = [
 ];
 function renderItemFilters(){
   $('items-filters').innerHTML = FILTERS.map(f =>
-    '<button class="filter-btn' + (currentFilter===f[0]?' active':'') + '" onclick="setFilter(\'' + f[0] + '\')">' + f[1] + '</button>'
+    '<button class="filter-btn' + (currentFilter===f[0]?' active':'') + '" onclick="setFilter(\'' + f[0] + '\')">' + T(f[1]) + '</button>'
   ).join(' ');
 }
+Object.assign(I18N_EN, {
+  'الكل':'All',
+  '💰 له مطالبة':'💰 Has claim',
+  '🟡 قيد التنفيذ':'🟡 In progress',
+  '▶ متاح للبدء':'▶ Available to start',
+  '⏳ ينتظر أعمال':'⏳ Awaiting work',
+  '⛔ معيق':'⛔ Blocked',
+  '✅ مكتمل':'✅ Complete',
+  '📤 مرفوع بالكامل':'📤 Fully claimed',
+  '⚪ خارج النطاق':'⚪ Out of scope'
+});
 function setFilter(f){ currentFilter = f; renderItemFilters(); renderItemsTable(); }
 
 function renderItemsTable(){
@@ -1609,7 +1848,7 @@ function renderItemsTable(){
     if (it.blocker && it.blocker.active) depHtml = '<span class="blocker-box" data-tip="' + esc(it.blocker.note||'') + '">⛔ ' + esc(it.blocker.reason) + '</span>';
     else if ((it.predecessors||[]).length) {
       const preds = it.predecessors.map(pid => { const p = getItem(pid); return p ? esc(pid) + ' (' + (itemPct(p)*100).toFixed(0) + '%)' : esc(pid); }).join('، ');
-      depHtml = '<span class="prereq-box" data-tip="لا يمكن البدء قبل اكتمال هذه البنود">⏭ ' + preds + '</span>';
+      depHtml = '<span class="prereq-box" data-tip="' + T('لا يمكن البدء قبل اكتمال هذه البنود') + '">⏭ ' + preds + '</span>';
     }
     return '<tr>' +
       '<td><span class="item-no">' + esc(it.id) + '</span><br><span style="font-size:10px;color:var(--text3)">' + esc(it.div) + '</span></td>' +
@@ -1624,12 +1863,12 @@ function renderItemsTable(){
       '<td class="amount ' + (net>1?'claimable':'muted') + '">' + (net>1?fmtN(net):'—') + '</td>' +
       '<td>' + statusPill(st) + '</td>' +
       '<td>' + depHtml + '</td>' +
-      '<td style="white-space:nowrap"><button class="mini-btn" onclick="openItemModal(\'' + esc(it.id) + '\')">✏️ تعديل</button>' +
-      (net>1 ? ' <button class="mini-btn green" onclick="mbAddItem(\'' + esc(it.id) + '\')">+ مستخلص</button>' : '') + '</td>' +
+      '<td style="white-space:nowrap"><button class="mini-btn" onclick="openItemModal(\'' + esc(it.id) + '\')">✏️ ' + T('تعديل') + '</button>' +
+      (net>1 ? ' <button class="mini-btn green" onclick="mbAddItem(\'' + esc(it.id) + '\')">+ ' + T('مستخلص') + '</button>' : '') + '</td>' +
       '</tr>';
-  }).join('') || '<tr><td colspan="12"><div class="empty-state"><p>لا توجد بنود مطابقة</p></div></td></tr>';
+  }).join('') || '<tr><td colspan="12"><div class="empty-state"><p>' + T('لا توجد بنود مطابقة') + '</p></div></td></tr>';
 
-  $('items-tfoot').innerHTML = '<tr class="summary-row"><td colspan="5" style="text-align:right;color:var(--text2)">الإجمالي (' + list.length + ' بند)</td>' +
+  $('items-tfoot').innerHTML = '<tr class="summary-row"><td colspan="5" style="text-align:start;color:var(--text2)">' + T('الإجمالي') + ' (' + list.length + ' ' + T('بند') + ')</td>' +
     '<td class="amount" style="color:var(--amber)">' + fmtN(sumAmt) + '</td><td colspan="2"></td>' +
     '<td class="amount claimable">' + fmtN(sumNet) + '</td><td colspan="3"></td></tr>';
 }
@@ -1640,10 +1879,17 @@ function setItemPct(id, val){
   const pct = clamp(val, 0, 100) / 100;
   it.executedQty = Math.round(pct * it.totalQty * 100) / 100;
   if (it.executedQty < it.claimedQty) {
-    alert('تنبيه: نسبة التنفيذ أصبحت أقل من الكمية المرفوعة بمستخلصات سابقة (' + (claimedPct(it)*100).toFixed(0) + '%).');
+    alert(T('تنبيه: نسبة التنفيذ أصبحت أقل من الكمية المرفوعة بمستخلصات سابقة (') + (claimedPct(it)*100).toFixed(0) + '%).');
   }
   save(); renderAll();
 }
+Object.assign(I18N_EN, {
+  'لا يمكن البدء قبل اكتمال هذه البنود':'Cannot start before these items are complete',
+  'تعديل':'Edit',
+  'لا توجد بنود مطابقة':'No matching items',
+  'الإجمالي':'Total',
+  'تنبيه: نسبة التنفيذ أصبحت أقل من الكمية المرفوعة بمستخلصات سابقة (':'Note: the execution percentage is now less than the quantity already claimed in previous claims ('
+});
 
 // ============================================================
 //  ITEM MODAL (add / edit)
@@ -1652,7 +1898,7 @@ let editingItemId = null;
 function openItemModal(id){
   editingItemId = id;
   const it = id ? getItem(id) : null;
-  $('item-modal-title').textContent = it ? 'تعديل بند ' + it.id : 'إضافة بند جديد';
+  $('item-modal-title').textContent = it ? T('تعديل بند') + ' ' + it.id : T('إضافة بند جديد');
   $('im-delete-btn').style.display = it ? '' : 'none';
   $('im-id').value = it ? it.id : ''; $('im-id').disabled = !!it;
   $('im-div').value = it ? it.div : 'DIV 9';
@@ -1681,10 +1927,10 @@ function openItemModal(id){
 
 function saveItem(){
   const id = $('im-id').value.trim();
-  if (!id || !$('im-desc').value.trim() || !$('im-qty').value || !$('im-rate').value) { alert('أكمل الحقول الإلزامية: رقم البند، الوصف، الكمية، السعر'); return; }
-  if (!editingItemId && getItem(id)) { alert('رقم البند موجود مسبقاً'); return; }
+  if (!id || !$('im-desc').value.trim() || !$('im-qty').value || !$('im-rate').value) { alert(T('أكمل الحقول الإلزامية: رقم البند، الوصف، الكمية، السعر')); return; }
+  if (!editingItemId && getItem(id)) { alert(T('رقم البند موجود مسبقاً')); return; }
   const preds = [...$('im-preds').querySelectorAll('input:checked')].map(c => c.value);
-  if (preds.includes(id)) { alert('البند لا يمكن أن يعتمد على نفسه'); return; }
+  if (preds.includes(id)) { alert(T('البند لا يمكن أن يعتمد على نفسه')); return; }
   const blkActive = $('im-blk').checked;
   const data = {
     id, div:$('im-div').value.trim()||'—', divAr:$('im-divAr').value.trim(), desc:$('im-desc').value.trim(),
@@ -1692,7 +1938,7 @@ function saveItem(){
     totalQty:Number($('im-qty').value)||0, unitRate:Number($('im-rate').value)||0,
     executedQty:clamp($('im-exec').value, 0, Number($('im-qty').value)||0),
     scope:$('im-scope').value, predecessors:preds,
-    blocker: blkActive ? {active:true, reason:$('im-blk-reason').value.trim()||'عائق غير محدد', type:$('im-blk-type').value, note:$('im-blk-note').value.trim(), since:$('im-blk-since').value || todayStr(), expected:$('im-blk-expected').value || ''} : null,
+    blocker: blkActive ? {active:true, reason:$('im-blk-reason').value.trim()||T('عائق غير محدد'), type:$('im-blk-type').value, note:$('im-blk-note').value.trim(), since:$('im-blk-since').value || todayStr(), expected:$('im-blk-expected').value || ''} : null,
     notes:$('im-notes').value.trim()
   };
   if (editingItemId) {
@@ -1709,13 +1955,24 @@ function saveItem(){
 function deleteItem(){
   if (!editingItemId) return;
   const it = getItem(editingItemId);
-  if (it.claimedQty > 0 && !confirm('هذا البند مرفوع في مستخلصات سابقة. متأكد من حذفه؟')) return;
-  if (!confirm('حذف البند ' + editingItemId + ' نهائياً؟')) return;
+  if (it.claimedQty > 0 && !confirm(T('هذا البند مرفوع في مستخلصات سابقة. متأكد من حذفه؟'))) return;
+  if (!confirm(T('حذف البند') + ' ' + editingItemId + T(' نهائياً؟'))) return;
   proj().boqItems = proj().boqItems.filter(i => i.id !== editingItemId);
   proj().boqItems.forEach(i => { i.predecessors = (i.predecessors||[]).filter(p => p !== editingItemId); });
   delete proj().villaProgress[editingItemId];
   closeModal('item-modal'); save(); renderAll();
 }
+Object.assign(I18N_EN, {
+  'تعديل بند':'Edit item',
+  'إضافة بند جديد':'Add new item',
+  'أكمل الحقول الإلزامية: رقم البند، الوصف، الكمية، السعر':'Fill in the required fields: item number, description, quantity, price',
+  'رقم البند موجود مسبقاً':'Item number already exists',
+  'البند لا يمكن أن يعتمد على نفسه':'An item cannot depend on itself',
+  'عائق غير محدد':'Unspecified blocker',
+  'هذا البند مرفوع في مستخلصات سابقة. متأكد من حذفه؟':'This item has been claimed in previous claims. Are you sure you want to delete it?',
+  'حذف البند':'Delete item',
+  ' نهائياً؟':' permanently?'
+});
 
 // ============================================================
 //  MUSTAKHLAS BUILDER
@@ -1743,9 +2000,10 @@ function renderBuilder(){
       '<td><input type="number" class="qty-input" min="0" max="' + availQty(it) + '" step="0.1" value="' + (Math.round(qty*100)/100) + '"' + (sel?'':' disabled') + ' onchange="mbQty(\'' + esc(it.id) + '\', this.value)"></td>' +
       '<td class="amount claimable">' + (sel ? fmtN(qty * it.unitRate) : '—') + '</td>' +
       '</tr>';
-  }).join('') || '<tr><td colspan="9"><div class="empty-state"><p>لا توجد كميات منفذة غير مرفوعة — سجّل تنفيذ أولاً</p></div></td></tr>';
+  }).join('') || '<tr><td colspan="9"><div class="empty-state"><p>' + T('لا توجد كميات منفذة غير مرفوعة — سجّل تنفيذ أولاً') + '</p></div></td></tr>';
   renderMbTotals();
 }
+Object.assign(I18N_EN, { 'لا توجد كميات منفذة غير مرفوعة — سجّل تنفيذ أولاً':'No executed quantities left unclaimed — log execution first' });
 
 function mbToggle(id, on){
   const it = getItem(id);
@@ -1777,19 +2035,19 @@ function mbCompute(){
 
 function renderMbTotals(){
   const c = mbCompute();
-  $('mb-count').textContent = c.lines.length + ' بند';
+  $('mb-count').textContent = c.lines.length + ' ' + T('بند');
   $('mb-totals').innerHTML =
-    '<div class="sc-item"><span class="sc-item-name">قيمة الأعمال الحالية</span><span class="sc-item-val" style="color:var(--green-bright)">' + money(c.gross) + '</span></div>' +
-    '<div class="sc-item"><span class="sc-item-name">+ ضريبة ' + c.vatRate + '%</span><span class="sc-item-val">' + money(c.vat) + '</span></div>' +
-    '<div class="sc-item"><span class="sc-item-name">− محتجز ضمان ' + c.retRate + '%</span><span class="sc-item-val" style="color:var(--red)">' + money(c.retention) + '</span></div>' +
-    '<div class="sc-item"><span class="sc-item-name">− استرداد دفعة مقدمة ' + c.advRate + '%</span><span class="sc-item-val" style="color:var(--red)">' + money(c.advance) + '</span></div>' +
-    '<div class="sc-item"><span class="sc-item-name" style="font-weight:700">صافي المستحق</span><span class="sc-item-val" style="color:var(--green-bright);font-size:15px;font-weight:700">' + money(c.net) + '</span></div>';
+    '<div class="sc-item"><span class="sc-item-name">' + T('قيمة الأعمال الحالية') + '</span><span class="sc-item-val" style="color:var(--green-bright)">' + money(c.gross) + '</span></div>' +
+    '<div class="sc-item"><span class="sc-item-name">+ ' + T('ضريبة') + ' ' + c.vatRate + '%</span><span class="sc-item-val">' + money(c.vat) + '</span></div>' +
+    '<div class="sc-item"><span class="sc-item-name">− ' + T('محتجز ضمان') + ' ' + c.retRate + '%</span><span class="sc-item-val" style="color:var(--red)">' + money(c.retention) + '</span></div>' +
+    '<div class="sc-item"><span class="sc-item-name">− ' + T('استرداد دفعة مقدمة') + ' ' + c.advRate + '%</span><span class="sc-item-val" style="color:var(--red)">' + money(c.advance) + '</span></div>' +
+    '<div class="sc-item"><span class="sc-item-name" style="font-weight:700">' + T('صافي المستحق') + '</span><span class="sc-item-val" style="color:var(--green-bright);font-size:15px;font-weight:700">' + money(c.net) + '</span></div>';
 }
 
 function saveMustakhlas(){
   const c = mbCompute();
-  if (!c.lines.length) { alert('حدّد بنود أولاً'); return; }
-  if (!confirm('حفظ المستخلص بقيمة ' + money(c.gross) + '؟ سيتم خصم الكميات من الرصيد القابل للرفع.')) return;
+  if (!c.lines.length) { alert(T('حدّد بنود أولاً')); return; }
+  if (!confirm(T('حفظ المستخلص بقيمة') + ' ' + money(c.gross) + T('؟ سيتم خصم الكميات من الرصيد القابل للرفع.'))) return;
   const no = 'MUS-' + String(proj().mustakhlasat.length + 1).padStart(3,'0');
   const rec = {id: nextSeq(), no, date: $('mb-date').value || todayStr(), status:'submitted',
     lines:c.lines, gross:c.gross, vatRate:c.vatRate, retRate:c.retRate, advRate:c.advRate,
@@ -1802,22 +2060,33 @@ function saveMustakhlas(){
 
 function previewMustakhlas(){
   const c = mbCompute();
-  if (!c.lines.length) { alert('حدّد بنود أولاً'); return; }
-  showDoc({no:'(معاينة - غير محفوظ)', date:$('mb-date').value||todayStr(), status:'preview', ...c, notes:$('mb-notes').value.trim()});
+  if (!c.lines.length) { alert(T('حدّد بنود أولاً')); return; }
+  showDoc({no:T('(معاينة - غير محفوظ)'), date:$('mb-date').value||todayStr(), status:'preview', ...c, notes:$('mb-notes').value.trim()});
 }
+Object.assign(I18N_EN, {
+  'قيمة الأعمال الحالية':'Value of current work',
+  'محتجز ضمان':'Retention',
+  'استرداد دفعة مقدمة':'Advance recovery',
+  'صافي المستحق':'Net due',
+  'حدّد بنود أولاً':'Select items first',
+  'حفظ المستخلص بقيمة':'Save the claim worth',
+  '؟ سيتم خصم الكميات من الرصيد القابل للرفع.':'? Quantities will be deducted from the claimable balance.',
+  '(معاينة - غير محفوظ)':'(Preview - not saved)'
+});
 
 // ============================================================
 //  MUSTAKHLAS HISTORY
 // ============================================================
-const MUS_STATUS = {submitted:{label:'مرفوع', color:'amber'}, approved:{label:'معتمد', color:'blue'}, paid:{label:'مدفوع', color:'green'}};
+const MUS_STATUS = {submitted:{label:'مرفوع', labelEn:'Submitted', color:'amber'}, approved:{label:'معتمد', labelEn:'Approved', color:'blue'}, paid:{label:'مدفوع', labelEn:'Paid', color:'green'}};
+const musLbl = m => LANG === 'en' ? m.labelEn : m.label;
 
 function renderHistory(){
   const list = [...proj().mustakhlasat].sort((a,b) => b.date.localeCompare(a.date));
   $('mus-history-tbody').innerHTML = list.map(m => {
     const stm = MUS_STATUS[m.status] || MUS_STATUS.submitted;
     const paid = paidAmount(m);
-    const nextBtn = m.status === 'submitted' ? '<button class="mini-btn" onclick="musStatus(' + m.id + ',\'approved\')">اعتماد ✓</button>'
-      : m.status === 'approved' ? '<button class="mini-btn green" onclick="musStatus(' + m.id + ',\'paid\')">تم الدفع 💵</button>' : '';
+    const nextBtn = m.status === 'submitted' ? '<button class="mini-btn" onclick="musStatus(' + m.id + ',\'approved\')">' + T('اعتماد ✓') + '</button>'
+      : m.status === 'approved' ? '<button class="mini-btn green" onclick="musStatus(' + m.id + ',\'paid\')">' + T('تم الدفع 💵') + '</button>' : '';
     return '<tr>' +
       '<td><span class="item-no">' + esc(m.no) + '</span></td>' +
       '<td style="font-family:var(--mono);font-size:12px">' + esc(m.date) + '</td>' +
@@ -1825,12 +2094,12 @@ function renderHistory(){
       '<td class="amount">' + fmtN(m.gross) + '</td>' +
       '<td class="amount claimable">' + fmtN(m.net) + '</td>' +
       '<td class="amount" style="color:' + (paid >= m.net - 1 ? 'var(--green-bright)' : paid > 0 ? 'var(--amber)' : 'var(--text3)') + '" data-tip="' + (m.payments||[]).map(p => esc(p.date) + ': ' + fmtN(p.amount)).join(' | ') + '">' + (paid > 0 ? fmtN(paid) : '—') + '</td>' +
-      '<td><span class="pill ' + stm.color + '">' + stm.label + '</span></td>' +
-      '<td style="white-space:nowrap"><button class="mini-btn" onclick="viewMus(' + m.id + ')">📄 عرض</button> ' +
-      '<button class="mini-btn green" onclick="openPay(' + m.id + ')">💵 دفعة</button> ' + nextBtn +
+      '<td><span class="pill ' + stm.color + '">' + musLbl(stm) + '</span></td>' +
+      '<td style="white-space:nowrap"><button class="mini-btn" onclick="viewMus(' + m.id + ')">📄 ' + T('عرض') + '</button> ' +
+      '<button class="mini-btn green" onclick="openPay(' + m.id + ')">💵 ' + T('دفعة') + '</button> ' + nextBtn +
       ' <button class="mini-btn red" onclick="deleteMus(' + m.id + ')">🗑</button></td>' +
       '</tr>';
-  }).join('') || '<tr><td colspan="8"><div class="empty-state"><p>لا توجد مستخلصات مرفوعة بعد</p></div></td></tr>';
+  }).join('') || '<tr><td colspan="8"><div class="empty-state"><p>' + T('لا توجد مستخلصات مرفوعة بعد') + '</p></div></td></tr>';
 
   // monthly claimed chart
   const byMonth = {};
@@ -1840,9 +2109,17 @@ function renderHistory(){
   $('mus-monthly').innerHTML = months.length ? months.map(k =>
     '<div class="bar-row"><div class="bar-label" style="width:80px;font-family:var(--mono);font-size:11px">' + esc(k) + '</div>' +
     '<div class="bar-track"><div class="bar-fill" style="width:' + (byMonth[k]/maxM*100) + '%;background:linear-gradient(90deg,var(--teal),var(--green))"></div></div>' +
-    '<div class="bar-amount">' + fmtN(byMonth[k]) + ' ر.س</div></div>').join('')
-    : '<div class="empty-state" style="padding:14px"><p>لا توجد مستخلصات بعد</p></div>';
+    '<div class="bar-amount">' + money(byMonth[k]) + '</div></div>').join('')
+    : '<div class="empty-state" style="padding:14px"><p>' + T('لا توجد مستخلصات بعد') + '</p></div>';
 }
+Object.assign(I18N_EN, {
+  'اعتماد ✓':'Approve ✓',
+  'تم الدفع 💵':'Mark paid 💵',
+  'عرض':'View',
+  'دفعة':'Payment',
+  'لا توجد مستخلصات مرفوعة بعد':'No claims submitted yet',
+  'لا توجد مستخلصات بعد':'No claims yet'
+});
 
 // ---- payments ----
 let payMusId = null;
@@ -1851,7 +2128,7 @@ function openPay(id){
   if (!m) return;
   payMusId = id;
   const paid = paidAmount(m);
-  $('pay-info').textContent = m.no + ' — صافي المستحق ' + money(m.net) + ' · محصل ' + money(paid) + ' · متبقي ' + money(Math.max(0, m.net - paid));
+  $('pay-info').textContent = m.no + ' — ' + T('صافي المستحق') + ' ' + money(m.net) + ' · ' + T('محصل') + ' ' + money(paid) + ' · ' + T('متبقي') + ' ' + money(Math.max(0, m.net - paid));
   $('pay-date').value = todayStr();
   $('pay-amount').value = Math.max(0, Math.round((m.net - paid) * 100) / 100);
   $('pay-note').value = '';
@@ -1861,7 +2138,7 @@ function savePayment(){
   const m = proj().mustakhlasat.find(x => x.id === payMusId);
   if (!m) return;
   const amount = Number($('pay-amount').value);
-  if (!amount || amount <= 0) { alert('اكتب مبلغ الدفعة'); return; }
+  if (!amount || amount <= 0) { alert(T('اكتب مبلغ الدفعة')); return; }
   m.payments.push({id: nextSeq(), date: $('pay-date').value || todayStr(), amount, note: $('pay-note').value.trim(), by: currentUser().name});
   if (paidAmount(m) >= m.net - 1) m.status = 'paid';
   closeModal('pay-modal'); save(); renderAll();
@@ -1872,11 +2149,17 @@ function viewMus(id){ const m = proj().mustakhlasat.find(x => x.id === id); if (
 function deleteMus(id){
   const m = proj().mustakhlasat.find(x => x.id === id);
   if (!m) return;
-  if (!confirm('حذف المستخلص ' + m.no + '؟ سيتم إرجاع كمياته إلى الرصيد القابل للرفع.')) return;
+  if (!confirm(T('حذف المستخلص') + ' ' + m.no + T('؟ سيتم إرجاع كمياته إلى الرصيد القابل للرفع.'))) return;
   m.lines.forEach(l => { const it = getItem(l.itemId); if (it) it.claimedQty = Math.max(0, it.claimedQty - l.currQty); });
   proj().mustakhlasat = proj().mustakhlasat.filter(x => x.id !== id);
   save(); renderAll();
 }
+Object.assign(I18N_EN, {
+  'محصل':'Collected',
+  'اكتب مبلغ الدفعة':'Enter the payment amount',
+  'حذف المستخلص':'Delete claim',
+  '؟ سيتم إرجاع كمياته إلى الرصيد القابل للرفع.':'? Its quantities will be returned to the claimable balance.'
+});
 
 // ============================================================
 //  MUSTAKHLAS DOCUMENT
@@ -1884,7 +2167,7 @@ function deleteMus(id){
 let currentDoc = null;
 function showDoc(m){
   currentDoc = m;
-  $('doc-title').textContent = '📄 وثيقة المستخلص ' + (m.no || '');
+  $('doc-title').textContent = '📄 ' + T('وثيقة المستخلص') + ' ' + (m.no || '');
   $('doc-csv-btn').style.display = '';
   const p = proj().info;
   const rows = m.lines.map((l, i) =>
@@ -1901,38 +2184,62 @@ function showDoc(m){
     '</tr>').join('');
 
   const sumRow = (label, val, color, strong) =>
-    '<tr' + (strong ? ' style="background:var(--green-dim)"' : '') + '><td colspan="8" style="padding:8px;border:1px solid var(--border);text-align:right;' + (strong?'font-weight:700;color:var(--green-bright)':'') + '">' + label + '</td>' +
+    '<tr' + (strong ? ' style="background:var(--green-dim)"' : '') + '><td colspan="8" style="padding:8px;border:1px solid var(--border);text-align:start;' + (strong?'font-weight:700;color:var(--green-bright)':'') + '">' + label + '</td>' +
     '<td style="padding:8px;border:1px solid var(--border);text-align:center;font-family:var(--mono);' + (strong?'font-weight:700;font-size:15px;color:var(--green-bright)':'color:' + color) + '">' + fmtN(val) + '</td></tr>';
 
   $('doc-content').innerHTML =
     '<div style="font-family:var(--font)">' +
     '<div style="text-align:center;padding:14px 0;border-bottom:2px solid var(--amber);margin-bottom:14px">' +
       '<div style="font-size:11px;color:var(--text2);letter-spacing:2px">' + esc(p.contractor) + '</div>' +
-      '<div style="font-size:18px;font-weight:700;color:var(--amber);margin:4px 0">مستخلص أعمال رقم ' + esc(m.no) + '</div>' +
+      '<div style="font-size:18px;font-weight:700;color:var(--amber);margin:4px 0">' + T('مستخلص أعمال رقم') + ' ' + esc(m.no) + '</div>' +
       '<div style="font-size:13px;color:var(--text2)">' + esc(p.name) + '</div></div>' +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;font-size:12px">' +
-      '<div><span style="color:var(--text2)">المقاول الرئيسي:</span> <strong>' + esc(p.client) + '</strong></div>' +
-      '<div><span style="color:var(--text2)">الاستشاري:</span> <strong>' + esc(p.consultant) + '</strong></div>' +
-      '<div><span style="color:var(--text2)">تاريخ المستخلص:</span> <strong>' + esc(m.date) + '</strong></div>' +
-      '<div><span style="color:var(--text2)">عدد البنود:</span> <strong>' + m.lines.length + '</strong></div>' +
-      (m.by ? '<div><span style="color:var(--text2)">معد المستخلص:</span> <strong>' + esc(m.by) + '</strong></div>' : '') +
-      (m.notes ? '<div style="grid-column:1/-1"><span style="color:var(--text2)">ملاحظات:</span> ' + esc(m.notes) + '</div>' : '') +
+      '<div><span style="color:var(--text2)">' + T('المقاول الرئيسي:') + '</span> <strong>' + esc(p.client) + '</strong></div>' +
+      '<div><span style="color:var(--text2)">' + T('الاستشاري:') + '</span> <strong>' + esc(p.consultant) + '</strong></div>' +
+      '<div><span style="color:var(--text2)">' + T('تاريخ المستخلص:') + '</span> <strong>' + esc(m.date) + '</strong></div>' +
+      '<div><span style="color:var(--text2)">' + T('عدد البنود:') + '</span> <strong>' + m.lines.length + '</strong></div>' +
+      (m.by ? '<div><span style="color:var(--text2)">' + T('معد المستخلص:') + '</span> <strong>' + esc(m.by) + '</strong></div>' : '') +
+      (m.notes ? '<div style="grid-column:1/-1"><span style="color:var(--text2)">' + T('ملاحظات:') + '</span> ' + esc(m.notes) + '</div>' : '') +
     '</div>' +
     '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px">' +
     '<thead><tr style="background:var(--bg3)">' +
-      ['#','البند','الوصف','الوحدة','السعر','الكمية السابقة','الكمية الحالية','التراكمي','قيمة الحالي (ر.س)'].map(h => '<th style="padding:7px;border:1px solid var(--border);color:var(--amber);text-align:center">' + h + '</th>').join('') +
+      ['#','البند','الوصف','الوحدة','السعر','الكمية السابقة','الكمية الحالية','التراكمي', LANG==='en' ? 'Current value (SAR)' : 'قيمة الحالي (ر.س)'].map(h => '<th style="padding:7px;border:1px solid var(--border);color:var(--amber);text-align:center">' + T(h) + '</th>').join('') +
     '</tr></thead><tbody>' + rows + '</tbody><tfoot>' +
-    sumRow('إجمالي قيمة الأعمال الحالية', m.gross, 'var(--amber)') +
-    sumRow('ضريبة القيمة المضافة ' + m.vatRate + '%', m.vat, 'var(--text)') +
-    sumRow('− محتجز ضمان ' + m.retRate + '%', -m.retention, 'var(--red)') +
-    sumRow('− استرداد دفعة مقدمة ' + m.advRate + '%', -m.advance, 'var(--red)') +
-    sumRow('صافي المستحق للدفع', m.net, '', true) +
+    sumRow(T('إجمالي قيمة الأعمال الحالية'), m.gross, 'var(--amber)') +
+    sumRow(T('ضريبة القيمة المضافة') + ' ' + m.vatRate + '%', m.vat, 'var(--text)') +
+    sumRow('− ' + T('محتجز ضمان') + ' ' + m.retRate + '%', -m.retention, 'var(--red)') +
+    sumRow('− ' + T('استرداد دفعة مقدمة') + ' ' + m.advRate + '%', -m.advance, 'var(--red)') +
+    sumRow(T('صافي المستحق للدفع'), m.net, '', true) +
     '</tfoot></table></div>' +
     '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-top:28px;font-size:12px">' +
-      ['معد المستخلص','مدير الموقع','مدير المشروع'].map(r => '<div style="text-align:center;border-top:1px solid var(--border);padding-top:8px"><div style="color:var(--text2)">' + r + '</div><div style="margin-top:26px;color:var(--text3)">التوقيع / التاريخ</div></div>').join('') +
+      ['معد المستخلص','مدير الموقع','مدير المشروع'].map(r => '<div style="text-align:center;border-top:1px solid var(--border);padding-top:8px"><div style="color:var(--text2)">' + T(r) + '</div><div style="margin-top:26px;color:var(--text3)">' + T('التوقيع / التاريخ') + '</div></div>').join('') +
     '</div></div>';
   $('doc-modal').classList.add('open');
 }
+Object.assign(I18N_EN, {
+  'وثيقة المستخلص':'Claim document',
+  'مستخلص أعمال رقم':'Works claim no.',
+  'المقاول الرئيسي:':'Main contractor:',
+  'الاستشاري:':'Consultant:',
+  'تاريخ المستخلص:':'Claim date:',
+  'عدد البنود:':'Number of items:',
+  'معد المستخلص:':'Prepared by:',
+  'ملاحظات:':'Notes:',
+  'البند':'Item',
+  'الوصف':'Description',
+  'الوحدة':'Unit',
+  'السعر':'Price',
+  'الكمية السابقة':'Previous qty',
+  'الكمية الحالية':'Current qty',
+  'التراكمي':'Cumulative',
+  'إجمالي قيمة الأعمال الحالية':'Total value of current work',
+  'ضريبة القيمة المضافة':'VAT',
+  'صافي المستحق للدفع':'Net amount due',
+  'معد المستخلص':'Prepared by',
+  'مدير الموقع':'Site manager',
+  'مدير المشروع':'Project manager',
+  'التوقيع / التاريخ':'Signature / Date'
+});
 
 // عرض وثيقة عامة (خطاب / تقرير) في نافذة الطباعة
 function showPrintable(title, html){
@@ -1946,14 +2253,16 @@ function showPrintable(title, html){
 function printDoc(){
   const content = $('doc-content').innerHTML;
   const w = window.open('', '_blank');
-  w.document.write('<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>مستخلص - عزوم المتحدة</title><style>' +
+  const dir = LANG === 'en' ? 'ltr' : 'rtl';
+  w.document.write('<!DOCTYPE html><html lang="' + LANG + '" dir="' + dir + '"><head><meta charset="UTF-8"><title>' + T('مستخلص - عزوم المتحدة') + '</title><style>' +
     "@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap');" +
-    "* { box-sizing:border-box; margin:0; padding:0; } body { font-family:'IBM Plex Sans Arabic',sans-serif; background:#fff; color:#000; padding:20px; direction:rtl; }" +
+    "* { box-sizing:border-box; margin:0; padding:0; } body { font-family:'IBM Plex Sans Arabic',sans-serif; background:#fff; color:#000; padding:20px; direction:" + dir + "; }" +
     ':root { --bg3:#f2f2f2; --border:#bbb; --amber:#8a5a00; --green:#1a6e2e; --green-bright:#14571f; --green-dim:#e8f5ea; --red:#a01818; --text:#000; --text2:#444; --text3:#777; --font:inherit; --mono:monospace; }' +
     '</style></head><body>' + content + '</body></html>');
   w.document.close();
   setTimeout(() => w.print(), 400);
 }
+Object.assign(I18N_EN, { 'مستخلص - عزوم المتحدة':'Claim - Azoom United' });
 
 // ============================================================
 //  DOCUMENTS: BLOCKER LETTER + PROGRESS REPORT
@@ -1972,7 +2281,7 @@ function docHeader(title, sub){
 function genBlockerLetter(){
   const p = proj().info;
   const blocked = proj().boqItems.filter(i => statusOf(i) === 'blocked');
-  if (!blocked.length) { alert('لا توجد عوائق نشطة حالياً 🎉'); return; }
+  if (!blocked.length) { alert(T('لا توجد عوائق نشطة حالياً 🎉')); return; }
   const groups = {};
   blocked.forEach(i => {
     const key = i.blocker.reason;
@@ -1989,35 +2298,60 @@ function genBlockerLetter(){
     const age = g.since ? ageDays(g.since) : null;
     return '<tr>' +
       cell(esc(reason)) +
-      cell(g.items.map(i => esc(i.id)).join('، ') + (downItems.length ? '<br><span style="font-size:10px;color:var(--text2)">+ تابعة: ' + downItems.map(i=>esc(i.id)).join('، ') + '</span>' : ''), 'font-family:var(--mono);font-size:11px') +
-      cell(g.since ? esc(g.since) + (age !== null ? '<br>(' + age + ' يوم)' : '') : '—', 'text-align:center;font-family:var(--mono);font-size:11px') +
+      cell(g.items.map(i => esc(i.id)).join('، ') + (downItems.length ? '<br><span style="font-size:10px;color:var(--text2)">+ ' + T('تابعة:') + ' ' + downItems.map(i=>esc(i.id)).join('، ') + '</span>' : ''), 'font-family:var(--mono);font-size:11px') +
+      cell(g.since ? esc(g.since) + (age !== null ? '<br>(' + age + ' ' + T('يوم') + ')' : '') : '—', 'text-align:center;font-family:var(--mono);font-size:11px') +
       cell(fmtN(val), 'text-align:center;font-family:var(--mono);font-weight:700;color:var(--red)') +
       '</tr>';
   }).join('');
 
   const html = '<div style="font-family:var(--font)">' +
-    docHeader('خطاب إشعار تعثر أعمال وطلب إزالة عوائق', '') +
+    docHeader(T('خطاب إشعار تعثر أعمال وطلب إزالة عوائق'), '') +
     '<div style="font-size:12px;margin-bottom:12px;display:grid;grid-template-columns:1fr 1fr;gap:6px">' +
-      '<div><span style="color:var(--text2)">إلى السادة / </span><strong>' + esc(p.client) + '</strong> المحترمين</div>' +
-      '<div><span style="color:var(--text2)">التاريخ: </span><strong>' + todayStr() + '</strong></div>' +
-      '<div><span style="color:var(--text2)">نسخة إلى / </span><strong>' + esc(p.consultant) + '</strong></div>' +
-      '<div><span style="color:var(--text2)">الموضوع: </span><strong>إشعار بتوقف أعمال بسبب عوائق خارجة عن إرادتنا</strong></div>' +
+      '<div><span style="color:var(--text2)">' + T('إلى السادة /') + ' </span><strong>' + esc(p.client) + '</strong> ' + T('المحترمين') + '</div>' +
+      '<div><span style="color:var(--text2)">' + T('التاريخ:') + ' </span><strong>' + todayStr() + '</strong></div>' +
+      '<div><span style="color:var(--text2)">' + T('نسخة إلى /') + ' </span><strong>' + esc(p.consultant) + '</strong></div>' +
+      '<div><span style="color:var(--text2)">' + T('الموضوع:') + ' </span><strong>' + T('إشعار بتوقف أعمال بسبب عوائق خارجة عن إرادتنا') + '</strong></div>' +
     '</div>' +
-    '<p style="font-size:13px;line-height:2;margin-bottom:12px">السلام عليكم ورحمة الله وبركاته، وبعد:<br>' +
-    'نفيدكم بأن الأعمال الموضحة في الجدول أدناه ضمن نطاق أعمالنا في المشروع <strong>متوقفة حالياً</strong> لأسباب خارجة عن إرادتنا، وذلك على النحو التالي:</p>' +
+    '<p style="font-size:13px;line-height:2;margin-bottom:12px">' + T('السلام عليكم ورحمة الله وبركاته، وبعد:') + '<br>' +
+    T('نفيدكم بأن الأعمال الموضحة في الجدول أدناه ضمن نطاق أعمالنا في المشروع') + ' <strong>' + T('متوقفة حالياً') + '</strong> ' + T('لأسباب خارجة عن إرادتنا، وذلك على النحو التالي:') + '</p>' +
     '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:12px">' +
-    '<thead><tr style="background:var(--bg3)">' + [ 'العائق', 'البنود المتأثرة', 'موقوف منذ', 'القيمة المحجوبة (ر.س)' ].map(hcell).join('') + '</tr></thead>' +
+    '<thead><tr style="background:var(--bg3)">' + [ 'العائق', 'البنود المتأثرة', 'موقوف منذ', LANG==='en'?'Locked value (SAR)':'القيمة المحجوبة (ر.س)' ].map(h => hcell(T(h))).join('') + '</tr></thead>' +
     '<tbody>' + rows + '</tbody>' +
-    '<tfoot><tr style="background:var(--bg3)">' + cell('<strong>إجمالي القيمة المحجوبة</strong>', 'text-align:right') + cell('', '') + cell('', '') + cell('<strong>' + fmtN(totalImpact) + '</strong>', 'text-align:center;font-family:var(--mono);color:var(--red)') + '</tr></tfoot>' +
+    '<tfoot><tr style="background:var(--bg3)">' + cell('<strong>' + T('إجمالي القيمة المحجوبة') + '</strong>', 'text-align:start') + cell('', '') + cell('', '') + cell('<strong>' + fmtN(totalImpact) + '</strong>', 'text-align:center;font-family:var(--mono);color:var(--red)') + '</tr></tfoot>' +
     '</table></div>' +
-    '<p style="font-size:13px;line-height:2;margin-bottom:12px">وعليه، نأمل من سعادتكم التكرم بسرعة إزالة العوائق المذكورة أعلاه لتمكيننا من استكمال الأعمال حسب البرنامج الزمني، ' +
-    'علماً بأن استمرار هذه العوائق يؤثر مباشرة على نسب الإنجاز والمستخلصات الشهرية، ونحتفظ بحقنا في المطالبة بتمديد المدة وأي تكاليف مترتبة على هذا التوقف.<br>وتفضلوا بقبول فائق الاحترام والتقدير،</p>' +
+    '<p style="font-size:13px;line-height:2;margin-bottom:12px">' + T('وعليه، نأمل من سعادتكم التكرم بسرعة إزالة العوائق المذكورة أعلاه لتمكيننا من استكمال الأعمال حسب البرنامج الزمني،') + ' ' +
+    T('علماً بأن استمرار هذه العوائق يؤثر مباشرة على نسب الإنجاز والمستخلصات الشهرية، ونحتفظ بحقنا في المطالبة بتمديد المدة وأي تكاليف مترتبة على هذا التوقف.') + '<br>' + T('وتفضلوا بقبول فائق الاحترام والتقدير،') + '</p>' +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:28px;font-size:12px">' +
-      '<div style="text-align:center;border-top:1px solid var(--border);padding-top:8px"><div style="color:var(--text2)">مدير المشروع — ' + esc(p.contractor) + '</div><div style="margin-top:26px;color:var(--text3)">التوقيع / التاريخ</div></div>' +
-      '<div style="text-align:center;border-top:1px solid var(--border);padding-top:8px"><div style="color:var(--text2)">استلمه عن المقاول الرئيسي</div><div style="margin-top:26px;color:var(--text3)">التوقيع / التاريخ</div></div>' +
+      '<div style="text-align:center;border-top:1px solid var(--border);padding-top:8px"><div style="color:var(--text2)">' + T('مدير المشروع') + ' — ' + esc(p.contractor) + '</div><div style="margin-top:26px;color:var(--text3)">' + T('التوقيع / التاريخ') + '</div></div>' +
+      '<div style="text-align:center;border-top:1px solid var(--border);padding-top:8px"><div style="color:var(--text2)">' + T('استلمه عن المقاول الرئيسي') + '</div><div style="margin-top:26px;color:var(--text3)">' + T('التوقيع / التاريخ') + '</div></div>' +
     '</div></div>';
-  showPrintable('✉️ خطاب إشعار تعثر', html);
+  showPrintable('✉️ ' + T('خطاب إشعار تعثر'), html);
 }
+Object.assign(I18N_EN, {
+  'لا توجد عوائق نشطة حالياً 🎉':'No active blockers right now 🎉',
+  'تابعة:':'dependent:',
+  'يوم':'days',
+  'خطاب إشعار تعثر أعمال وطلب إزالة عوائق':'Work-Stoppage Notice and Request to Remove Blockers',
+  'إلى السادة /':'To Messrs. /',
+  'المحترمين':'',
+  'التاريخ:':'Date:',
+  'نسخة إلى /':'Copy to /',
+  'الموضوع:':'Subject:',
+  'إشعار بتوقف أعمال بسبب عوائق خارجة عن إرادتنا':'Notice of work stoppage due to circumstances beyond our control',
+  'السلام عليكم ورحمة الله وبركاته، وبعد:':'Dear Sirs,',
+  'نفيدكم بأن الأعمال الموضحة في الجدول أدناه ضمن نطاق أعمالنا في المشروع':'We would like to inform you that the works listed in the table below, within our scope on the project, are',
+  'متوقفة حالياً':'currently stopped',
+  'لأسباب خارجة عن إرادتنا، وذلك على النحو التالي:':'for reasons beyond our control, as detailed below:',
+  'العائق':'Blocker',
+  'البنود المتأثرة':'Affected items',
+  'موقوف منذ':'Stopped since',
+  'إجمالي القيمة المحجوبة':'Total locked value',
+  'وعليه، نأمل من سعادتكم التكرم بسرعة إزالة العوائق المذكورة أعلاه لتمكيننا من استكمال الأعمال حسب البرنامج الزمني،':'We therefore kindly request your prompt action to remove the above blockers so we can complete the works as scheduled,',
+  'علماً بأن استمرار هذه العوائق يؤثر مباشرة على نسب الإنجاز والمستخلصات الشهرية، ونحتفظ بحقنا في المطالبة بتمديد المدة وأي تكاليف مترتبة على هذا التوقف.':'noting that continuation of these blockers directly affects progress rates and monthly claims, and we reserve our right to claim a time extension and any costs arising from this stoppage.',
+  'وتفضلوا بقبول فائق الاحترام والتقدير،':'Please accept our highest regards and appreciation,',
+  'استلمه عن المقاول الرئيسي':'Received on behalf of the main contractor',
+  'خطاب إشعار تعثر':'Blocker Notice Letter'
+});
 
 function buildProgressReport(){
   const t = totals();
@@ -2045,7 +2379,7 @@ function buildProgressReport(){
     if (i.blocker.since && (!bGroups[k].since || i.blocker.since < bGroups[k].since)) bGroups[k].since = i.blocker.since;
   });
   const blockerRows = Object.entries(bGroups).map(([r,g]) =>
-    '<tr>' + cell(esc(r)) + cell(g.n,'text-align:center') + cell(g.since ? ageDays(g.since) + ' يوم' : '—','text-align:center;font-family:var(--mono)') +
+    '<tr>' + cell(esc(r)) + cell(g.n,'text-align:center') + cell(g.since ? ageDays(g.since) + ' ' + T('يوم') : '—','text-align:center;font-family:var(--mono)') +
     cell(fmtN(g.val),'text-align:center;font-family:var(--mono);color:var(--red)') + '</tr>').join('');
 
   // top claimables
@@ -2063,34 +2397,66 @@ function buildProgressReport(){
   const crewRows = Object.entries(crewQty).sort((a,b)=>b[1]-a[1]).map(([c,q]) =>
     '<tr>' + cell(esc(c)) + cell(fmtQ(q),'text-align:center;font-family:var(--mono)') + '</tr>').join('');
 
-  const sec = title => '<div style="font-size:14px;font-weight:700;color:var(--amber);margin:16px 0 8px">' + title + '</div>';
+  const sec = title => '<div style="font-size:14px;font-weight:700;color:var(--amber);margin:16px 0 8px">' + T(title) + '</div>';
   const tbl = (heads, rows) => '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px">' +
-    '<thead><tr style="background:var(--bg3)">' + heads.map(hcell).join('') + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+    '<thead><tr style="background:var(--bg3)">' + heads.map(h => hcell(T(h))).join('') + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
 
   const html = '<div style="font-family:var(--font)">' +
-    docHeader('تقرير تقدم الأعمال والمستخلصات', todayStr()) +
+    docHeader(T('تقرير تقدم الأعمال والمستخلصات'), todayStr()) +
     sec('1. الملخص المالي') +
-    tbl(['البيان','القيمة (ر.س)'],
-      '<tr>' + cell('قيمة نطاق أعمالنا') + cell(fmtN(t.azoomScope),'text-align:center;font-family:var(--mono)') + '</tr>' +
-      '<tr>' + cell('قيمة الأعمال المنفذة (' + progressPct.toFixed(1) + '%)') + cell(fmtN(t.executed),'text-align:center;font-family:var(--mono);color:var(--blue)') + '</tr>' +
-      '<tr>' + cell('مرفوع بمستخلصات سابقة') + cell(fmtN(t.claimed),'text-align:center;font-family:var(--mono)') + '</tr>' +
-      '<tr>' + cell('<strong>الصافي الجاهز للرفع</strong>') + cell('<strong>' + fmtN(t.net) + '</strong>','text-align:center;font-family:var(--mono);color:var(--green)') + '</tr>' +
-      '<tr>' + cell('محجوب بعوائق وتسلسل أعمال') + cell(fmtN(t.locked),'text-align:center;font-family:var(--mono);color:var(--red)') + '</tr>' +
-      '<tr>' + cell('محصل نقداً من المستخلصات') + cell(fmtN(t.collected),'text-align:center;font-family:var(--mono)') + '</tr>') +
+    tbl(['البيان', LANG==='en'?'Value (SAR)':'القيمة (ر.س)'],
+      '<tr>' + cell(T('قيمة نطاق أعمالنا')) + cell(fmtN(t.azoomScope),'text-align:center;font-family:var(--mono)') + '</tr>' +
+      '<tr>' + cell(T('قيمة الأعمال المنفذة') + ' (' + progressPct.toFixed(1) + '%)') + cell(fmtN(t.executed),'text-align:center;font-family:var(--mono);color:var(--blue)') + '</tr>' +
+      '<tr>' + cell(T('مرفوع بمستخلصات سابقة')) + cell(fmtN(t.claimed),'text-align:center;font-family:var(--mono)') + '</tr>' +
+      '<tr>' + cell('<strong>' + T('الصافي الجاهز للرفع') + '</strong>') + cell('<strong>' + fmtN(t.net) + '</strong>','text-align:center;font-family:var(--mono);color:var(--green)') + '</tr>' +
+      '<tr>' + cell(T('محجوب بعوائق وتسلسل أعمال')) + cell(fmtN(t.locked),'text-align:center;font-family:var(--mono);color:var(--red)') + '</tr>' +
+      '<tr>' + cell(T('محصل نقداً من المستخلصات')) + cell(fmtN(t.collected),'text-align:center;font-family:var(--mono)') + '</tr>') +
     sec('2. التقدم حسب الأقسام') +
     tbl(['القسم','القيمة','المنفذ','النسبة','المرفوع'], divRows || '<tr>' + cell('—','text-align:center') + '</tr>') +
     sec('3. العوائق النشطة') +
-    (blockerRows ? tbl(['العائق','عدد البنود','موقوف منذ','القيمة المحجوبة'], blockerRows) : '<p style="font-size:12px;color:var(--green)">لا توجد عوائق نشطة ✅</p>') +
+    (blockerRows ? tbl(['العائق','عدد البنود','موقوف منذ','القيمة المحجوبة'], blockerRows) : '<p style="font-size:12px;color:var(--green)">' + T('لا توجد عوائق نشطة ✅') + '</p>') +
     sec('4. أعلى البنود الجاهزة للمطالبة') +
-    (claimRows ? tbl(['البند','منفذ','صافي المطالبة'], claimRows) : '<p style="font-size:12px;color:var(--text2)">لا يوجد رصيد جاهز للرفع حالياً</p>') +
+    (claimRows ? tbl(['البند','منفذ','صافي المطالبة'], claimRows) : '<p style="font-size:12px;color:var(--text2)">' + T('لا يوجد رصيد جاهز للرفع حالياً') + '</p>') +
     sec('5. إنتاجية آخر 7 أيام حسب الفرقة') +
-    (crewRows ? tbl(['الفرقة','الكمية المنفذة'], crewRows) : '<p style="font-size:12px;color:var(--text2)">لا توجد يوميات مسجلة خلال آخر 7 أيام</p>') +
+    (crewRows ? tbl(['الفرقة','الكمية المنفذة'], crewRows) : '<p style="font-size:12px;color:var(--text2)">' + T('لا توجد يوميات مسجلة خلال آخر 7 أيام') + '</p>') +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:28px;font-size:12px">' +
-      '<div style="text-align:center;border-top:1px solid var(--border);padding-top:8px"><div style="color:var(--text2)">معد التقرير</div><div style="margin-top:26px;color:var(--text3)">التوقيع / التاريخ</div></div>' +
-      '<div style="text-align:center;border-top:1px solid var(--border);padding-top:8px"><div style="color:var(--text2)">مدير المشروع</div><div style="margin-top:26px;color:var(--text3)">التوقيع / التاريخ</div></div>' +
+      '<div style="text-align:center;border-top:1px solid var(--border);padding-top:8px"><div style="color:var(--text2)">' + T('معد التقرير') + '</div><div style="margin-top:26px;color:var(--text3)">' + T('التوقيع / التاريخ') + '</div></div>' +
+      '<div style="text-align:center;border-top:1px solid var(--border);padding-top:8px"><div style="color:var(--text2)">' + T('مدير المشروع') + '</div><div style="margin-top:26px;color:var(--text3)">' + T('التوقيع / التاريخ') + '</div></div>' +
     '</div></div>';
-  showPrintable('📄 تقرير تقدم الأعمال', html);
+  showPrintable('📄 ' + T('تقرير تقدم الأعمال'), html);
 }
+Object.assign(I18N_EN, {
+  '1. الملخص المالي':'1. Financial Summary',
+  'البيان':'Item',
+  'قيمة نطاق أعمالنا':'Value of our scope',
+  'قيمة الأعمال المنفذة':'Value of executed work',
+  'مرفوع بمستخلصات سابقة':'Claimed in previous claims',
+  'الصافي الجاهز للرفع':'Net ready to claim',
+  'محجوب بعوائق وتسلسل أعمال':'Locked by blockers and work sequence',
+  'محصل نقداً من المستخلصات':'Collected in cash from claims',
+  '2. التقدم حسب الأقسام':'2. Progress by Division',
+  'القسم':'Division',
+  'القيمة':'Value',
+  'المنفذ':'Executed',
+  'النسبة':'Percentage',
+  'المرفوع':'Claimed',
+  '3. العوائق النشطة':'3. Active Blockers',
+  'العائق':'Blocker',
+  'عدد البنود':'Number of items',
+  'موقوف منذ':'Stopped since',
+  'القيمة المحجوبة':'Locked value',
+  'لا توجد عوائق نشطة ✅':'No active blockers ✅',
+  '4. أعلى البنود الجاهزة للمطالبة':'4. Top Items Ready to Claim',
+  'صافي المطالبة':'Net claim',
+  'لا يوجد رصيد جاهز للرفع حالياً':'No balance is ready to claim right now',
+  '5. إنتاجية آخر 7 أيام حسب الفرقة':'5. Last 7 Days’ Productivity by Crew',
+  'الفرقة':'Crew',
+  'الكمية المنفذة':'Quantity executed',
+  'لا توجد يوميات مسجلة خلال آخر 7 أيام':'No logs recorded in the last 7 days',
+  'معد التقرير':'Prepared by',
+  'تقرير تقدم الأعمال والمستخلصات':'Works Progress and Claims Report',
+  'تقرير تقدم الأعمال':'Progress Report'
+});
 
 // ============================================================
 //  CSV EXPORT (Excel-compatible, UTF-8 BOM)
@@ -2109,9 +2475,9 @@ function dlCSV(name, rows){
 }
 
 function exportItemsCSV(){
-  const rows = [['رقم البند','القسم','الوصف','الوحدة','الكمية الكلية','سعر الوحدة','الإجمالي','الكمية المنفذة','نسبة التنفيذ %','الكمية المرفوعة','صافي المطالبة','الحالة','العائق / يعتمد على']];
+  const rows = [['رقم البند','القسم','الوصف','الوحدة','الكمية الكلية','سعر الوحدة','الإجمالي','الكمية المنفذة','نسبة التنفيذ %','الكمية المرفوعة','صافي المطالبة','الحالة','العائق / يعتمد على'].map(T)];
   proj().boqItems.forEach(it => {
-    const st = STATUS_META[statusOf(it)].label;
+    const st = T(STATUS_META[statusOf(it)].label);
     const dep = it.blocker && it.blocker.active ? it.blocker.reason : (it.predecessors||[]).join(' + ');
     rows.push([it.id, it.div + ' ' + (it.divAr||''), it.desc, it.unit, it.totalQty, it.unitRate, amt(it),
       it.executedQty, (itemPct(it)*100).toFixed(1), it.claimedQty, Math.round(netClaimable(it)), st, dep]);
@@ -2120,7 +2486,7 @@ function exportItemsCSV(){
 }
 
 function exportLogsCSV(){
-  const rows = [['التاريخ','الفرقة','البند','الوصف','الوحدة/الموقع','الكمية','الوحدة','عدد العمال','الإنتاجية/عامل','سجلها','ملاحظات']];
+  const rows = [['التاريخ','الفرقة','البند','الوصف','الوحدة/الموقع','الكمية','الوحدة','عدد العمال','الإنتاجية/عامل','سجلها','ملاحظات'].map(T)];
   [...proj().workLogs].sort((a,b) => a.date.localeCompare(b.date)).forEach(l => {
     const it = getItem(l.itemId);
     rows.push([l.date, l.crew, l.itemId, it ? it.desc : '', l.villaNo || '', l.qty, it ? it.unit : '',
@@ -2132,17 +2498,51 @@ function exportLogsCSV(){
 function exportDocCSV(){
   if (!currentDoc) return;
   const m = currentDoc;
-  const rows = [['مستخلص', m.no, 'التاريخ', m.date],
-    ['رقم البند','الوصف','الوحدة','السعر','الكمية السابقة','الكمية الحالية','التراكمي','قيمة الحالي']];
+  const rows = [[T('مستخلص'), m.no, T('التاريخ'), m.date],
+    ['رقم البند','الوصف','الوحدة','السعر','الكمية السابقة','الكمية الحالية','التراكمي','قيمة الحالي'].map(T)];
   m.lines.forEach(l => rows.push([l.itemId, l.desc, l.unit, l.rate, l.prevQty, l.currQty, l.cumQty, Math.round(l.amount)]));
   rows.push([]);
-  rows.push(['قيمة الأعمال', Math.round(m.gross)]);
-  rows.push(['ضريبة ' + m.vatRate + '%', Math.round(m.vat)]);
-  rows.push(['محتجز ضمان ' + m.retRate + '%', -Math.round(m.retention)]);
-  rows.push(['استرداد دفعة مقدمة ' + m.advRate + '%', -Math.round(m.advance)]);
-  rows.push(['صافي المستحق', Math.round(m.net)]);
+  rows.push([T('قيمة الأعمال'), Math.round(m.gross)]);
+  rows.push([T('ضريبة') + ' ' + m.vatRate + '%', Math.round(m.vat)]);
+  rows.push([T('محتجز ضمان') + ' ' + m.retRate + '%', -Math.round(m.retention)]);
+  rows.push([T('استرداد دفعة مقدمة') + ' ' + m.advRate + '%', -Math.round(m.advance)]);
+  rows.push([T('صافي المستحق'), Math.round(m.net)]);
   dlCSV('Mustakhlas-' + (m.no||'preview').replace(/[^\w-]/g,'') + '.csv', rows);
 }
+Object.assign(I18N_EN, {
+  'رقم البند':'Item No.',
+  'القسم':'Division',
+  'الوصف':'Description',
+  'الوحدة':'Unit',
+  'الكمية الكلية':'Total quantity',
+  'سعر الوحدة':'Unit price',
+  'الإجمالي':'Total',
+  'الكمية المنفذة':'Executed quantity',
+  'نسبة التنفيذ %':'Execution %',
+  'الكمية المرفوعة':'Claimed quantity',
+  'صافي المطالبة':'Net claim',
+  'الحالة':'Status',
+  'العائق / يعتمد على':'Blocker / depends on',
+  'التاريخ':'Date',
+  'الفرقة':'Crew',
+  'البند':'Item',
+  'الوحدة/الموقع':'Unit/location',
+  'الكمية':'Quantity',
+  'عدد العمال':'Number of workers',
+  'الإنتاجية/عامل':'Productivity/worker',
+  'سجلها':'Logged by',
+  'ملاحظات':'Notes',
+  'مستخلص':'Claim',
+  'الكمية السابقة':'Previous quantity',
+  'الكمية الحالية':'Current quantity',
+  'التراكمي':'Cumulative',
+  'قيمة الحالي':'Current value',
+  'قيمة الأعمال':'Value of work',
+  'ضريبة':'VAT',
+  'محتجز ضمان':'Retention',
+  'استرداد دفعة مقدمة':'Advance recovery',
+  'صافي المستحق':'Net due'
+});
 
 // ============================================================
 //  BLOCKED TAB
@@ -2168,15 +2568,15 @@ function renderBlocked(){
     const expDates = g.items.map(i => i.blocker.expected).filter(Boolean).sort();
     return '<div class="card red-b" style="margin-bottom:0">' +
       '<div class="sc-header"><div class="sc-icon" style="background:var(--red-dim)">' + (typeIcons[g.type]||'⚠') + '</div>' +
-      '<div><div style="color:var(--red)">' + esc(reason) + '</div><div style="font-size:11px;color:var(--text2)">' + (typeLabels[g.type]||'') + ' · يوقف ' + g.items.length + ' بند مباشرة' + (downItems.length ? ' + ' + downItems.length + ' بند تابع' : '') +
-      (age !== null ? ' · <strong style="color:var(--red)">موقوف منذ ' + age + ' يوم</strong>' : '') +
-      (expDates.length ? ' · متوقع الحل ' + esc(expDates[0]) : '') + '</div></div></div>' +
+      '<div><div style="color:var(--red)">' + esc(reason) + '</div><div style="font-size:11px;color:var(--text2)">' + T(typeLabels[g.type]||'') + ' · ' + T('يوقف') + ' ' + g.items.length + ' ' + T('بند مباشرة') + (downItems.length ? ' + ' + downItems.length + ' ' + T('بند تابع') : '') +
+      (age !== null ? ' · <strong style="color:var(--red)">' + T('موقوف منذ') + ' ' + age + ' ' + T('يوم') + '</strong>' : '') +
+      (expDates.length ? ' · ' + T('متوقع الحل') + ' ' + esc(expDates[0]) : '') + '</div></div></div>' +
       g.items.map(i => '<div class="sc-item"><span class="sc-item-name"><span class="item-no">' + esc(i.id) + '</span> ' + esc(i.desc.substring(0,45)) + '</span><span class="sc-item-val" style="color:var(--red)">' + fmtN(remainingValue(i)) + '</span></div>').join('') +
-      (downItems.length ? '<div class="sc-item"><span class="sc-item-name" style="color:var(--orange)">⛓ أعمال تابعة محجوبة: ' + downItems.map(i=>esc(i.id)).join('، ') + '</span><span class="sc-item-val" style="color:var(--orange)">' + fmtN(downVal) + '</span></div>' : '') +
-      '<div class="sc-item" style="border-top:2px solid var(--border)"><span style="font-weight:700">إجمالي الأثر لو انحل العائق</span><span class="sc-item-val" style="color:var(--red);font-size:13px">🔓 ' + money(directVal + downVal) + '</span></div>' +
-      '<div style="margin-top:10px"><button class="btn btn-green" style="width:100%;font-size:12px;padding:6px" onclick="resolveBlockerGroup(' + JSON.stringify(reason).replace(/"/g,'&quot;') + ')">✅ تم حل العائق — افتح الأعمال</button></div>' +
+      (downItems.length ? '<div class="sc-item"><span class="sc-item-name" style="color:var(--orange)">⛓ ' + T('أعمال تابعة محجوبة:') + ' ' + downItems.map(i=>esc(i.id)).join('، ') + '</span><span class="sc-item-val" style="color:var(--orange)">' + fmtN(downVal) + '</span></div>' : '') +
+      '<div class="sc-item" style="border-top:2px solid var(--border)"><span style="font-weight:700">' + T('إجمالي الأثر لو انحل العائق') + '</span><span class="sc-item-val" style="color:var(--red);font-size:13px">🔓 ' + money(directVal + downVal) + '</span></div>' +
+      '<div style="margin-top:10px"><button class="btn btn-green" style="width:100%;font-size:12px;padding:6px" onclick="resolveBlockerGroup(' + JSON.stringify(reason).replace(/"/g,'&quot;') + ')">✅ ' + T('تم حل العائق — افتح الأعمال') + '</button></div>' +
       '</div>';
-  }).join('') || '<div class="empty-state"><div class="icon">🎉</div><p>لا توجد عوائق خارجية نشطة</p></div>';
+  }).join('') || '<div class="empty-state"><div class="icon">🎉</div><p>' + T('لا توجد عوائق خارجية نشطة') + '</p></div>';
 
   // waiting table
   const waiting = proj().boqItems.filter(i => statusOf(i) === 'waiting');
@@ -2193,27 +2593,51 @@ function renderBlocked(){
       '<td><span class="chain">' + esc(w.id) + ' ⟵ ' + chainStr + '</span></td>' +
       '<td class="amount blocked">' + fmtN(remainingValue(w)) + '</td>' +
       '</tr>';
-  }).join('') || '<tr><td colspan="5"><div class="empty-state"><p>لا توجد بنود منتظرة على أعمال سابقة</p></div></td></tr>';
-  $('waiting-tfoot').innerHTML = waiting.length ? '<tr class="summary-row"><td colspan="4" style="text-align:right;color:var(--text2)">إجمالي القيمة المنتظرة</td><td class="amount blocked">' + fmtN(sumW) + '</td></tr>' : '';
+  }).join('') || '<tr><td colspan="5"><div class="empty-state"><p>' + T('لا توجد بنود منتظرة على أعمال سابقة') + '</p></div></td></tr>';
+  $('waiting-tfoot').innerHTML = waiting.length ? '<tr class="summary-row"><td colspan="4" style="text-align:start;color:var(--text2)">' + T('إجمالي القيمة المنتظرة') + '</td><td class="amount blocked">' + fmtN(sumW) + '</td></tr>' : '';
 
   // resolved blockers history
   const logs = [...(proj().blockerLog||[])].sort((a,b) => (b.resolvedAt||'').localeCompare(a.resolvedAt||''));
   $('blocker-log-list').innerHTML = logs.length ? logs.map(l => {
     const dur = (l.since && l.resolvedAt) ? ageDays(l.since) - ageDays(l.resolvedAt) : null;
-    return '<div class="sc-item"><span class="sc-item-name" style="white-space:normal">✅ <strong style="color:var(--green-bright)">' + esc(l.reason) + '</strong> — حُل بتاريخ ' + esc(l.resolvedAt) +
-      (dur !== null && dur >= 0 ? ' (استمر ' + dur + ' يوم)' : '') + (l.by ? ' · بواسطة ' + esc(l.by) : '') + '<br><span style="font-size:11px">كان يوقف: ' + l.items.map(esc).join('، ') + '</span></span></div>';
-  }).join('') : '<div class="empty-state" style="padding:14px"><p>لم يتم حل أي عائق بعد — عند الضغط على "تم حل العائق" يسجل هنا</p></div>';
+    return '<div class="sc-item"><span class="sc-item-name" style="white-space:normal">✅ <strong style="color:var(--green-bright)">' + esc(l.reason) + '</strong> — ' + T('حُل بتاريخ') + ' ' + esc(l.resolvedAt) +
+      (dur !== null && dur >= 0 ? ' (' + T('استمر') + ' ' + dur + ' ' + T('يوم') + ')' : '') + (l.by ? ' · ' + T('بواسطة') + ' ' + esc(l.by) : '') + '<br><span style="font-size:11px">' + T('كان يوقف:') + ' ' + l.items.map(esc).join('، ') + '</span></span></div>';
+  }).join('') : '<div class="empty-state" style="padding:14px"><p>' + T('لم يتم حل أي عائق بعد — عند الضغط على "تم حل العائق" يسجل هنا') + '</p></div>';
 }
 
 function resolveBlockerGroup(reason){
   const items = proj().boqItems.filter(i => i.blocker && i.blocker.active && i.blocker.reason === reason);
   if (!items.length) return;
-  if (!confirm('تأكيد حل العائق "' + reason + '"؟ سيتم فتح ' + items.length + ' بند للعمل.')) return;
+  if (!confirm(T('تأكيد حل العائق "') + reason + T('"؟ سيتم فتح') + ' ' + items.length + ' ' + T('بند للعمل.'))) return;
   const sinceDates = items.map(i => i.blocker.since).filter(Boolean).sort();
   proj().blockerLog.push({id: nextSeq(), reason, type: items[0].blocker.type, items: items.map(i => i.id), since: sinceDates[0] || '', resolvedAt: todayStr(), by: currentUser().name});
   items.forEach(i => { i.blocker.active = false; });
   save(); renderAll();
 }
+Object.assign(I18N_EN, {
+  'عائق خارجي':'External blocker',
+  'مواد غير متوفرة':'Materials unavailable',
+  'توريد العميل':'Client supply',
+  'أخرى':'Other',
+  'يوقف':'Stops',
+  'بند مباشرة':'item(s) directly',
+  'بند تابع':'dependent item(s)',
+  'متوقع الحل':'Expected resolution',
+  'أعمال تابعة محجوبة:':'Locked dependent work:',
+  'إجمالي الأثر لو انحل العائق':'Total impact if the blocker is resolved',
+  'تم حل العائق — افتح الأعمال':'Blocker resolved — open the work',
+  'لا توجد عوائق خارجية نشطة':'No active external blockers',
+  'لا توجد بنود منتظرة على أعمال سابقة':'No items waiting on prior work',
+  'إجمالي القيمة المنتظرة':'Total waiting value',
+  'حُل بتاريخ':'Resolved on',
+  'استمر':'lasted',
+  'بواسطة':'by',
+  'كان يوقف:':'was blocking:',
+  'لم يتم حل أي عائق بعد — عند الضغط على "تم حل العائق" يسجل هنا':'No blocker resolved yet — it will be logged here when you click "Blocker resolved"',
+  'تأكيد حل العائق "':'Confirm resolving the blocker "',
+  '"؟ سيتم فتح':'"? This will open',
+  'بند للعمل.':'item(s) for work.'
+});
 
 // ============================================================
 //  VILLAS
@@ -2223,9 +2647,10 @@ let currentVillaNo = null;
 
 function renderVillaFilters(){
   const sheets = [...new Set(proj().villas.map(v => v.sheet))];
-  $('villa-filters').innerHTML = ['<button class="filter-btn' + (currentVillaFilter==='all'?' active':'') + '" onclick="setVillaFilter(\'all\')">كل ' + ULS() + '</button>']
+  $('villa-filters').innerHTML = ['<button class="filter-btn' + (currentVillaFilter==='all'?' active':'') + '" onclick="setVillaFilter(\'all\')">' + T('كل') + ' ' + ULS() + '</button>']
     .concat(sheets.map(s => '<button class="filter-btn' + (currentVillaFilter===s?' active':'') + '" onclick="setVillaFilter(\'' + esc(s) + '\')">' + esc(s) + '</button>')).join(' ');
 }
+Object.assign(I18N_EN, { 'كل':'All' });
 function setVillaFilter(f){ currentVillaFilter = f; closeVillaDetail(); renderVillaFilters(); renderVillaGrid(); }
 
 function villaPct(itemId, villaNo){
@@ -2251,10 +2676,10 @@ function renderVillaGrid(){
     return '<div class="villa-card" onclick="showVillaDetail(\'' + esc(v.no) + '\')">' +
       '<div class="villa-no">' + esc(UL()) + ' ' + esc(v.no) + '</div><div class="villa-sheet">' + esc(v.sheet) + '</div>' +
       '<div class="villa-prog-bar"><div class="villa-prog-fill" style="width:' + pct + '%;background:' + barColor + '"></div></div>' +
-      '<div style="font-size:11px;font-family:var(--mono);color:' + barColor + ';margin-bottom:6px">' + pct.toFixed(0) + '% (مرجّح بالقيمة)</div>' +
-      '<div class="villa-status-row"><span class="villa-stat vs-done">' + done + ' مكتمل</span><span class="villa-stat vs-prog">' + prog + ' جاري</span><span class="villa-stat vs-blocked">' + blockedC + ' معيق</span></div>' +
+      '<div style="font-size:11px;font-family:var(--mono);color:' + barColor + ';margin-bottom:6px">' + pct.toFixed(0) + '% ' + T('(مرجّح بالقيمة)') + '</div>' +
+      '<div class="villa-status-row"><span class="villa-stat vs-done">' + done + ' ' + T('مكتمل') + '</span><span class="villa-stat vs-prog">' + prog + ' ' + T('جاري') + '</span><span class="villa-stat vs-blocked">' + blockedC + ' ' + T('معيق') + '</span></div>' +
       '</div>';
-  }).join('') || '<div class="empty-state"><p>لا توجد فلل</p></div>';
+  }).join('') || '<div class="empty-state"><p>' + T('لا توجد فلل') + '</p></div>';
 }
 
 function showVillaDetail(no){
@@ -2263,7 +2688,7 @@ function showVillaDetail(no){
   if (!v) return;
   $('villa-grid').style.display = 'none';
   $('villa-detail').style.display = 'block';
-  $('villa-detail-title').textContent = 'تفاصيل ' + UL() + ' ' + no + ' - ' + v.sheet;
+  $('villa-detail-title').textContent = T('تفاصيل') + ' ' + UL() + ' ' + no + ' - ' + v.sheet;
   $('villa-detail-tbody').innerHTML = proj().boqItems.filter(i => i.scope !== 'others').map(it => {
     const p = villaPct(it.id, no);
     return '<tr>' +
@@ -2288,25 +2713,25 @@ function closeVillaDetail(){
 }
 
 function addVilla(){
-  const no = prompt('رقم / اسم ' + UL() + ':');
+  const no = prompt(T('رقم / اسم') + ' ' + UL() + ':');
   if (!no) return;
-  if (proj().villas.find(v => v.no === no.trim())) { alert(UL() + ' موجودة مسبقاً'); return; }
-  const sheet = prompt('المخطط / الشيت (مثال C36):', 'C37') || '—';
+  if (proj().villas.find(v => v.no === no.trim())) { alert(UL() + ' ' + T('موجودة مسبقاً')); return; }
+  const sheet = prompt(T('المخطط / الشيت (مثال C36):'), 'C37') || '—';
   proj().villas.push({no:no.trim(), sheet:sheet.trim()});
   save(); renderVillaFilters(); renderVillaGrid(); updateTabCounts();
 }
 
 function deleteVilla(){
   if (!currentVillaNo) return;
-  if (!confirm('حذف ' + UL() + ' ' + currentVillaNo + ' وكل نسبها؟')) return;
+  if (!confirm(T('حذف') + ' ' + UL() + ' ' + currentVillaNo + T(' وكل نسبها؟'))) return;
   proj().villas = proj().villas.filter(v => v.no !== currentVillaNo);
   Object.values(proj().villaProgress).forEach(vp => { delete vp[currentVillaNo]; });
   closeVillaDetail(); save(); renderAll();
 }
 
 function syncFromVillas(){
-  if (!proj().villas.length) { alert('لا توجد فلل'); return; }
-  if (!confirm('سيتم إعادة حساب نسبة إنجاز كل بند من متوسط نسب الوحدات المسجلة (' + proj().villas.length + ' ' + UL() + '). متابعة؟')) return;
+  if (!proj().villas.length) { alert(T('لا توجد فلل')); return; }
+  if (!confirm(T('سيتم إعادة حساب نسبة إنجاز كل بند من متوسط نسب الوحدات المسجلة') + ' (' + proj().villas.length + ' ' + UL() + '). ' + T('متابعة؟'))) return;
   proj().boqItems.forEach(it => {
     if (it.scope === 'others') return;
     const vp = proj().villaProgress[it.id];
@@ -2316,6 +2741,20 @@ function syncFromVillas(){
   });
   save(); renderAll();
 }
+Object.assign(I18N_EN, {
+  '(مرجّح بالقيمة)':'(value-weighted)',
+  'جاري':'In progress',
+  'معيق':'Blocked',
+  'لا توجد فلل':'No units',
+  'تفاصيل':'Details',
+  'رقم / اسم':'Number / name of',
+  'موجودة مسبقاً':'already exists',
+  'المخطط / الشيت (مثال C36):':'Plan / sheet (e.g. C36):',
+  'حذف':'Delete',
+  ' وكل نسبها؟':' and all its percentages?',
+  'سيتم إعادة حساب نسبة إنجاز كل بند من متوسط نسب الوحدات المسجلة':'Each item\'s completion percentage will be recalculated from the average of the registered unit percentages',
+  'متابعة؟':'Continue?'
+});
 
 // ============================================================
 //  PRODUCTIVITY
@@ -2325,7 +2764,7 @@ function renderProd(){
   $('crew-list').innerHTML = [...new Set(proj().workLogs.map(l => l.crew))].map(c => '<option value="' + esc(c) + '">').join('');
   $('wl-item').innerHTML = proj().boqItems.filter(i => i.scope !== 'others').map(i =>
     '<option value="' + esc(i.id) + '">' + esc(i.id) + ' - ' + esc(i.desc.substring(0,40)) + '</option>').join('');
-  $('wl-villa').innerHTML = '<option value="">— بدون ' + UL() + ' محددة —</option>' + proj().villas.map(v => '<option value="' + esc(v.no) + '">' + esc(v.no) + ' (' + esc(v.sheet) + ')</option>').join('');
+  $('wl-villa').innerHTML = '<option value="">— ' + T('بدون') + ' ' + UL() + ' ' + T('محددة') + ' —</option>' + proj().villas.map(v => '<option value="' + esc(v.no) + '">' + esc(v.no) + ' (' + esc(v.sheet) + ')</option>').join('');
 
   const logs = [...proj().workLogs].sort((a,b) => b.date.localeCompare(a.date) || b.id - a.id);
   $('wl-tbody').innerHTML = logs.slice(0, 60).map(l => {
@@ -2342,11 +2781,11 @@ function renderProd(){
       '<td>' + ((l.photos||[]).length
         ? (l.photos.slice(0,3).map(ph => '<img class="log-photo" src="' + esc(ph.url) + '" onclick="openLightbox(\'' + esc(ph.url) + '\', \'' + esc(l.date + ' · ' + l.crew) + '\')" alt="">').join(' ') + (l.photos.length > 3 ? ' <span style="font-size:10px;color:var(--text3)">+' + (l.photos.length-3) + '</span>' : ''))
         : '<span style="color:var(--text3);font-size:11px">—</span>') + '</td>' +
-      '<td>' + (l.applied ? '<span class="pill green" style="font-size:10px">نعم</span>' : '<span class="pill gray" style="font-size:10px">لا</span>') + '</td>' +
+      '<td>' + (l.applied ? '<span class="pill green" style="font-size:10px">' + T('نعم') + '</span>' : '<span class="pill gray" style="font-size:10px">' + T('لا') + '</span>') + '</td>' +
       '<td style="font-size:11px;color:var(--text3)">' + esc(l.by || '—') + '</td>' +
       '<td><button class="mini-btn red" onclick="deleteWorkLog(' + l.id + ')">🗑</button></td>' +
       '</tr>';
-  }).join('') || '<tr><td colspan="11"><div class="empty-state"><p>لا توجد يوميات مسجلة</p></div></td></tr>';
+  }).join('') || '<tr><td colspan="11"><div class="empty-state"><p>' + T('لا توجد يوميات مسجلة') + '</p></div></td></tr>';
 
   // معرض أحدث صور الموقع
   const allPhotos = [];
@@ -2359,7 +2798,7 @@ function renderProd(){
   $('site-gallery').innerHTML = allPhotos.length
     ? allPhotos.slice(0, 12).map(p =>
         '<div class="gallery-item" onclick="openLightbox(\'' + esc(p.url) + '\', \'' + esc(p.cap) + '\')"><img src="' + esc(p.url) + '" loading="lazy" alt=""><div class="gallery-cap">' + esc(p.cap) + '</div></div>').join('')
-    : '<div class="empty-state" style="padding:14px;grid-column:1/-1"><p>أرفق صوراً مع اليوميات لتظهر هنا</p></div>';
+    : '<div class="empty-state" style="padding:14px;grid-column:1/-1"><p>' + T('أرفق صوراً مع اليوميات لتظهر هنا') + '</p></div>';
 
   // daily chart last 14 days
   const byDay = {};
@@ -2385,9 +2824,9 @@ function renderProd(){
   $('crew-summary').innerHTML = Object.entries(crews).sort((a,b) => b[1].qty - a[1].qty).map(([name,c]) => {
     const avgDay = c.days.size ? c.qty / c.days.size : 0;
     return '<div class="sc-item" style="align-items:flex-start"><span class="sc-item-name" style="white-space:normal"><strong style="color:var(--text)">' + esc(name) + '</strong><br>' +
-      '<span style="font-size:11px">' + c.days.size + ' يوم عمل · آخر نشاط ' + esc(c.last) + '</span></span>' +
-      '<span class="sc-item-val" style="color:var(--blue)">' + fmtQ(avgDay) + ' /يوم<br><span style="color:var(--text3)">إجمالي ' + fmtQ(c.qty) + '</span></span></div>';
-  }).join('') || '<div class="empty-state" style="padding:14px"><p>سجّل يوميات لعرض إحصائيات الفرق</p></div>';
+      '<span style="font-size:11px">' + c.days.size + ' ' + T('يوم عمل') + ' · ' + T('آخر نشاط') + ' ' + esc(c.last) + '</span></span>' +
+      '<span class="sc-item-val" style="color:var(--blue)">' + fmtQ(avgDay) + ' /' + T('يوم') + '<br><span style="color:var(--text3)">' + T('إجمالي') + ' ' + fmtQ(c.qty) + '</span></span></div>';
+  }).join('') || '<div class="empty-state" style="padding:14px"><p>' + T('سجّل يوميات لعرض إحصائيات الفرق') + '</p></div>';
 
   // item rates + forecast
   const perItem = {};
@@ -2402,10 +2841,33 @@ function renderProd(){
     const remaining = Math.max(0, it.totalQty - it.executedQty);
     const eta = rate > 0 && remaining > 0 ? Math.ceil(remaining / rate) : null;
     return '<div class="sc-item" style="align-items:flex-start"><span class="sc-item-name" style="white-space:normal"><span class="item-no">' + esc(id) + '</span> ' + esc(it.desc.substring(0,35)) + '<br>' +
-      '<span style="font-size:11px">معدل ' + fmtQ(rate) + ' ' + esc(it.unit) + '/يوم · متبقي ' + fmtQ(remaining) + '</span></span>' +
-      '<span class="sc-item-val" style="color:' + (eta && eta > 30 ? 'var(--red)' : 'var(--green-bright)') + '">' + (remaining <= 0 ? '✅ مكتمل' : eta ? '≈ ' + eta + ' يوم للإنجاز' : '—') + '</span></div>';
-  }).join('') || '<div class="empty-state" style="padding:14px"><p>لا توجد بيانات بعد</p></div>';
+      '<span style="font-size:11px">' + T('معدل') + ' ' + fmtQ(rate) + ' ' + esc(it.unit) + '/' + T('يوم') + ' · ' + T('متبقي') + ' ' + fmtQ(remaining) + '</span></span>' +
+      '<span class="sc-item-val" style="color:' + (eta && eta > 30 ? 'var(--red)' : 'var(--green-bright)') + '">' + (remaining <= 0 ? '✅ ' + T('مكتمل') : eta ? '≈ ' + eta + ' ' + T('يوم للإنجاز') : '—') + '</span></div>';
+  }).join('') || '<div class="empty-state" style="padding:14px"><p>' + T('لا توجد بيانات بعد') + '</p></div>';
 }
+Object.assign(I18N_EN, {
+  'ملف صورة غير صالح':'Invalid image file',
+  'اختر بند':'Choose an item',
+  'اكتب اسم الفرقة / المسؤول':'Enter the crew / responsible name',
+  'اكتب الكمية المنفذة':'Enter the executed quantity',
+  '📴 لا يمكن التسجيل بدون اتصال':'📴 Cannot log while offline',
+  'تعذر رفع الصور:':'Failed to upload photos:',
+  'حذف اليومية؟':'Delete this log?',
+  'سيتم خصم الكمية من نسبة إنجاز البند.':'The quantity will be deducted from the item\'s completion percentage.',
+  'وستحذف صورها.':'and its photos will be deleted.',
+  'بدون':'Without a',
+  'محددة':'specified',
+  'نعم':'Yes',
+  'لا':'No',
+  'لا توجد يوميات مسجلة':'No logs recorded',
+  'أرفق صوراً مع اليوميات لتظهر هنا':'Attach photos with logs for them to appear here',
+  'يوم عمل':'work day(s)',
+  'آخر نشاط':'Last activity',
+  'إجمالي':'Total',
+  'سجّل يوميات لعرض إحصائيات الفرق':'Log work to show crew statistics',
+  'يوم للإنجاز':'day(s) to complete',
+  'لا توجد بيانات بعد':'No data yet'
+});
 
 // ---- صور الموقع: ضغط بالمتصفح ثم رفع للخادم ----
 let wlPendingPhotos = []; // [{dataUrl, name}]
@@ -2424,7 +2886,7 @@ function compressImage(file){
       URL.revokeObjectURL(url);
       resolve(cv.toDataURL('image/jpeg', 0.72));
     };
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('ملف صورة غير صالح')); };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error(T('ملف صورة غير صالح'))); };
     img.src = url;
   });
 }
@@ -2469,14 +2931,14 @@ async function addWorkLog(){
   const it = getItem(itemId);
   const qty = Number($('wl-qty').value);
   const crew = $('wl-crew').value.trim();
-  if (!it) { alert('اختر بند'); return; }
-  if (!crew) { alert('اكتب اسم الفرقة / المسؤول'); return; }
-  if (!qty || qty <= 0) { alert('اكتب الكمية المنفذة'); return; }
-  if (offlineMode) { alert('📴 لا يمكن التسجيل بدون اتصال'); return; }
+  if (!it) { alert(T('اختر بند')); return; }
+  if (!crew) { alert(T('اكتب اسم الفرقة / المسؤول')); return; }
+  if (!qty || qty <= 0) { alert(T('اكتب الكمية المنفذة')); return; }
+  if (offlineMode) { alert(T('📴 لا يمكن التسجيل بدون اتصال')); return; }
   let photos = [];
   if (wlPendingPhotos.length) {
     try { photos = await uploadPendingPhotos(); }
-    catch(e) { alert('تعذر رفع الصور: ' + e.message); return; }
+    catch(e) { alert(T('تعذر رفع الصور:') + ' ' + e.message); return; }
   }
   const villaNo = $('wl-villa').value;
   const apply = $('wl-apply').checked;
@@ -2503,7 +2965,7 @@ async function addWorkLog(){
 function deleteWorkLog(id){
   const l = proj().workLogs.find(x => x.id === id);
   if (!l) return;
-  if (!confirm('حذف اليومية؟' + (l.applied ? ' سيتم خصم الكمية من نسبة إنجاز البند.' : '') + ((l.photos||[]).length ? ' وستحذف صورها.' : ''))) return;
+  if (!confirm(T('حذف اليومية؟') + (l.applied ? ' ' + T('سيتم خصم الكمية من نسبة إنجاز البند.') : '') + ((l.photos||[]).length ? ' ' + T('وستحذف صورها.') : ''))) return;
   (l.photos||[]).forEach(ph => {
     const file = String(ph.url).split('/').pop();
     API.req('DELETE', '/api/projects/' + proj().id + '/photos/' + file).catch(() => {});
@@ -2546,8 +3008,8 @@ function saveSettings(){
   closeModal('settings-modal'); save(); renderAll();
 }
 async function resetDemo(){
-  if (!isOwner()) { alert('صلاحية المالك فقط'); return; }
-  if (!confirm('إضافة مشروع تجريبي كامل (مشروع SANG بفلله وبنوده ويومياته) للتعرف على النظام؟')) return;
+  if (!isOwner()) { alert(T('صلاحية المالك فقط')); return; }
+  if (!confirm(T('إضافة مشروع تجريبي كامل (مشروع SANG بفلله وبنوده ويومياته) للتعرف على النظام؟'))) return;
   try {
     const data = demoProjectData();
     const r = await API.req('POST', '/api/projects', {data});
@@ -2568,7 +3030,7 @@ function exportJSON(){
         a.click();
         URL.revokeObjectURL(a.href);
       })
-      .catch(e => alert('تعذر التصدير: ' + e.message));
+      .catch(e => alert(T('تعذر التصدير:') + ' ' + e.message));
   } else {
     const blob = new Blob([JSON.stringify({projects: state.projects}, null, 2)], {type:'application/json'});
     const a = document.createElement('a');
@@ -2581,22 +3043,34 @@ function exportJSON(){
 function importJSON(input){
   const file = input.files[0];
   if (!file) return;
-  if (!isOwner()) { alert('الاستيراد صلاحية المالك فقط'); input.value=''; return; }
+  if (!isOwner()) { alert(T('الاستيراد صلاحية المالك فقط')); input.value=''; return; }
   const reader = new FileReader();
   reader.onload = async e => {
     try {
       const data = JSON.parse(e.target.result);
       const projects = projectsFromLegacyBackup(data);
-      if (!projects) throw new Error('صيغة الملف غير صحيحة');
-      if (!confirm('استبدال جميع المشاريع على الخادم بمحتوى الملف (' + projects.length + ' مشروع)؟ المستخدمون لن يتأثروا.')) { input.value=''; return; }
+      if (!projects) throw new Error(T('صيغة الملف غير صحيحة'));
+      if (!confirm(T('استبدال جميع المشاريع على الخادم بمحتوى الملف') + ' (' + projects.length + ' ' + T('مشروع') + ')? ' + T('المستخدمون لن يتأثروا.'))) { input.value=''; return; }
       await API.req('POST', '/api/restore', {projects});
       await refreshState();
-      alert('تم الاستيراد بنجاح ✅');
-    } catch(err) { alert('فشل الاستيراد: ' + err.message); }
+      alert(T('تم الاستيراد بنجاح ✅'));
+    } catch(err) { alert(T('فشل الاستيراد:') + ' ' + err.message); }
     input.value = '';
   };
   reader.readAsText(file);
 }
+Object.assign(I18N_EN, {
+  'صلاحية المالك فقط':'Owner permission only',
+  'إضافة مشروع تجريبي كامل (مشروع SANG بفلله وبنوده ويومياته) للتعرف على النظام؟':'Add a full demo project (the SANG project with its villas, items and logs) to learn the system?',
+  'تعذر التصدير:':'Export failed:',
+  'الاستيراد صلاحية المالك فقط':'Importing is owner-only',
+  'صيغة الملف غير صحيحة':'Invalid file format',
+  'استبدال جميع المشاريع على الخادم بمحتوى الملف':'Replace all projects on the server with the file\'s content',
+  'مشروع':'project(s)',
+  'المستخدمون لن يتأثروا.':'Users will not be affected.',
+  'تم الاستيراد بنجاح ✅':'Imported successfully ✅',
+  'فشل الاستيراد:':'Import failed:'
+});
 function openHelp(){ $('help-modal').classList.add('open'); }
 function closeModal(id){ $(id).classList.remove('open'); }
 document.querySelectorAll('.modal-overlay').forEach(ov => {
@@ -2622,10 +3096,16 @@ async function boot(){
     } else if (loadOfflineCache()) {
       hideLogin();
     } else {
-      $('app-loading').textContent = '⚠️ تعذر الاتصال بالخادم: ' + e.message + ' — أعد تحميل الصفحة';
+      $('app-loading').textContent = '⚠️ ' + T('تعذر الاتصال بالخادم:') + ' ' + e.message + ' — ' + T('أعد تحميل الصفحة');
     }
   }
 }
+Object.assign(I18N_EN, {
+  'تعذر الاتصال بالخادم:':'Could not connect to the server:',
+  'أعد تحميل الصفحة':'reload the page'
+});
+applyDir();
+translateStaticDOM();
 document.addEventListener('DOMContentLoaded', boot);
 
 // تسجيل التطبيق كـ PWA (يتثبت على الجوال من قائمة المتصفح: إضافة إلى الشاشة الرئيسية)

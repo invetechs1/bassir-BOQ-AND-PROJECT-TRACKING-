@@ -121,17 +121,17 @@ function auth(req, res, next) {
     next();
   } catch (e) { return res.status(401).json({ error: 'unauthorized' }); }
 }
-const ownerOnly = (req, res, next) => req.user.role === 'owner' ? next() : res.status(403).json({ error: 'صلاحية المالك فقط' });
+const ownerOnly = (req, res, next) => req.user.role === 'owner' ? next() : res.status(403).json({ error: 'owner_only' });
 const canAccessProject = (user, p) => user.role === 'owner' || p.managerUserId === user.id;
 
 // ---------- المصادقة ----------
 app.post('/api/auth/login', (req, res) => {
   const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '?';
-  if (loginLimited(String(ip))) return res.status(429).json({ error: 'محاولات كثيرة — انتظر 10 دقائق' });
+  if (loginLimited(String(ip))) return res.status(429).json({ error: 'rate_limited' });
   const { username, password } = req.body || {};
   const user = loadUsers().find(u => u.username === String(username || '').trim());
   if (!user || !bcrypt.compareSync(String(password || ''), user.hash)) {
-    return res.status(401).json({ error: 'اسم المستخدم أو كلمة المرور غير صحيحة' });
+    return res.status(401).json({ error: 'invalid_credentials' });
   }
   const token = jwt.sign({ uid: user.id }, JWT_SECRET, { expiresIn: '30d' });
   res.json({ token, user: sanitizeUser(user) });
@@ -141,10 +141,10 @@ app.get('/api/me', auth, (req, res) => res.json(sanitizeUser(req.user)));
 
 app.put('/api/me/password', auth, (req, res) => {
   const { oldPassword, newPassword } = req.body || {};
-  if (!newPassword || String(newPassword).length < 4) return res.status(400).json({ error: 'كلمة المرور قصيرة (4 أحرف على الأقل)' });
+  if (!newPassword || String(newPassword).length < 4) return res.status(400).json({ error: 'password_too_short' });
   const users = loadUsers();
   const u = users.find(x => x.id === req.user.id);
-  if (!bcrypt.compareSync(String(oldPassword || ''), u.hash)) return res.status(400).json({ error: 'كلمة المرور الحالية غير صحيحة' });
+  if (!bcrypt.compareSync(String(oldPassword || ''), u.hash)) return res.status(400).json({ error: 'wrong_current_password' });
   u.hash = bcrypt.hashSync(String(newPassword), 10);
   saveUsers(users);
   res.json({ ok: true });
@@ -164,7 +164,7 @@ app.get('/api/state/versions', auth, (req, res) => {
 // ---------- المشاريع ----------
 app.post('/api/projects', auth, ownerOnly, (req, res) => {
   const data = req.body && req.body.data;
-  if (!data || !data.info || !data.info.name) return res.status(400).json({ error: 'بيانات المشروع ناقصة' });
+  if (!data || !data.info || !data.info.name) return res.status(400).json({ error: 'project_data_incomplete' });
   const p = { ...data, id: nextId(), version: 1 };
   saveProject(p);
   res.json({ id: p.id, version: p.version });
@@ -173,10 +173,10 @@ app.post('/api/projects', auth, ownerOnly, (req, res) => {
 app.put('/api/projects/:id', auth, (req, res) => {
   const id = Number(req.params.id);
   const stored = loadProject(id);
-  if (!stored) return res.status(404).json({ error: 'المشروع غير موجود' });
-  if (!canAccessProject(req.user, stored)) return res.status(403).json({ error: 'لا تملك صلاحية على هذا المشروع' });
+  if (!stored) return res.status(404).json({ error: 'project_not_found' });
+  if (!canAccessProject(req.user, stored)) return res.status(403).json({ error: 'no_project_access' });
   const { baseVersion, data } = req.body || {};
-  if (!data) return res.status(400).json({ error: 'بيانات ناقصة' });
+  if (!data) return res.status(400).json({ error: 'data_incomplete' });
   if (Number(baseVersion) !== stored.version) return res.status(409).json({ error: 'conflict', version: stored.version });
   // مدير المشروع لا يستطيع إعادة تعيين نفسه أو غيره
   const managerUserId = req.user.role === 'owner' ? (data.managerUserId ?? null) : stored.managerUserId;
@@ -187,7 +187,7 @@ app.put('/api/projects/:id', auth, (req, res) => {
 
 app.delete('/api/projects/:id', auth, ownerOnly, (req, res) => {
   const id = Number(req.params.id);
-  if (!loadProject(id)) return res.status(404).json({ error: 'المشروع غير موجود' });
+  if (!loadProject(id)) return res.status(404).json({ error: 'project_not_found' });
   fs.unlinkSync(projectFile(id));
   res.json({ ok: true });
 });
@@ -198,10 +198,10 @@ app.get('/api/users', auth, (req, res) => res.json(loadUsers().map(sanitizeUser)
 app.post('/api/users', auth, ownerOnly, (req, res) => {
   const { username, name, role, password } = req.body || {};
   const un = String(username || '').trim();
-  if (!un || !name || !password) return res.status(400).json({ error: 'أكمل: اسم المستخدم، الاسم، كلمة المرور' });
-  if (String(password).length < 4) return res.status(400).json({ error: 'كلمة المرور قصيرة (4 أحرف على الأقل)' });
+  if (!un || !name || !password) return res.status(400).json({ error: 'fill_username_name_password' });
+  if (String(password).length < 4) return res.status(400).json({ error: 'password_too_short' });
   const users = loadUsers();
-  if (users.some(u => u.username === un)) return res.status(400).json({ error: 'اسم المستخدم موجود مسبقاً' });
+  if (users.some(u => u.username === un)) return res.status(400).json({ error: 'username_taken' });
   const u = { id: nextId(), username: un, name: String(name).trim(), role: role === 'owner' ? 'owner' : 'pm', hash: bcrypt.hashSync(String(password), 10) };
   users.push(u);
   saveUsers(users);
@@ -212,16 +212,16 @@ app.put('/api/users/:id', auth, ownerOnly, (req, res) => {
   const id = Number(req.params.id);
   const users = loadUsers();
   const u = users.find(x => x.id === id);
-  if (!u) return res.status(404).json({ error: 'المستخدم غير موجود' });
+  if (!u) return res.status(404).json({ error: 'user_not_found' });
   const { name, role, password } = req.body || {};
   if (name) u.name = String(name).trim();
   if (role && (role === 'owner' || role === 'pm')) {
     if (u.role === 'owner' && role !== 'owner' && users.filter(x => x.role === 'owner').length <= 1)
-      return res.status(400).json({ error: 'لا يمكن تنزيل صلاحية آخر مالك' });
+      return res.status(400).json({ error: 'cannot_demote_last_owner' });
     u.role = role;
   }
   if (password) {
-    if (String(password).length < 4) return res.status(400).json({ error: 'كلمة المرور قصيرة' });
+    if (String(password).length < 4) return res.status(400).json({ error: 'password_too_short' });
     u.hash = bcrypt.hashSync(String(password), 10);
   }
   saveUsers(users);
@@ -232,10 +232,10 @@ app.delete('/api/users/:id', auth, ownerOnly, (req, res) => {
   const id = Number(req.params.id);
   const users = loadUsers();
   const u = users.find(x => x.id === id);
-  if (!u) return res.status(404).json({ error: 'المستخدم غير موجود' });
-  if (u.id === req.user.id) return res.status(400).json({ error: 'لا يمكنك حذف نفسك' });
+  if (!u) return res.status(404).json({ error: 'user_not_found' });
+  if (u.id === req.user.id) return res.status(400).json({ error: 'cannot_delete_self' });
   if (u.role === 'owner' && users.filter(x => x.role === 'owner').length <= 1)
-    return res.status(400).json({ error: 'لا يمكن حذف آخر مالك' });
+    return res.status(400).json({ error: 'cannot_delete_last_owner' });
   listProjects().forEach(p => {
     if (p.managerUserId === id) { p.managerUserId = null; p.version++; saveProject(p); }
   });
@@ -249,13 +249,13 @@ app.delete('/api/users/:id', auth, ownerOnly, (req, res) => {
 app.post('/api/projects/:id/photos', auth, (req, res) => {
   const id = Number(req.params.id);
   const stored = loadProject(id);
-  if (!stored) return res.status(404).json({ error: 'المشروع غير موجود' });
-  if (!canAccessProject(req.user, stored)) return res.status(403).json({ error: 'لا تملك صلاحية على هذا المشروع' });
+  if (!stored) return res.status(404).json({ error: 'project_not_found' });
+  if (!canAccessProject(req.user, stored)) return res.status(403).json({ error: 'no_project_access' });
   const dataUrl = req.body && req.body.dataUrl;
   const m = /^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/=]+)$/.exec(String(dataUrl || '').slice(0, 12 * 1024 * 1024));
-  if (!m) return res.status(400).json({ error: 'صيغة الصورة غير مدعومة (jpeg/png/webp)' });
+  if (!m) return res.status(400).json({ error: 'unsupported_image_format' });
   const buf = Buffer.from(m[2], 'base64');
-  if (buf.length > 8 * 1024 * 1024) return res.status(400).json({ error: 'الصورة كبيرة جداً (الحد 8MB)' });
+  if (buf.length > 8 * 1024 * 1024) return res.status(400).json({ error: 'image_too_large' });
   const ext = m[1] === 'jpeg' ? 'jpg' : m[1];
   const file = crypto.randomBytes(14).toString('hex') + '.' + ext;
   const dir = path.join(UPLOADS_DIR, String(id));
@@ -267,10 +267,10 @@ app.post('/api/projects/:id/photos', auth, (req, res) => {
 app.delete('/api/projects/:id/photos/:file', auth, (req, res) => {
   const id = Number(req.params.id);
   const stored = loadProject(id);
-  if (!stored) return res.status(404).json({ error: 'المشروع غير موجود' });
-  if (!canAccessProject(req.user, stored)) return res.status(403).json({ error: 'لا تملك صلاحية' });
+  if (!stored) return res.status(404).json({ error: 'project_not_found' });
+  if (!canAccessProject(req.user, stored)) return res.status(403).json({ error: 'no_access' });
   const file = String(req.params.file);
-  if (!/^[a-f0-9]{28}\.(jpg|png|webp)$/.test(file)) return res.status(400).json({ error: 'اسم ملف غير صالح' });
+  if (!/^[a-f0-9]{28}\.(jpg|png|webp)$/.test(file)) return res.status(400).json({ error: 'invalid_filename' });
   const fp = path.join(UPLOADS_DIR, String(id), file);
   if (fs.existsSync(fp)) fs.unlinkSync(fp);
   res.json({ ok: true });
@@ -286,7 +286,7 @@ app.get('/api/backup', auth, ownerOnly, (req, res) => {
 
 app.post('/api/restore', auth, ownerOnly, (req, res) => {
   const incoming = req.body && req.body.projects;
-  if (!Array.isArray(incoming) || !incoming.length) return res.status(400).json({ error: 'لا توجد مشاريع في الملف' });
+  if (!Array.isArray(incoming) || !incoming.length) return res.status(400).json({ error: 'no_projects_in_file' });
   const userIds = new Set(loadUsers().map(u => u.id));
   // حذف المشاريع الحالية ثم إنشاء المستوردة بمعرفات جديدة
   listProjects().forEach(p => fs.unlinkSync(projectFile(p.id)));

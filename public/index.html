@@ -368,8 +368,8 @@
     <div class="filter-bar">
       <input type="text" class="search-box" placeholder="🔍 بحث بالوصف أو رقم البند..." data-i18n-ph="🔍 بحث بالوصف أو رقم البند..." id="search-items" oninput="renderItemsTable()">
       <span id="items-filters"></span>
-      <button class="btn btn-ghost" style="margin-inline-start:auto" onclick="exportItemsCSV()">⬇ Excel</button>
-      <button class="btn btn-amber" onclick="openItemModal(null)" data-i18n="+ إضافة بند">+ إضافة بند</button>
+      <button class="btn btn-ghost" style="margin-right:auto" onclick="openBoqImport()">⬇ Excel</button>
+      <button class="btn btn-amber" onclick="openItemModal(null)">+ إضافة بند</button>
     </div>
     <div class="table-wrap">
       <table>
@@ -707,6 +707,50 @@
     <div style="display:flex;gap:10px;margin-top:8px">
       <button class="btn btn-green" onclick="addUser()" data-i18n="+ إضافة المستخدم">+ إضافة المستخدم</button>
       <button class="btn btn-ghost" onclick="closeModal('users-modal')" data-i18n="إغلاق">إغلاق</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="boq-import-modal">
+  <div class="modal wide">
+    <div class="modal-title"><span>📥 استيراد جدول كميات من Excel</span><span class="modal-close" onclick="closeModal('boq-import-modal')">✕</span></div>
+
+    <div class="alert info" style="font-size:12px">
+      💡 ارفع ملف جدول الكميات (xlsx / xls / csv) — النظام يتعرف على الأعمدة تلقائياً وتقدر تعدّل المطابقة قبل الاستيراد.
+      الأعمدة المطلوبة: <strong>رقم البند، الوصف، الكمية، سعر الوحدة</strong>. والاختيارية: الوحدة، القسم، الكمية لكل وحدة، الكمية المنفذة.
+    </div>
+
+    <div class="filter-bar">
+      <input type="file" id="bi-file" accept=".xlsx,.xls,.csv" onchange="biFilePicked(this)" style="font-size:12px">
+      <button class="mini-btn" onclick="biDownloadTemplate()">⬇ تحميل نموذج Excel جاهز</button>
+    </div>
+
+    <div id="bi-config" style="display:none">
+      <div class="f-grid" style="grid-template-columns:repeat(3,1fr)">
+        <div class="f-field"><label>الورقة (Sheet)</label><select id="bi-sheet" onchange="biSheetChanged()"></select></div>
+        <div class="f-field"><label>صف العناوين</label><input type="number" id="bi-header-row" min="1" onchange="biHeaderChanged()"></div>
+        <div class="f-field"><label>البنود المكررة (نفس رقم البند)</label>
+          <select id="bi-dup">
+            <option value="skip">تجاهلها (لا تستورد)</option>
+            <option value="update">تحديث الموجود (الوصف/الكمية/السعر)</option>
+          </select>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="card-title" style="font-size:13px">🔗 مطابقة الأعمدة</div>
+      <div class="f-grid" style="grid-template-columns:repeat(4,1fr)" id="bi-mapping"></div>
+      <div class="divider"></div>
+      <div class="card-title" style="font-size:13px">👁 معاينة <span id="bi-counts" class="pill blue" style="font-size:10px"></span></div>
+      <div class="table-wrap" style="max-height:260px">
+        <table>
+          <thead><tr><th></th><th>رقم البند</th><th>الوصف</th><th>الوحدة</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th><th>ملاحظة</th></tr></thead>
+          <tbody id="bi-preview"></tbody>
+        </table>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
+        <button class="btn btn-green" onclick="biDoImport()">📥 استيراد البنود الآن</button>
+        <button class="btn btn-ghost" onclick="closeModal('boq-import-modal')">إلغاء</button>
+      </div>
     </div>
   </div>
 </div>
@@ -2983,6 +3027,212 @@ function deleteWorkLog(id){
   }
   proj().workLogs = proj().workLogs.filter(x => x.id !== id);
   save(); renderAll();
+}
+
+// ============================================================
+//  BOQ EXCEL IMPORT (استيراد جدول الكميات)
+// ============================================================
+let biWB = null, biRows = [], biHeaderIdx = 0;
+
+// تحميل مكتبة قراءة Excel عند الحاجة (مخزنة محلياً في السيرفر)
+function loadXLSX(){
+  return new Promise((resolve, reject) => {
+    if (window.XLSX) return resolve();
+    const s = document.createElement('script');
+    s.src = '/vendor/xlsx.full.min.js';
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error('تعذر تحميل مكتبة قراءة Excel'));
+    document.head.appendChild(s);
+  });
+}
+
+function openBoqImport(){
+  $('bi-file').value = '';
+  $('bi-config').style.display = 'none';
+  $('bi-dup').value = 'skip';
+  biWB = null; biRows = [];
+  $('boq-import-modal').classList.add('open');
+  loadXLSX().catch(e => alert(e.message));
+}
+
+const arDigits = s => String(s)
+  .replace(/[٠-٩]/g, d => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
+  .replace(/[۰-۹]/g, d => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)));
+function numVal(v){
+  if (typeof v === 'number') return isFinite(v) ? v : null;
+  // إزالة فواصل الآلاف: , عادية · ، عربية · ٬ فاصل الآلاف العربي · مسافات — و ٫ الفاصلة العشرية العربية تصبح نقطة
+  const s = arDigits(String(v ?? '')).replace(/[,،٬'\s]/g, '').replace(/٫/g, '.');
+  if (!s) return null;
+  const n = parseFloat(s);
+  return isNaN(n) ? null : n;
+}
+const strVal = v => String(v ?? '').trim();
+
+async function biFilePicked(input){
+  const f = input.files[0];
+  if (!f) return;
+  try {
+    await loadXLSX();
+    const buf = await f.arrayBuffer();
+    biWB = XLSX.read(buf, {type:'array'});
+    $('bi-sheet').innerHTML = biWB.SheetNames.map((n,i) => '<option value="' + i + '">' + esc(n) + '</option>').join('');
+    $('bi-config').style.display = '';
+    biSheetChanged();
+  } catch(e) { alert('تعذر قراءة الملف: ' + e.message); }
+}
+
+function biSheetChanged(){
+  const ws = biWB.Sheets[biWB.SheetNames[Number($('bi-sheet').value)]];
+  biRows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+  // كشف صف العناوين تلقائياً: أول صف فيه 3 خلايا نصية (غير رقمية) على الأقل
+  let hdr = 0;
+  for (let i = 0; i < Math.min(biRows.length, 15); i++) {
+    const texts = (biRows[i]||[]).filter(c => strVal(c) && numVal(c) === null);
+    if (texts.length >= 3) { hdr = i; break; }
+  }
+  $('bi-header-row').value = hdr + 1;
+  biHeaderChanged();
+}
+
+const BI_FIELDS = [
+  {key:'id',    label:'رقم البند *',      hints:['رقم البند','رقم','بند','البند','item no','item','code','no']},
+  {key:'desc',  label:'الوصف *',         hints:['الوصف','وصف','بيان','البيان','بيان الاعمال','الاعمال','description','desc']},
+  {key:'unit',  label:'الوحدة',          hints:['الوحدة','وحدة','unit','uom']},
+  {key:'qty',   label:'الكمية الكلية *', hints:['الكمية الكلية','الكمية','الكميات','كمية','qty','quantity']},
+  {key:'rate',  label:'سعر الوحدة *',    hints:['سعر الوحدة','السعر','سعر','الفئة','فئة','unit rate','rate','price']},
+  {key:'div',   label:'القسم',           hints:['القسم','قسم','التصنيف','division','div']},
+  {key:'qtyPerUnit', label:'الكمية لكل وحدة', hints:['الكمية لكل وحدة','كمية الوحدة','كمية/وحدة','لكل فيلا','qty per unit']},
+  {key:'exec',  label:'الكمية المنفذة',  hints:['الكمية المنفذة','المنفذ','منفذ','executed']}
+];
+
+function biHeaderChanged(){
+  biHeaderIdx = clamp(Number($('bi-header-row').value) - 1, 0, Math.max(0, biRows.length - 1));
+  const headers = (biRows[biHeaderIdx]||[]).map(strVal);
+  const opts = ['<option value="">— غير موجود —</option>'].concat(
+    headers.map((h,i) => '<option value="' + i + '">' + esc(h || ('عمود ' + (i+1))) + '</option>')).join('');
+  $('bi-mapping').innerHTML = BI_FIELDS.map(f =>
+    '<div class="f-field"><label>' + f.label + '</label><select id="bi-map-' + f.key + '" onchange="biRenderPreview()">' + opts + '</select></div>'
+  ).join('');
+  // تخمين تلقائي للمطابقة (مطابقة تامة أولاً ثم جزئية)
+  const norm = s => String(s).toLowerCase().replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/\s+/g,' ').trim();
+  const used = new Set();
+  BI_FIELDS.forEach(f => {
+    let best = '';
+    headers.forEach((h,i) => {
+      if (best !== '' || used.has(i)) return;
+      if (f.hints.some(hint => norm(h) === norm(hint))) best = String(i);
+    });
+    if (best === '') headers.forEach((h,i) => {
+      if (best !== '' || used.has(i)) return;
+      const hn = norm(h);
+      if (hn && f.hints.some(hint => hn.includes(norm(hint)))) best = String(i);
+    });
+    if (best !== '') used.add(Number(best));
+    $('bi-map-' + f.key).value = best;
+  });
+  biRenderPreview();
+}
+
+function biParseRows(){
+  const map = {};
+  BI_FIELDS.forEach(f => { const v = $('bi-map-' + f.key).value; map[f.key] = v === '' ? null : Number(v); });
+  const out = [];
+  for (let i = biHeaderIdx + 1; i < biRows.length; i++) {
+    const row = biRows[i] || [];
+    const get = k => map[k] === null ? '' : row[map[k]];
+    const id = strVal(get('id'));
+    const desc = strVal(get('desc'));
+    if (!id && !desc) continue; // صف فارغ
+    const qty = numVal(get('qty'));
+    const rate = numVal(get('rate'));
+    let err = '';
+    if (!id) err = 'رقم البند مفقود';
+    else if (!desc) err = 'الوصف مفقود';
+    else if (qty === null || qty <= 0) err = 'الكمية غير صالحة';
+    else if (rate === null || rate < 0) err = 'السعر غير صالح';
+    const dup = !err && !!getItem(id);
+    out.push({row:i+1, id, desc, unit:strVal(get('unit')) || '—', qty, rate,
+      div:strVal(get('div')), qtyPerUnit:numVal(get('qtyPerUnit')) || 0, exec:numVal(get('exec')) || 0, err, dup});
+  }
+  // مكرر داخل الملف نفسه
+  const seen = {};
+  out.forEach(r => {
+    if (r.err) return;
+    if (seen[r.id]) r.err = 'مكرر داخل الملف (صف ' + seen[r.id] + ')';
+    else seen[r.id] = r.row;
+  });
+  return out;
+}
+
+function biRenderPreview(){
+  if (!biRows.length) return;
+  const rows = biParseRows();
+  const ok = rows.filter(r => !r.err && !r.dup).length;
+  const dups = rows.filter(r => !r.err && r.dup).length;
+  const errs = rows.filter(r => r.err).length;
+  $('bi-counts').textContent = ok + ' جديد · ' + dups + ' موجود مسبقاً · ' + errs + ' خطأ';
+  $('bi-preview').innerHTML = rows.slice(0, 30).map(r =>
+    '<tr style="' + (r.err ? 'background:var(--red-dim)' : r.dup ? 'background:var(--amber-dim)' : '') + '">' +
+    '<td style="font-family:var(--mono);font-size:10px;color:var(--text3)">' + r.row + '</td>' +
+    '<td><span class="item-no">' + esc(r.id) + '</span></td>' +
+    '<td><div class="desc-text" style="max-width:200px" data-tip="' + esc(r.desc) + '">' + esc(r.desc) + '</div></td>' +
+    '<td>' + esc(r.unit) + '</td>' +
+    '<td class="amount">' + (r.qty === null ? '—' : fmtQ(r.qty)) + '</td>' +
+    '<td class="amount">' + (r.rate === null ? '—' : Number(r.rate).toLocaleString('en-US', {maximumFractionDigits:2})) + '</td>' +
+    '<td class="amount">' + ((r.qty !== null && r.rate !== null) ? fmtN(r.qty * r.rate) : '—') + '</td>' +
+    '<td style="font-size:11px;color:' + (r.err ? 'var(--red)' : r.dup ? 'var(--amber)' : 'var(--green)') + '">' + (r.err || (r.dup ? 'موجود مسبقاً' : '✓')) + '</td>' +
+    '</tr>').join('') +
+    (rows.length > 30 ? '<tr><td colspan="8" style="color:var(--text3);font-size:11px">... و ' + (rows.length - 30) + ' صف إضافي (سيُستورد كاملاً)</td></tr>' : '') ||
+    '<tr><td colspan="8"><div class="empty-state"><p>لا توجد صفوف بيانات</p></div></td></tr>';
+}
+
+function biDoImport(){
+  const all = biParseRows();
+  const rows = all.filter(r => !r.err);
+  if (!rows.length) { alert('لا توجد صفوف صالحة للاستيراد — راجع مطابقة الأعمدة'); return; }
+  const dupPolicy = $('bi-dup').value;
+  let added = 0, updated = 0, skipped = 0;
+  rows.forEach(r => {
+    const existing = getItem(r.id);
+    if (existing) {
+      if (dupPolicy === 'update') {
+        existing.desc = r.desc; existing.unit = r.unit; existing.totalQty = r.qty; existing.unitRate = r.rate;
+        if (r.div) existing.div = r.div;
+        if (r.qtyPerUnit) existing.qtyPerVilla = r.qtyPerUnit;
+        updated++;
+      } else skipped++;
+      return;
+    }
+    proj().boqItems.push({
+      id:r.id, div:r.div || '—', divAr:'', desc:r.desc, unit:r.unit,
+      qtyPerVilla:r.qtyPerUnit || 0, totalQty:r.qty, unitRate:r.rate,
+      scope:'azoom', predecessors:[], blocker:null,
+      executedQty: clamp(r.exec || 0, 0, r.qty), claimedQty:0, notes:''
+    });
+    added++;
+  });
+  const errCount = all.length - rows.length;
+  save(); renderAll();
+  closeModal('boq-import-modal');
+  alert('✅ تم الاستيراد:\n• بنود جديدة: ' + added + '\n• تم تحديثها: ' + updated + '\n• متجاهلة (مكررة): ' + skipped + (errCount ? '\n⚠️ صفوف فيها أخطاء لم تُستورد: ' + errCount : ''));
+}
+
+async function biDownloadTemplate(){
+  try {
+    await loadXLSX();
+    const data = [
+      ['رقم البند','الوصف','الوحدة','الكمية الكلية','سعر الوحدة','القسم','الكمية لكل وحدة','الكمية المنفذة'],
+      ['1.1','أعمال الحفر والردم','م³',5000,12,'أعمال الموقع','',''],
+      ['2.1','خرسانة مسلحة للقواعد','م³',800,320,'الأعمال الإنشائية','',''],
+      ['3.1','بلوك مصمت 20سم','م²',12000,45,'أعمال البناء','','']
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    ws['!cols'] = [{wch:10},{wch:40},{wch:8},{wch:14},{wch:12},{wch:18},{wch:15},{wch:15}];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'BOQ');
+    wb.Workbook = {Views:[{RTL:true}]};
+    XLSX.writeFile(wb, 'BOQ-Template.xlsx');
+  } catch(e) { alert(e.message); }
 }
 
 // ============================================================

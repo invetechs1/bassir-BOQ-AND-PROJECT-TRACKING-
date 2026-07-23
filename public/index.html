@@ -376,7 +376,7 @@
         <thead>
           <tr>
             <th>البند</th><th>الوصف</th><th>الوحدة</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th>
-            <th>نسبة التنفيذ</th><th>مرفوع %</th><th>صافي للمطالبة</th><th>الحالة</th><th>العائق / يعتمد على</th><th></th>
+            <th>الكمية المنفذة</th><th>مرفوع %</th><th>صافي للمطالبة</th><th>الحالة</th><th>العائق / يعتمد على</th><th></th>
           </tr>
         </thead>
         <tbody id="items-tbody"></tbody>
@@ -1664,7 +1664,10 @@ function renderItemsTable(){
       '<td class="amount muted">' + fmtN(it.unitRate) + '</td>' +
       '<td class="amount">' + fmtN(amt(it)) + '</td>' +
       '<td>' + (it.scope==='others' ? '<span style="color:var(--text3)">—</span>' :
-        '<span style="display:inline-flex;align-items:center;gap:6px"><input type="number" class="pct-input" min="0" max="100" value="' + (itemPct(it)*100).toFixed(0) + '" onchange="setItemPct(\'' + esc(it.id) + '\', this.value)"><span class="prog-bar"><span class="prog-fill ' + (itemPct(it)>=DONE?'green':itemPct(it)>0?'amber':'red') + '" style="width:' + (itemPct(it)*100) + '%;display:block"></span></span></span>') + '</td>' +
+        '<span style="display:inline-flex;flex-direction:column;gap:3px;align-items:flex-start">' +
+        '<input type="number" class="qty-input" min="0" max="' + it.totalQty + '" step="any" value="' + (Math.round((it.executedQty||0)*100)/100) + '" onchange="setItemQty(\'' + esc(it.id) + '\', this.value)" data-tip="أدخل الكمية المنفذة (من أصل ' + fmtQ(it.totalQty) + ' ' + esc(it.unit) + ') — العميل يحاسب بالكميات">' +
+        '<span style="display:inline-flex;align-items:center;gap:5px"><span style="font-family:var(--mono);font-size:10px;color:var(--text2)">' + (itemPct(it)*100).toFixed(1) + '%</span><span class="prog-bar" style="width:56px"><span class="prog-fill ' + (itemPct(it)>=DONE?'green':itemPct(it)>0?'amber':'red') + '" style="width:' + (itemPct(it)*100) + '%;display:block"></span></span></span>' +
+        '</span>') + '</td>' +
       '<td class="amount" style="color:var(--teal)">' + (claimedPct(it)*100).toFixed(0) + '%</td>' +
       '<td class="amount ' + (net>1?'claimable':'muted') + '">' + (net>1?fmtN(net):'—') + '</td>' +
       '<td>' + statusPill(st) + '</td>' +
@@ -1679,13 +1682,13 @@ function renderItemsTable(){
     '<td class="amount claimable">' + fmtN(sumNet) + '</td><td colspan="3"></td></tr>';
 }
 
-function setItemPct(id, val){
+// إدخال الكمية المنفذة مباشرة — العميل يحاسب بالكميات فالحسبة تكون دقيقة
+function setItemQty(id, val){
   const it = getItem(id);
   if (!it) return;
-  const pct = clamp(val, 0, 100) / 100;
-  it.executedQty = Math.round(pct * it.totalQty * 100) / 100;
+  it.executedQty = Math.round(clamp(val, 0, it.totalQty) * 100) / 100;
   if (it.executedQty < it.claimedQty) {
-    alert('تنبيه: نسبة التنفيذ أصبحت أقل من الكمية المرفوعة بمستخلصات سابقة (' + (claimedPct(it)*100).toFixed(0) + '%).');
+    alert('تنبيه: الكمية المنفذة (' + fmtQ(it.executedQty) + ') أصبحت أقل من الكمية المرفوعة بمستخلصات سابقة (' + fmtQ(it.claimedQty) + ').');
   }
   save(); renderAll();
 }

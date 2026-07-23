@@ -315,7 +315,8 @@
   <div class="tab-panel" id="tab-projects">
     <div class="filter-bar">
       <button class="btn btn-amber" id="btn-add-project" onclick="openProjectModal(null)">+ إضافة مشروع</button>
-      <button class="btn btn-ghost" id="btn-users-manage" onclick="openUsersManage()">👥 إدارة المستخدمين ومدراء المشاريع</button>
+      <button class="btn btn-ghost" id="btn-users-manage" onclick="openUsersManage()">👥 إدارة المستخدمين</button>
+      <button class="btn btn-ghost" id="btn-companies" onclick="openCompanies()">🏢 إدارة الشركات</button>
     </div>
     <div id="pm-notice"></div>
     <div class="status-cards" id="projects-grid"></div>
@@ -682,6 +683,7 @@
       <div class="f-field"><label>ضريبة القيمة المضافة %</label><input type="number" id="pm-vat" min="0" step="0.5" value="15"></div>
       <div class="f-field"><label>محتجز الضمان %</label><input type="number" id="pm-ret" min="0" step="0.5" value="10"></div>
       <div class="f-field"><label>استرداد الدفعة المقدمة %</label><input type="number" id="pm-adv" min="0" step="0.5" value="0"></div>
+      <div class="f-field" id="pm-company-wrap"><label>🏢 الشركة المالكة للمشروع</label><select id="pm-company" onchange="pmCompanyChanged()"></select></div>
       <div class="f-field"><label>👤 مدير المشروع المسؤول</label><select id="pm-manager"></select></div>
       <div class="f-field" id="pm-boq-src-wrap"><label>جدول الكميات</label>
         <select id="pm-boq-src"></select>
@@ -703,20 +705,29 @@
     <div class="divider"></div>
     <div class="card-title" style="font-size:13px">+ إضافة مستخدم جديد</div>
     <div class="f-grid">
-      <div class="f-field"><label>الاسم *</label><input type="text" id="us-name" placeholder="م. خالد - مدير مشروع"></div>
+      <div class="f-field"><label>الاسم *</label><input type="text" id="us-name" placeholder="م. خالد"></div>
       <div class="f-field"><label>اسم المستخدم للدخول *</label><input type="text" id="us-username" placeholder="khaled" autocomplete="off"></div>
-      <div class="f-field"><label>الدور</label>
-        <select id="us-role">
-          <option value="pm">مدير مشروع</option>
-          <option value="owner">مالك / إدارة (كل الصلاحيات)</option>
-        </select>
-      </div>
+      <div class="f-field"><label>الدور</label><select id="us-role" onchange="usRoleChanged()"></select></div>
+      <div class="f-field" id="us-company-wrap"><label>🏢 الشركة</label><select id="us-company"></select></div>
       <div class="f-field"><label>كلمة المرور *</label><input type="text" id="us-pin" placeholder="4 أحرف على الأقل" autocomplete="off"></div>
     </div>
-    <div class="alert info" style="margin-top:10px;font-size:11px">💡 مدير المشروع يدخل باسم المستخدم وكلمة المرور من أي جهاز، ويشوف مشاريعه المعينة فقط.</div>
+    <div class="alert info" style="margin-top:10px;font-size:11px">💡 <strong>العميل</strong>: يشوف مشاريع شركته بكامل الصلاحيات · <strong>مدير المشاريع</strong>: يشوف كل مشاريع شركته · <strong>مدير المشروع</strong>: مشروعه المعيّن له فقط.</div>
     <div style="display:flex;gap:10px;margin-top:8px">
       <button class="btn btn-green" onclick="addUser()">+ إضافة المستخدم</button>
       <button class="btn btn-ghost" onclick="closeModal('users-modal')">إغلاق</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="companies-modal">
+  <div class="modal">
+    <div class="modal-title"><span>🏢 إدارة الشركات (أدمن النظام)</span><span class="modal-close" onclick="closeModal('companies-modal')">✕</span></div>
+    <div class="alert info" style="font-size:12px">كل شركة لها مشاريعها ومستخدموها: العميل ومدير المشاريع يشوفون مشاريع شركتهم فقط.</div>
+    <div id="companies-list" style="margin-bottom:14px"></div>
+    <div class="divider"></div>
+    <div class="f-grid" style="grid-template-columns:2fr 1fr;align-items:end">
+      <div class="f-field"><label>اسم الشركة الجديدة</label><input type="text" id="co-name" placeholder="شركة الإنشاءات الحديثة"></div>
+      <button class="btn btn-green" onclick="addCompany()">+ إضافة شركة</button>
     </div>
   </div>
 </div>
@@ -780,7 +791,7 @@
       <div>3️⃣ <strong style="color:var(--green)">المستخلصات:</strong> النظام يقترح الكميات (المنفذ − المرفوع سابقاً)، احفظ المستخلص واطبعه، ويسجل في التاريخ ويخصم من الرصيد.</div>
       <div>4️⃣ <strong style="color:var(--red)">العوائق:</strong> سجّل أي عائق على البند (من نافذة تعديل البند)، والنظام يحسب الأثر المالي المباشر + الأعمال المعتمدة عليه.</div>
       <div>🗂 <strong style="color:var(--purple)">تعدد المشاريع:</strong> من تبويب المشاريع أضف مشاريعك (مع نسخ جدول كميات من مشروع موجود إذا حاب)، وعيّن لكل مشروع مديره. بدّل بين المشاريع من القائمة أعلى الصفحة.</div>
-      <div>👤 <strong style="color:var(--blue)">المستخدمون:</strong> المالك يشوف كل المشاريع ويديرها، ومدير المشروع يشوف مشاريعه فقط ويسجل اليوميات ويرفع المستخلصات — وكل عملية تنختم باسم من سواها. من "إدارة المستخدمين" تضيف المدراء وتحط لهم رمز PIN.</div>
+      <div>👤 <strong style="color:var(--blue)">الأدوار:</strong> <strong>أدمن النظام</strong> يدير كل الشركات والمشاريع · <strong>العميل</strong> (مالك الشركة) كامل الصلاحيات على مشاريع شركته وموظفيها · <strong>مدير المشاريع</strong> يعمل على كل مشاريع شركته · <strong>مدير المشروع</strong> يطلع ويضيف الكميات واليوميات والمستخلصات في مشروعه المعيّن فقط — وكل عملية تنختم باسم من سواها.</div>
       <div>📱 <strong style="color:var(--green-bright)">تثبيت التطبيق على الجوال:</strong> افتح رابط النظام من متصفح الجوال ثم: أندرويد (Chrome) → قائمة ⋮ → "إضافة إلى الشاشة الرئيسية" · آيفون (Safari) → زر المشاركة → "Add to Home Screen". يشتغل كتطبيق كامل، ولو انقطع النت يعرض آخر بيانات للقراءة.</div>
       <div>📷 <strong style="color:var(--amber)">صور الموقع:</strong> مع كل يومية تقدر ترفق صور من كاميرا الجوال مباشرة — تنضغط تلقائياً وترتبط باليومية وتظهر في معرض الصور.</div>
       <div>💾 بياناتك تنحفظ تلقائياً على الخادم. المالك يقدر يأخذ <strong style="color:var(--text)">نسخة احتياطية JSON</strong> كاملة من الزر أعلى الصفحة.</div>
@@ -921,9 +932,13 @@ const DUMMY_PROJECT = {id:0, managerUserId:null, seq:1000,
 function currentUser(){
   return state.users.find(u => u.id === state.me.id) || state.me;
 }
-const isOwner = () => state.me.role === 'owner';
+// الأدوار: admin أدمن النظام · client العميل (كامل صلاحيات شركته) · pmo مدير المشاريع (كل مشاريع شركته) · pm مدير مشروع (مشروعه فقط)
+const isAdmin = () => state.me.role === 'admin';
+const isManagerial = () => ['admin','client'].includes(state.me.role); // من يدير المشاريع والمستخدمين
+const isOwner = isManagerial; // (توافقية مع الكود القديم)
 const accessibleProjects = () => state.projects; // الخادم يعيد المشاريع المصرح بها فقط
 const userName = id => { const u = state.users.find(x => x.id === id); return u ? u.name : null; };
+const companyName = id => { const c = (state.companies||[]).find(x => x.id === id); return c ? c.name : null; };
 
 function proj(){
   let p = state ? state.projects.find(x => x.id === state.currentProjectId) : null;
@@ -1040,13 +1055,13 @@ async function refreshState(){
   const d = await API.req('GET', '/api/state');
   d.projects.forEach(migrateProject);
   const savedProj = Number(localStorage.getItem('azoom_proj') || 0);
-  state = { me: d.me, users: d.users, projects: d.projects, currentProjectId: savedProj };
+  state = { me: d.me, users: d.users, companies: d.companies || [], projects: d.projects, currentProjectId: savedProj };
   if (!state.projects.find(p => p.id === state.currentProjectId)) {
     state.currentProjectId = state.projects.length ? state.projects[0].id : 0;
   }
   offlineMode = false;
   $('offline-banner').style.display = 'none';
-  try { localStorage.setItem('azoom_cache', JSON.stringify({me:d.me, users:d.users, projects:d.projects})) } catch(e) {}
+  try { localStorage.setItem('azoom_cache', JSON.stringify({me:d.me, users:d.users, companies:d.companies||[], projects:d.projects})) } catch(e) {}
   renderAll();
 }
 
@@ -1056,7 +1071,7 @@ function loadOfflineCache(){
     const c = JSON.parse(localStorage.getItem('azoom_cache'));
     if (!c || !c.projects) return false;
     c.projects.forEach(migrateProject);
-    state = { me:c.me, users:c.users, projects:c.projects, currentProjectId: Number(localStorage.getItem('azoom_proj')||0) };
+    state = { me:c.me, users:c.users, companies:c.companies||[], projects:c.projects, currentProjectId: Number(localStorage.getItem('azoom_proj')||0) };
     if (!state.projects.find(p => p.id === state.currentProjectId)) {
       state.currentProjectId = state.projects.length ? state.projects[0].id : 0;
     }
@@ -1222,12 +1237,13 @@ function renderHeader(){
   const cu = currentUser();
   const mgr = userName(p.managerUserId);
   const tdef = PROJECT_TYPES[p.info.projectType] || PROJECT_TYPES.other;
-  $('hd-sub').textContent = p.info.name + ' (' + tdef.label + ')' + (mgr ? ' | مدير المشروع: ' + mgr : '');
+  const co = companyName(p.companyId);
+  $('hd-sub').textContent = (co ? '🏢 ' + co + ' | ' : '') + p.info.name + ' (' + tdef.label + ')' + (mgr ? ' | مدير المشروع: ' + mgr : '');
   const list = accessibleProjects();
   $('proj-select').innerHTML = list.length
     ? list.map(x => '<option value="' + x.id + '"' + (x.id === p.id ? ' selected' : '') + '>🗂 ' + esc(x.info.name) + '</option>').join('')
     : '<option>لا يوجد مشروع معين لك</option>';
-  $('user-chip').textContent = '👤 ' + cu.name + (cu.role === 'owner' ? ' ★' : '');
+  $('user-chip').textContent = (ROLE_ICONS[cu.role]||'👤') + ' ' + cu.name + ' — ' + (ROLE_LABELS[cu.role]||'');
   // مسميات الوحدات حسب نوع المشروع (فيلا / مبنى / قطاع...)
   $('villas-tab-label').textContent = ULS();
   $('add-villa-label').textContent = UL();
@@ -1240,10 +1256,15 @@ function renderHeader(){
 // ============================================================
 function renderProjects(){
   const list = accessibleProjects();
-  $('btn-add-project').style.display = isOwner() ? '' : 'none';
-  $('btn-users-manage').style.display = isOwner() ? '' : 'none';
-  $('pm-notice').innerHTML = isOwner() ? '' :
-    '<div class="alert info">👤 أنت مسجل كمدير مشروع — تظهر لك مشاريعك المعينة فقط.</div>';
+  $('btn-add-project').style.display = isManagerial() ? '' : 'none';
+  $('btn-users-manage').style.display = isManagerial() ? '' : 'none';
+  $('btn-companies').style.display = isAdmin() ? '' : 'none';
+  const roleNotices = {
+    client:'⭐ أنت العميل (مالك الشركة) — تظهر لك مشاريع شركتك ولديك كامل الصلاحيات عليها.',
+    pmo:'👔 أنت مدير المشاريع — تظهر لك جميع مشاريع شركتك للعمل عليها.',
+    pm:'👤 أنت مدير مشروع — تظهر لك مشاريعك المعينة لك فقط.'
+  };
+  $('pm-notice').innerHTML = roleNotices[state.me.role] ? '<div class="alert info">' + roleNotices[state.me.role] + '</div>' : '';
   $('projects-grid').innerHTML = list.map(p => {
     const t = totalsFor(p);
     const pct = t.azoomScope > 0 ? t.executed / t.azoomScope * 100 : 0;
@@ -1253,7 +1274,7 @@ function renderProjects(){
     return '<div class="card' + (isCur ? ' green-b' : '') + '" style="margin-bottom:0">' +
       '<div class="sc-header"><div class="sc-icon" style="background:var(--amber-dim)">🗂</div>' +
       '<div style="flex:1"><div>' + esc(p.info.name) + (isCur ? ' <span class="pill green" style="font-size:9px">الحالي</span>' : '') + '</div>' +
-      '<div style="font-size:11px;color:var(--text2)">' + esc(p.info.client || '—') + ' · ' + p.boqItems.length + ' بند · ' + p.villas.length + ' ' + esc(p.info.unitLabel||'وحدة') + '</div></div></div>' +
+      '<div style="font-size:11px;color:var(--text2)">' + (isAdmin() && companyName(p.companyId) ? '🏢 ' + esc(companyName(p.companyId)) + ' · ' : '') + esc(p.info.client || '—') + ' · ' + p.boqItems.length + ' بند · ' + p.villas.length + ' ' + esc(p.info.unitLabel||'وحدة') + '</div></div></div>' +
       '<div class="sc-item"><span class="sc-item-name">👤 مدير المشروع</span><span class="sc-item-val" style="color:' + (mgr ? 'var(--blue)' : 'var(--red)') + '">' + (mgr ? esc(mgr) : 'غير معيّن ⚠') + '</span></div>' +
       '<div style="margin:8px 0"><div class="villa-prog-bar" style="height:6px"><div class="villa-prog-fill" style="width:' + pct + '%;background:' + barColor + '"></div></div>' +
       '<div style="font-size:11px;font-family:var(--mono);color:' + barColor + '">' + pct.toFixed(1) + '% إنجاز</div></div>' +
@@ -1263,14 +1284,24 @@ function renderProjects(){
       '<div class="sc-item"><span class="sc-item-name">📤 مستخلصات / محصل</span><span class="sc-item-val" style="color:var(--teal)">' + p.mustakhlasat.length + ' · ' + money(t.collected) + '</span></div>' +
       '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">' +
       '<button class="btn btn-green" style="flex:1;font-size:12px;padding:6px" onclick="switchProject(' + p.id + ');switchTab(\'dashboard\')">📂 فتح المشروع</button>' +
-      (isOwner() ? '<button class="mini-btn" onclick="openProjectModal(' + p.id + ')">✏️ تعديل / تعيين مدير</button>' : '') +
+      (isManagerial() ? '<button class="mini-btn" onclick="openProjectModal(' + p.id + ')">✏️ تعديل / تعيين مدير</button>' : '') +
       '</div></div>';
-  }).join('') || '<div class="empty-state"><div class="icon">🗂</div><p>لا توجد مشاريع' + (isOwner() ? ' — أضف مشروعك الأول' : ' معينة لك — راجع الإدارة') + '</p></div>';
+  }).join('') || '<div class="empty-state"><div class="icon">🗂</div><p>لا توجد مشاريع' + (isManagerial() ? ' — أضف مشروعك الأول' : ' معينة لك — راجع الإدارة') + '</p></div>';
+}
+
+// خيارات مدير المشروع: موظفو الشركة بدور مدير مشروع أو مدير مشاريع
+function pmManagerOptions(companyId, selectedId){
+  const candidates = state.users.filter(u => ['pm','pmo'].includes(u.role) && u.companyId === companyId);
+  return '<option value="">— بدون مدير معيّن —</option>' +
+    candidates.map(u => '<option value="' + u.id + '"' + (selectedId === u.id ? ' selected' : '') + '>' + esc(u.name) + ' (' + ROLE_LABELS[u.role] + ')</option>').join('');
+}
+function pmCompanyChanged(){
+  $('pm-manager').innerHTML = pmManagerOptions(Number($('pm-company').value), null);
 }
 
 let editingProjectId = null;
 function openProjectModal(id){
-  if (!isOwner()) { alert('إضافة وتعديل المشاريع صلاحية المالك فقط'); return; }
+  if (!isManagerial()) { alert('إضافة وتعديل المشاريع صلاحية أدمن النظام أو العميل'); return; }
   editingProjectId = id;
   const p = id ? state.projects.find(x => x.id === id) : null;
   $('project-modal-title').textContent = p ? 'تعديل مشروع: ' + p.info.name : 'إضافة مشروع جديد';
@@ -1286,8 +1317,13 @@ function openProjectModal(id){
   $('pm-vat').value = p ? p.info.vatRate : 15;
   $('pm-ret').value = p ? p.info.retentionRate : 10;
   $('pm-adv').value = p ? p.info.advanceRate : 0;
-  $('pm-manager').innerHTML = '<option value="">— بدون مدير معيّن —</option>' +
-    state.users.map(u => '<option value="' + u.id + '"' + (p && p.managerUserId === u.id ? ' selected' : '') + '>' + esc(u.name) + (u.role === 'owner' ? ' (مالك)' : '') + '</option>').join('');
+  // الشركة: الأدمن يختار، وغيره مثبتة على شركته
+  const myCompanyId = state.me.companyId;
+  const projCompanyId = p ? p.companyId : (isAdmin() ? ((state.companies[0]||{}).id || null) : myCompanyId);
+  $('pm-company-wrap').style.display = isAdmin() ? '' : 'none';
+  $('pm-company').innerHTML = (state.companies||[]).map(c =>
+    '<option value="' + c.id + '"' + (c.id === projCompanyId ? ' selected' : '') + '>' + esc(c.name) + '</option>').join('');
+  $('pm-manager').innerHTML = pmManagerOptions(projCompanyId, p ? p.managerUserId : null);
   $('pm-boq-src-wrap').style.display = p ? 'none' : '';
   if (!p) {
     $('pm-boq-src').innerHTML = '<option value="">جدول كميات فارغ (أضف البنود يدوياً)</option>' +
@@ -1314,10 +1350,12 @@ async function saveProject(){
     projectType:type, unitLabel:$('pm-unit').value.trim()||tdef.unit, unitsTitle:$('pm-units').value.trim()||tdef.units
   };
   const managerUserId = Number($('pm-manager').value) || null;
+  const companyId = isAdmin() ? Number($('pm-company').value) || null : state.me.companyId;
   try {
     if (editingProjectId) {
       const p = state.projects.find(x => x.id === editingProjectId);
       p.info = info; p.managerUserId = managerUserId;
+      if (isAdmin() && companyId) p.companyId = companyId;
       dirtyProjects.add(p.id);
       await flushSaves(false);
     } else {
@@ -1327,7 +1365,7 @@ async function saveProject(){
         const src = state.projects.find(x => x.id === srcId);
         if (src) boqItems = src.boqItems.map(it => ({...it, predecessors:[...(it.predecessors||[])], blocker:null, executedQty:0, claimedQty:0}));
       }
-      const data = {managerUserId, info, seq:1000, boqItems, villas:[], villaProgress:{}, mustakhlasat:[], workLogs:[], blockerLog:[]};
+      const data = {managerUserId, companyId, info, seq:1000, boqItems, villas:[], villaProgress:{}, mustakhlasat:[], workLogs:[], blockerLog:[]};
       const r = await API.req('POST', '/api/projects', {data});
       state.projects.push({...data, id:r.id, version:r.version});
       state.currentProjectId = r.id;
@@ -1352,23 +1390,44 @@ async function deleteProject(){
 // ============================================================
 //  USERS
 // ============================================================
-const ROLE_LABELS = {owner:'مالك / إدارة', pm:'مدير مشروع'};
+const ROLE_LABELS = {admin:'أدمن النظام', client:'العميل - مالك الشركة', pmo:'مدير المشاريع', pm:'مدير مشروع'};
 
 function openUsersManage(){
-  if (!isOwner()) { alert('إدارة المستخدمين صلاحية المالك فقط'); return; }
+  if (!isManagerial()) { alert('إدارة المستخدمين صلاحية أدمن النظام أو العميل'); return; }
+  // الأدوار المتاحة: الأدمن يضيف أي دور، والعميل يضيف موظفي شركته فقط
+  $('us-role').innerHTML = isAdmin()
+    ? '<option value="pm">مدير مشروع (مشروعه فقط)</option><option value="pmo">مدير المشاريع (كل مشاريع شركته)</option><option value="client">العميل - مالك الشركة (كامل صلاحيات شركته)</option><option value="admin">أدمن النظام (كل شيء)</option>'
+    : '<option value="pm">مدير مشروع (مشروعه فقط)</option><option value="pmo">مدير المشاريع (كل مشاريع الشركة)</option>';
+  $('us-company').innerHTML = (state.companies||[]).map(c => '<option value="' + c.id + '">' + esc(c.name) + '</option>').join('');
+  usRoleChanged();
   renderUsersList();
   $('users-modal').classList.add('open');
 }
 
+function usRoleChanged(){
+  // الشركة تظهر للأدمن فقط، وتختفي عند دور الأدمن (لا شركة له)
+  $('us-company-wrap').style.display = (isAdmin() && $('us-role').value !== 'admin') ? '' : 'none';
+}
+
+// من أستطيع إدارته؟ الأدمن: الجميع · العميل: موظفو شركته (pmo/pm)
+const canManageUserUI = u => isAdmin() ||
+  (state.me.role === 'client' && ['pmo','pm'].includes(u.role) && u.companyId === state.me.companyId);
+
+const ROLE_ICONS = {admin:'★', client:'⭐', pmo:'👔', pm:'👤'};
+
 function renderUsersList(){
   $('users-list').innerHTML = state.users.map(u => {
     const projects = state.projects.filter(p => p.managerUserId === u.id);
+    const co = companyName(u.companyId);
+    const manageable = canManageUserUI(u);
     return '<div class="sc-item"><span class="sc-item-name" style="white-space:normal">' +
-      (u.role === 'owner' ? '★ ' : '👤 ') + '<strong style="color:var(--text)">' + esc(u.name) + '</strong> — ' + ROLE_LABELS[u.role] +
+      (ROLE_ICONS[u.role]||'👤') + ' <strong style="color:var(--text)">' + esc(u.name) + '</strong> — ' + (ROLE_LABELS[u.role]||u.role) +
+      (co ? ' · 🏢 ' + esc(co) : '') +
       ' <span style="font-family:var(--mono);font-size:10px;color:var(--text3)">(' + esc(u.username) + ')</span>' +
       (projects.length ? '<br><span style="font-size:11px">يدير: ' + projects.map(p => esc(p.info.name)).join('، ') + '</span>' : '') + '</span>' +
-      '<span><button class="mini-btn" onclick="resetUserPassword(' + u.id + ')">🔑 كلمة المرور</button> ' +
-      (u.id !== state.me.id ? '<button class="mini-btn red" onclick="deleteUser(' + u.id + ')">🗑</button>' : '<span class="pill blue" style="font-size:9px">أنت</span>') + '</span></div>';
+      '<span>' + (manageable ? '<button class="mini-btn" onclick="resetUserPassword(' + u.id + ')">🔑 كلمة المرور</button> ' : '') +
+      (u.id === state.me.id ? '<span class="pill blue" style="font-size:9px">أنت</span>'
+        : manageable ? '<button class="mini-btn red" onclick="deleteUser(' + u.id + ')">🗑</button>' : '') + '</span></div>';
   }).join('');
 }
 
@@ -1377,11 +1436,66 @@ async function addUser(){
   const username = $('us-username').value.trim();
   const password = $('us-pin').value.trim();
   if (!name || !username || !password) { alert('أكمل: الاسم، اسم المستخدم، كلمة المرور'); return; }
+  const role = $('us-role').value;
+  const body = {username, name, role, password};
+  if (isAdmin() && role !== 'admin') body.companyId = Number($('us-company').value) || null;
   try {
-    const u = await API.req('POST', '/api/users', {username, name, role:$('us-role').value, password});
+    const u = await API.req('POST', '/api/users', body);
     state.users.push(u);
     $('us-name').value = ''; $('us-username').value = ''; $('us-pin').value = '';
     renderUsersList(); renderAll();
+  } catch(e) { alert(e.message); }
+}
+
+// ---- الشركات (أدمن النظام) ----
+function openCompanies(){
+  if (!isAdmin()) { alert('إدارة الشركات صلاحية أدمن النظام فقط'); return; }
+  renderCompaniesList();
+  $('companies-modal').classList.add('open');
+}
+
+function renderCompaniesList(){
+  $('companies-list').innerHTML = (state.companies||[]).map(c => {
+    const nProj = state.projects.filter(p => p.companyId === c.id).length;
+    const nUsers = state.users.filter(u => u.companyId === c.id).length;
+    return '<div class="sc-item"><span class="sc-item-name" style="white-space:normal">🏢 <strong style="color:var(--text)">' + esc(c.name) + '</strong>' +
+      '<br><span style="font-size:11px">' + nProj + ' مشروع · ' + nUsers + ' مستخدم</span></span>' +
+      '<span><button class="mini-btn" onclick="renameCompany(' + c.id + ')">✏️</button> ' +
+      '<button class="mini-btn red" onclick="deleteCompany(' + c.id + ')">🗑</button></span></div>';
+  }).join('') || '<div class="empty-state" style="padding:14px"><p>لا توجد شركات — أضف أول شركة</p></div>';
+}
+
+async function addCompany(){
+  const name = $('co-name').value.trim();
+  if (!name) { alert('اكتب اسم الشركة'); return; }
+  try {
+    const c = await API.req('POST', '/api/companies', {name});
+    state.companies.push(c);
+    $('co-name').value = '';
+    renderCompaniesList(); renderAll();
+  } catch(e) { alert(e.message); }
+}
+
+async function renameCompany(id){
+  const c = state.companies.find(x => x.id === id);
+  if (!c) return;
+  const name = prompt('الاسم الجديد للشركة:', c.name);
+  if (name === null || !name.trim()) return;
+  try {
+    await API.req('PUT', '/api/companies/' + id, {name: name.trim()});
+    c.name = name.trim();
+    renderCompaniesList(); renderAll();
+  } catch(e) { alert(e.message); }
+}
+
+async function deleteCompany(id){
+  const c = state.companies.find(x => x.id === id);
+  if (!c) return;
+  if (!confirm('حذف شركة "' + c.name + '"؟ (لن يُسمح إذا كان لديها مشاريع أو مستخدمون)')) return;
+  try {
+    await API.req('DELETE', '/api/companies/' + id);
+    state.companies = state.companies.filter(x => x.id !== id);
+    renderCompaniesList(); renderAll();
   } catch(e) { alert(e.message); }
 }
 
@@ -2850,10 +2964,11 @@ function saveSettings(){
   closeModal('settings-modal'); save(); renderAll();
 }
 async function resetDemo(){
-  if (!isOwner()) { alert('صلاحية المالك فقط'); return; }
+  if (!isManagerial()) { alert('صلاحية أدمن النظام أو العميل فقط'); return; }
   if (!confirm('إضافة مشروع تجريبي كامل (مشروع SANG بفلله وبنوده ويومياته) للتعرف على النظام؟')) return;
   try {
     const data = demoProjectData();
+    data.companyId = isAdmin() ? ((state.companies[0]||{}).id || null) : state.me.companyId;
     const r = await API.req('POST', '/api/projects', {data});
     state.projects.push({...data, id:r.id, version:r.version});
     state.currentProjectId = r.id;
@@ -2862,7 +2977,7 @@ async function resetDemo(){
   } catch(e) { alert(e.message); }
 }
 function exportJSON(){
-  if (isOwner()) { // نسخة كاملة من الخادم
+  if (isAdmin()) { // نسخة كاملة من الخادم
     fetch('/api/backup', {headers:{'Authorization':'Bearer ' + API.token}})
       .then(r => r.blob())
       .then(b => {
@@ -2885,7 +3000,7 @@ function exportJSON(){
 function importJSON(input){
   const file = input.files[0];
   if (!file) return;
-  if (!isOwner()) { alert('الاستيراد صلاحية المالك فقط'); input.value=''; return; }
+  if (!isAdmin()) { alert('الاستيراد صلاحية أدمن النظام فقط'); input.value=''; return; }
   const reader = new FileReader();
   reader.onload = async e => {
     try {

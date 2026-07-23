@@ -28,6 +28,7 @@ const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const PROJECTS_DIR = path.join(DATA_DIR, 'projects');
 const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
+const COMPANIES_FILE = path.join(DATA_DIR, 'companies.json');
 const META_FILE = path.join(DATA_DIR, 'meta.json');
 const SECRET_FILE = path.join(DATA_DIR, '.jwt-secret');
 
@@ -51,27 +52,55 @@ if (!JWT_SECRET) {
   else { JWT_SECRET = crypto.randomBytes(48).toString('hex'); fs.writeFileSync(SECRET_FILE, JWT_SECRET, { mode: 0o600 }); }
 }
 
-// ---------- المستخدمون ----------
+// ---------- المستخدمون والشركات ----------
+// الأدوار: admin (أدمن النظام - كل شيء) | client (العميل - كل صلاحيات شركته)
+//          pmo (مدير المشاريع - كل مشاريع شركته تشغيلياً) | pm (مدير مشروع - مشروعه المعيّن فقط)
+const ROLES = ['admin', 'client', 'pmo', 'pm'];
 function loadUsers() { return readJSON(USERS_FILE, []); }
 function saveUsers(users) { writeJSON(USERS_FILE, users); }
+function loadCompanies() { return readJSON(COMPANIES_FILE, []); }
+function saveCompanies(c) { writeJSON(COMPANIES_FILE, c); }
 
 function bootstrapAdmin() {
   const users = loadUsers();
   if (users.length) return;
   const username = process.env.ADMIN_USER || 'admin';
   const password = process.env.ADMIN_PASSWORD || 'admin123';
-  users.push({ id: 1, username, name: 'المالك - الإدارة العامة', role: 'owner', hash: bcrypt.hashSync(password, 10) });
+  users.push({ id: 1, username, name: 'أدمن النظام', role: 'admin', companyId: null, hash: bcrypt.hashSync(password, 10) });
   saveUsers(users);
   const meta = readJSON(META_FILE, { nextId: 100 });
   writeJSON(META_FILE, meta);
   console.log('==============================================');
-  console.log('تم إنشاء حساب المالك الأول:');
+  console.log('تم إنشاء حساب أدمن النظام:');
   console.log('  اسم المستخدم: ' + username);
   console.log('  كلمة المرور : ' + password);
   if (!process.env.ADMIN_PASSWORD) console.log('  ⚠️  غيّر كلمة المرور فوراً من داخل النظام أو عيّن ADMIN_PASSWORD في .env');
   console.log('==============================================');
 }
 bootstrapAdmin();
+
+// ترقية البيانات القديمة: owner→admin، وإنشاء شركة افتراضية وربط المشاريع والمستخدمين بها
+function migrateData() {
+  let companies = loadCompanies();
+  const users = loadUsers();
+  let changedUsers = false;
+  const needsCompany = users.some(u => u.role !== 'admin' && !u.companyId) ||
+    listProjects().some(p => !p.companyId);
+  if (!companies.length && (needsCompany || users.length)) {
+    companies = [{ id: 1, name: 'الشركة الرئيسية' }];
+    saveCompanies(companies);
+  }
+  users.forEach(u => {
+    if (u.role === 'owner') { u.role = 'admin'; u.companyId = null; changedUsers = true; }
+    if (!ROLES.includes(u.role)) { u.role = 'pm'; changedUsers = true; }
+    if (u.role !== 'admin' && !u.companyId) { u.companyId = companies[0] ? companies[0].id : 1; changedUsers = true; }
+  });
+  if (changedUsers) saveUsers(users);
+  listProjects().forEach(p => {
+    if (!p.companyId) { p.companyId = companies[0] ? companies[0].id : 1; saveProject(p); }
+  });
+}
+migrateData();
 
 function nextId() {
   const meta = readJSON(META_FILE, { nextId: 100 });
@@ -91,7 +120,7 @@ function listProjects() {
 function loadProject(id) { return readJSON(projectFile(id), null); }
 function saveProject(p) { writeJSON(projectFile(p.id), p); }
 
-const sanitizeUser = u => ({ id: u.id, username: u.username, name: u.name, role: u.role });
+const sanitizeUser = u => ({ id: u.id, username: u.username, name: u.name, role: u.role, companyId: u.companyId ?? null });
 
 // ---------- التطبيق ----------
 const app = express();
@@ -121,8 +150,21 @@ function auth(req, res, next) {
     next();
   } catch (e) { return res.status(401).json({ error: 'unauthorized' }); }
 }
-const ownerOnly = (req, res, next) => req.user.role === 'owner' ? next() : res.status(403).json({ error: 'صلاحية المالك فقط' });
-const canAccessProject = (user, p) => user.role === 'owner' || p.managerUserId === user.id;
+const isAdmin = u => u.role === 'admin';
+const adminOnly = (req, res, next) => isAdmin(req.user) ? next() : res.status(403).json({ error: 'صلاحية أدمن النظام فقط' });
+
+// من يرى المشروع؟ الأدمن: الكل · العميل ومدير المشاريع: مشاريع شركتهم · مدير المشروع: المعيّن له فقط
+function canAccessProject(user, p) {
+  if (isAdmin(user)) return true;
+  if (user.role === 'client' || user.role === 'pmo') return !!user.companyId && p.companyId === user.companyId;
+  if (user.role === 'pm') return p.managerUserId === user.id;
+  return false;
+}
+// من يدير مشاريع الشركة (إنشاء/حذف/تعيين مدراء)؟ الأدمن أو عميل الشركة نفسها
+const canAdminCompany = (user, companyId) => isAdmin(user) || (user.role === 'client' && !!user.companyId && user.companyId === companyId);
+// من يدير مستخدمي الشركة؟ الأدمن (أي شركة وأي دور) أو العميل (موظفو شركته بأدوار pmo/pm فقط)
+const canManageUser = (actor, target) => isAdmin(actor) ||
+  (actor.role === 'client' && ['pmo','pm'].includes(target.role) && target.companyId === actor.companyId);
 
 // ---------- المصادقة ----------
 app.post('/api/auth/login', (req, res) => {
@@ -151,9 +193,21 @@ app.put('/api/me/password', auth, (req, res) => {
 });
 
 // ---------- الحالة الكاملة ----------
+function visibleUsers(actor) {
+  const users = loadUsers();
+  if (isAdmin(actor)) return users;
+  // غير الأدمن يرى مستخدمي شركته فقط (لعرض أسماء المدراء والتوثيق)
+  return users.filter(u => u.id === actor.id || (u.companyId && u.companyId === actor.companyId));
+}
+function visibleCompanies(actor) {
+  const companies = loadCompanies();
+  if (isAdmin(actor)) return companies;
+  return companies.filter(c => c.id === actor.companyId);
+}
+
 app.get('/api/state', auth, (req, res) => {
   const projects = listProjects().filter(p => canAccessProject(req.user, p));
-  res.json({ me: sanitizeUser(req.user), users: loadUsers().map(sanitizeUser), projects });
+  res.json({ me: sanitizeUser(req.user), users: visibleUsers(req.user).map(sanitizeUser), companies: visibleCompanies(req.user), projects });
 });
 
 app.get('/api/state/versions', auth, (req, res) => {
@@ -161,11 +215,45 @@ app.get('/api/state/versions', auth, (req, res) => {
   res.json(projects.map(p => ({ id: p.id, version: p.version })));
 });
 
+// ---------- الشركات (أدمن النظام فقط) ----------
+app.post('/api/companies', auth, adminOnly, (req, res) => {
+  const name = String((req.body||{}).name || '').trim();
+  if (!name) return res.status(400).json({ error: 'اكتب اسم الشركة' });
+  const companies = loadCompanies();
+  if (companies.some(c => c.name === name)) return res.status(400).json({ error: 'الشركة موجودة مسبقاً' });
+  const c = { id: nextId(), name };
+  companies.push(c);
+  saveCompanies(companies);
+  res.json(c);
+});
+
+app.put('/api/companies/:id', auth, adminOnly, (req, res) => {
+  const companies = loadCompanies();
+  const c = companies.find(x => x.id === Number(req.params.id));
+  if (!c) return res.status(404).json({ error: 'الشركة غير موجودة' });
+  const name = String((req.body||{}).name || '').trim();
+  if (name) c.name = name;
+  saveCompanies(companies);
+  res.json(c);
+});
+
+app.delete('/api/companies/:id', auth, adminOnly, (req, res) => {
+  const id = Number(req.params.id);
+  if (listProjects().some(p => p.companyId === id)) return res.status(400).json({ error: 'لا يمكن حذف شركة لديها مشاريع — احذف أو انقل مشاريعها أولاً' });
+  if (loadUsers().some(u => u.companyId === id)) return res.status(400).json({ error: 'لا يمكن حذف شركة لديها مستخدمون — احذفهم أو انقلهم أولاً' });
+  saveCompanies(loadCompanies().filter(c => c.id !== id));
+  res.json({ ok: true });
+});
+
 // ---------- المشاريع ----------
-app.post('/api/projects', auth, ownerOnly, (req, res) => {
+app.post('/api/projects', auth, (req, res) => {
   const data = req.body && req.body.data;
   if (!data || !data.info || !data.info.name) return res.status(400).json({ error: 'بيانات المشروع ناقصة' });
-  const p = { ...data, id: nextId(), version: 1 };
+  // العميل ينشئ داخل شركته فقط؛ الأدمن يحدد الشركة
+  const companyId = isAdmin(req.user) ? Number(data.companyId) : req.user.companyId;
+  if (!companyId || !loadCompanies().some(c => c.id === companyId)) return res.status(400).json({ error: 'حدد شركة صحيحة للمشروع' });
+  if (!canAdminCompany(req.user, companyId)) return res.status(403).json({ error: 'إنشاء المشاريع صلاحية أدمن النظام أو عميل الشركة' });
+  const p = { ...data, companyId, id: nextId(), version: 1 };
   saveProject(p);
   res.json({ id: p.id, version: p.version });
 });
@@ -178,47 +266,69 @@ app.put('/api/projects/:id', auth, (req, res) => {
   const { baseVersion, data } = req.body || {};
   if (!data) return res.status(400).json({ error: 'بيانات ناقصة' });
   if (Number(baseVersion) !== stored.version) return res.status(409).json({ error: 'conflict', version: stored.version });
-  // مدير المشروع لا يستطيع إعادة تعيين نفسه أو غيره
-  const managerUserId = req.user.role === 'owner' ? (data.managerUserId ?? null) : stored.managerUserId;
-  const p = { ...data, managerUserId, id, version: stored.version + 1 };
+  // تعيين مدير المشروع: أدمن أو عميل الشركة فقط · نقل المشروع بين الشركات: الأدمن فقط
+  const canAssign = canAdminCompany(req.user, stored.companyId);
+  const managerUserId = canAssign ? (data.managerUserId ?? null) : stored.managerUserId;
+  const companyId = isAdmin(req.user) && data.companyId && loadCompanies().some(c => c.id === Number(data.companyId))
+    ? Number(data.companyId) : stored.companyId;
+  const p = { ...data, managerUserId, companyId, id, version: stored.version + 1 };
   saveProject(p);
   res.json({ version: p.version });
 });
 
-app.delete('/api/projects/:id', auth, ownerOnly, (req, res) => {
+app.delete('/api/projects/:id', auth, (req, res) => {
   const id = Number(req.params.id);
-  if (!loadProject(id)) return res.status(404).json({ error: 'المشروع غير موجود' });
+  const stored = loadProject(id);
+  if (!stored) return res.status(404).json({ error: 'المشروع غير موجود' });
+  if (!canAdminCompany(req.user, stored.companyId)) return res.status(403).json({ error: 'حذف المشاريع صلاحية أدمن النظام أو عميل الشركة' });
   fs.unlinkSync(projectFile(id));
   res.json({ ok: true });
 });
 
 // ---------- المستخدمون ----------
-app.get('/api/users', auth, (req, res) => res.json(loadUsers().map(sanitizeUser)));
+app.get('/api/users', auth, (req, res) => res.json(visibleUsers(req.user).map(sanitizeUser)));
 
-app.post('/api/users', auth, ownerOnly, (req, res) => {
-  const { username, name, role, password } = req.body || {};
+app.post('/api/users', auth, (req, res) => {
+  const { username, name, role, password, companyId } = req.body || {};
   const un = String(username || '').trim();
   if (!un || !name || !password) return res.status(400).json({ error: 'أكمل: اسم المستخدم، الاسم، كلمة المرور' });
   if (String(password).length < 4) return res.status(400).json({ error: 'كلمة المرور قصيرة (4 أحرف على الأقل)' });
+  let newRole = ROLES.includes(role) ? role : 'pm';
+  let newCompanyId = null;
+  if (isAdmin(req.user)) {
+    newCompanyId = newRole === 'admin' ? null : Number(companyId) || null;
+    if (newRole !== 'admin' && (!newCompanyId || !loadCompanies().some(c => c.id === newCompanyId)))
+      return res.status(400).json({ error: 'حدد شركة صحيحة للمستخدم' });
+  } else if (req.user.role === 'client') {
+    // العميل يضيف موظفي شركته فقط (مدير مشاريع / مدير مشروع)
+    if (!['pmo','pm'].includes(newRole)) return res.status(403).json({ error: 'العميل يضيف أدوار: مدير مشاريع أو مدير مشروع فقط' });
+    newCompanyId = req.user.companyId;
+  } else {
+    return res.status(403).json({ error: 'إضافة المستخدمين صلاحية أدمن النظام أو العميل' });
+  }
   const users = loadUsers();
   if (users.some(u => u.username === un)) return res.status(400).json({ error: 'اسم المستخدم موجود مسبقاً' });
-  const u = { id: nextId(), username: un, name: String(name).trim(), role: role === 'owner' ? 'owner' : 'pm', hash: bcrypt.hashSync(String(password), 10) };
+  const u = { id: nextId(), username: un, name: String(name).trim(), role: newRole, companyId: newCompanyId, hash: bcrypt.hashSync(String(password), 10) };
   users.push(u);
   saveUsers(users);
   res.json(sanitizeUser(u));
 });
 
-app.put('/api/users/:id', auth, ownerOnly, (req, res) => {
+app.put('/api/users/:id', auth, (req, res) => {
   const id = Number(req.params.id);
   const users = loadUsers();
   const u = users.find(x => x.id === id);
   if (!u) return res.status(404).json({ error: 'المستخدم غير موجود' });
+  if (!canManageUser(req.user, u)) return res.status(403).json({ error: 'لا تملك صلاحية على هذا المستخدم' });
   const { name, role, password } = req.body || {};
   if (name) u.name = String(name).trim();
-  if (role && (role === 'owner' || role === 'pm')) {
-    if (u.role === 'owner' && role !== 'owner' && users.filter(x => x.role === 'owner').length <= 1)
-      return res.status(400).json({ error: 'لا يمكن تنزيل صلاحية آخر مالك' });
+  if (role && ROLES.includes(role)) {
+    const allowed = isAdmin(req.user) ? ROLES : ['pmo','pm'];
+    if (!allowed.includes(role)) return res.status(403).json({ error: 'لا يمكنك منح هذا الدور' });
+    if (u.role === 'admin' && role !== 'admin' && users.filter(x => x.role === 'admin').length <= 1)
+      return res.status(400).json({ error: 'لا يمكن تنزيل صلاحية آخر أدمن' });
     u.role = role;
+    if (role === 'admin') u.companyId = null;
   }
   if (password) {
     if (String(password).length < 4) return res.status(400).json({ error: 'كلمة المرور قصيرة' });
@@ -228,14 +338,15 @@ app.put('/api/users/:id', auth, ownerOnly, (req, res) => {
   res.json(sanitizeUser(u));
 });
 
-app.delete('/api/users/:id', auth, ownerOnly, (req, res) => {
+app.delete('/api/users/:id', auth, (req, res) => {
   const id = Number(req.params.id);
   const users = loadUsers();
   const u = users.find(x => x.id === id);
   if (!u) return res.status(404).json({ error: 'المستخدم غير موجود' });
   if (u.id === req.user.id) return res.status(400).json({ error: 'لا يمكنك حذف نفسك' });
-  if (u.role === 'owner' && users.filter(x => x.role === 'owner').length <= 1)
-    return res.status(400).json({ error: 'لا يمكن حذف آخر مالك' });
+  if (!canManageUser(req.user, u)) return res.status(403).json({ error: 'لا تملك صلاحية على هذا المستخدم' });
+  if (u.role === 'admin' && users.filter(x => x.role === 'admin').length <= 1)
+    return res.status(400).json({ error: 'لا يمكن حذف آخر أدمن' });
   listProjects().forEach(p => {
     if (p.managerUserId === id) { p.managerUserId = null; p.version++; saveProject(p); }
   });
@@ -279,20 +390,23 @@ app.delete('/api/projects/:id/photos/:file', auth, (req, res) => {
 app.use('/uploads', express.static(UPLOADS_DIR, { maxAge: '30d', immutable: true }));
 
 // ---------- نسخ احتياطي واستعادة ----------
-app.get('/api/backup', auth, ownerOnly, (req, res) => {
+app.get('/api/backup', auth, adminOnly, (req, res) => {
   res.setHeader('Content-Disposition', 'attachment; filename="azoom-backup-' + new Date().toISOString().slice(0, 10) + '.json"');
-  res.json({ exportedAt: new Date().toISOString(), projects: listProjects(), users: loadUsers().map(sanitizeUser) });
+  res.json({ exportedAt: new Date().toISOString(), projects: listProjects(), users: loadUsers().map(sanitizeUser), companies: loadCompanies() });
 });
 
-app.post('/api/restore', auth, ownerOnly, (req, res) => {
+app.post('/api/restore', auth, adminOnly, (req, res) => {
   const incoming = req.body && req.body.projects;
   if (!Array.isArray(incoming) || !incoming.length) return res.status(400).json({ error: 'لا توجد مشاريع في الملف' });
   const userIds = new Set(loadUsers().map(u => u.id));
   // حذف المشاريع الحالية ثم إنشاء المستوردة بمعرفات جديدة
   listProjects().forEach(p => fs.unlinkSync(projectFile(p.id)));
+  const companyIds = new Set(loadCompanies().map(c => c.id));
+  const fallbackCompany = loadCompanies()[0] ? loadCompanies()[0].id : 1;
   const created = incoming.map(raw => {
     const { id, version, ...data } = raw;
     if (data.managerUserId && !userIds.has(data.managerUserId)) data.managerUserId = null;
+    if (!data.companyId || !companyIds.has(data.companyId)) data.companyId = fallbackCompany;
     const p = { ...data, id: nextId(), version: 1 };
     saveProject(p);
     return p.id;

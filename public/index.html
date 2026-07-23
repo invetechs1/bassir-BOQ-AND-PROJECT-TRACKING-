@@ -387,6 +387,13 @@
 
   <!-- ===================== MUSTAKHLAS ===================== -->
   <div class="tab-panel" id="tab-invoice">
+    <div class="filter-bar">
+      <button class="filter-btn active" id="inv-tab-new" onclick="switchInvView('new')">🧾 إعداد مستخلص جديد</button>
+      <button class="filter-btn" id="inv-tab-history" onclick="switchInvView('history')">📚 المستخلصات السابقة <span class="tab-count" id="inv-hist-count">0</span></button>
+    </div>
+
+    <!-- عرض: مستخلص جديد -->
+    <div id="inv-view-new">
     <div class="alert info">💡 الكميات المقترحة = المنفذ − المرفوع سابقاً (المستخلص الجاري). عدّل كمية المطالبة لكل بند إذا حاب، ثم احفظ المستخلص ليتم تسجيله وخصمه من الرصيد القابل للرفع.</div>
     <div class="two-col">
       <div>
@@ -401,20 +408,6 @@
             </thead>
             <tbody id="mb-tbody"></tbody>
           </table>
-        </div>
-
-        <div class="section-header">
-          <div class="section-title"><span class="dot" style="background:var(--teal)"></span> سجل المستخلصات المرفوعة</div>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>رقم</th><th>التاريخ</th><th>عدد البنود</th><th>قيمة الأعمال</th><th>صافي المستحق</th><th>المحصل</th><th>الحالة</th><th>إجراءات</th></tr></thead>
-            <tbody id="mus-history-tbody"></tbody>
-          </table>
-        </div>
-        <div class="card">
-          <div class="card-title">📈 قيمة المستخلصات المرفوعة حسب الشهر</div>
-          <div class="bar-chart" id="mus-monthly"></div>
         </div>
       </div>
       <div>
@@ -436,6 +429,23 @@
         </div>
       </div>
     </div>
+    </div><!-- /inv-view-new -->
+
+    <!-- عرض: المستخلصات السابقة -->
+    <div id="inv-view-history" style="display:none">
+      <div class="kpi-grid" id="mus-kpis"></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>رقم</th><th>التاريخ</th><th>عدد البنود</th><th>قيمة الأعمال</th><th>التراكمي حتى تاريخه</th><th>صافي المستحق</th><th>المحصل</th><th>الحالة</th><th>سجّله</th><th>إجراءات</th></tr></thead>
+          <tbody id="mus-history-tbody"></tbody>
+          <tfoot id="mus-history-tfoot"></tfoot>
+        </table>
+      </div>
+      <div class="card">
+        <div class="card-title">📈 قيمة المستخلصات المرفوعة حسب الشهر</div>
+        <div class="bar-chart" id="mus-monthly"></div>
+      </div>
+    </div><!-- /inv-view-history -->
   </div>
 
   <!-- ===================== BLOCKED ===================== -->
@@ -1504,7 +1514,7 @@ function renderClaimSummary(){
     '<div class="sc-item"><span class="sc-item-name" style="font-weight:700">الإجمالي شامل الضريبة</span><span class="sc-item-val" style="color:var(--green-bright);font-weight:700;font-size:13px">' + money(t.net + vat) + '</span></div>';
 }
 
-function quickBuildInvoice(){ switchTab('invoice'); mbSelectAll(); }
+function quickBuildInvoice(){ switchTab('invoice'); switchInvView('new'); mbSelectAll(); }
 
 // معدل الإنتاج اليومي لكل بند من سجل اليوميات
 function itemLogRates(){
@@ -1807,7 +1817,7 @@ function mbQty(id, val){
 }
 function mbSelectAll(){ claimableItems().forEach(it => { mbSel[it.id] = availQty(it); }); renderBuilder(); }
 function mbClear(){ mbSel = {}; renderBuilder(); }
-function mbAddItem(id){ const it = getItem(id); if (it && availQty(it) > 0.01) { mbSel[id] = availQty(it); } switchTab('invoice'); renderBuilder(); }
+function mbAddItem(id){ const it = getItem(id); if (it && availQty(it) > 0.01) { mbSel[id] = availQty(it); } switchTab('invoice'); switchInvView('new'); renderBuilder(); }
 
 function mbCompute(){
   const lines = [];
@@ -1845,7 +1855,7 @@ function saveMustakhlas(){
   c.lines.forEach(l => { const it = getItem(l.itemId); if (it) it.claimedQty = Math.min(it.totalQty, it.claimedQty + l.currQty); });
   proj().mustakhlasat.push(rec);
   mbSel = {}; $('mb-notes').value = '';
-  save(); renderAll(); showDoc(rec);
+  save(); renderAll(); switchInvView('history'); showDoc(rec);
 }
 
 function previewMustakhlas(){
@@ -1859,8 +1869,38 @@ function previewMustakhlas(){
 // ============================================================
 const MUS_STATUS = {submitted:{label:'مرفوع', color:'amber'}, approved:{label:'معتمد', color:'blue'}, paid:{label:'مدفوع', color:'green'}};
 
+let invView = 'new';
+function switchInvView(v){
+  invView = v;
+  $('inv-view-new').style.display = v === 'new' ? '' : 'none';
+  $('inv-view-history').style.display = v === 'history' ? '' : 'none';
+  $('inv-tab-new').classList.toggle('active', v === 'new');
+  $('inv-tab-history').classList.toggle('active', v === 'history');
+}
+
 function renderHistory(){
-  const list = [...proj().mustakhlasat].sort((a,b) => b.date.localeCompare(a.date));
+  const asc = [...proj().mustakhlasat].sort((a,b) => a.date.localeCompare(b.date) || a.id - b.id);
+  // التراكمي حتى تاريخ كل مستخلص
+  const cumMap = {};
+  let running = 0;
+  asc.forEach(m => { running += m.gross; cumMap[m.id] = running; });
+  const totGross = running;
+  const totNet = asc.reduce((s,m) => s + m.net, 0);
+  const totPaid = asc.reduce((s,m) => s + paidAmount(m), 0);
+
+  $('inv-hist-count').textContent = asc.length;
+
+  // ملخص مالي أعلى صفحة المستخلصات السابقة
+  const t = totals();
+  $('mus-kpis').innerHTML = [
+    {label:'عدد المستخلصات', value:asc.length, color:'amber', sub:asc.length ? 'آخرها ' + asc[asc.length-1].date : '—'},
+    {label:'إجمالي قيمة الأعمال المرفوعة', value:money(totGross), color:'teal', sub:((t.azoomScope>0? (totGross/t.azoomScope*100).toFixed(1):0)) + '% من قيمة النطاق'},
+    {label:'إجمالي صافي المستحق', value:money(totNet), color:'blue', sub:'بعد الضريبة والمحتجزات'},
+    {label:'💵 المحصل نقداً', value:money(totPaid), color:'green', sub:'من المستخلصات المرفوعة'},
+    {label:'متبقي التحصيل', value:money(Math.max(0, totNet - totPaid)), color:'red', sub:'مستحق لم يُدفع بعد'}
+  ].map(k => '<div class="kpi-card ' + k.color + '"><div class="kpi-label">' + k.label + '</div><div class="kpi-value ' + k.color + '">' + k.value + '</div><div class="kpi-sub">' + k.sub + '</div></div>').join('');
+
+  const list = [...asc].reverse(); // الأحدث أولاً
   $('mus-history-tbody').innerHTML = list.map(m => {
     const stm = MUS_STATUS[m.status] || MUS_STATUS.submitted;
     const paid = paidAmount(m);
@@ -1871,14 +1911,22 @@ function renderHistory(){
       '<td style="font-family:var(--mono);font-size:12px">' + esc(m.date) + '</td>' +
       '<td>' + m.lines.length + '</td>' +
       '<td class="amount">' + fmtN(m.gross) + '</td>' +
+      '<td class="amount" style="color:var(--teal)">' + fmtN(cumMap[m.id]) + '</td>' +
       '<td class="amount claimable">' + fmtN(m.net) + '</td>' +
       '<td class="amount" style="color:' + (paid >= m.net - 1 ? 'var(--green-bright)' : paid > 0 ? 'var(--amber)' : 'var(--text3)') + '" data-tip="' + (m.payments||[]).map(p => esc(p.date) + ': ' + fmtN(p.amount)).join(' | ') + '">' + (paid > 0 ? fmtN(paid) : '—') + '</td>' +
       '<td><span class="pill ' + stm.color + '">' + stm.label + '</span></td>' +
+      '<td style="font-size:11px;color:var(--text3)">' + esc(m.by || '—') + '</td>' +
       '<td style="white-space:nowrap"><button class="mini-btn" onclick="viewMus(' + m.id + ')">📄 عرض</button> ' +
       '<button class="mini-btn green" onclick="openPay(' + m.id + ')">💵 دفعة</button> ' + nextBtn +
       ' <button class="mini-btn red" onclick="deleteMus(' + m.id + ')">🗑</button></td>' +
       '</tr>';
-  }).join('') || '<tr><td colspan="8"><div class="empty-state"><p>لا توجد مستخلصات مرفوعة بعد</p></div></td></tr>';
+  }).join('') || '<tr><td colspan="10"><div class="empty-state"><p>لا توجد مستخلصات مرفوعة بعد — أعد مستخلصك الأول من "إعداد مستخلص جديد"</p></div></td></tr>';
+
+  $('mus-history-tfoot').innerHTML = asc.length ? '<tr class="summary-row">' +
+    '<td colspan="3" style="text-align:right;color:var(--text2)">الإجمالي (' + asc.length + ' مستخلص)</td>' +
+    '<td class="amount" style="color:var(--amber)">' + fmtN(totGross) + '</td><td></td>' +
+    '<td class="amount claimable">' + fmtN(totNet) + '</td>' +
+    '<td class="amount" style="color:var(--green-bright)">' + fmtN(totPaid) + '</td><td colspan="3"></td></tr>' : '';
 
   // monthly claimed chart
   const byMonth = {};
@@ -1970,11 +2018,13 @@ function showDoc(m){
     '<thead><tr style="background:var(--bg3)">' +
       ['#','البند','الوصف','الوحدة','السعر','الكمية السابقة','الكمية الحالية','التراكمي','قيمة الحالي (ر.س)'].map(h => '<th style="padding:7px;border:1px solid var(--border);color:var(--amber);text-align:center">' + h + '</th>').join('') +
     '</tr></thead><tbody>' + rows + '</tbody><tfoot>' +
-    sumRow('إجمالي قيمة الأعمال الحالية', m.gross, 'var(--amber)') +
-    sumRow('ضريبة القيمة المضافة ' + m.vatRate + '%', m.vat, 'var(--text)') +
+    sumRow('قيمة الأعمال السابقة (مستخلصات سابقة)', m.lines.reduce((s,l) => s + l.prevQty * l.rate, 0), 'var(--text2)') +
+    sumRow('قيمة الأعمال الحالية (هذا المستخلص)', m.gross, 'var(--amber)') +
+    sumRow('قيمة الأعمال التراكمية', m.lines.reduce((s,l) => s + l.cumQty * l.rate, 0), 'var(--teal)') +
+    sumRow('ضريبة القيمة المضافة ' + m.vatRate + '% (على الحالي)', m.vat, 'var(--text)') +
     sumRow('− محتجز ضمان ' + m.retRate + '%', -m.retention, 'var(--red)') +
     sumRow('− استرداد دفعة مقدمة ' + m.advRate + '%', -m.advance, 'var(--red)') +
-    sumRow('صافي المستحق للدفع', m.net, '', true) +
+    sumRow('صافي المستحق للدفع (الحالي)', m.net, '', true) +
     '</tfoot></table></div>' +
     '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-top:28px;font-size:12px">' +
       ['معد المستخلص','مدير الموقع','مدير المشروع'].map(r => '<div style="text-align:center;border-top:1px solid var(--border);padding-top:8px"><div style="color:var(--text2)">' + r + '</div><div style="margin-top:26px;color:var(--text3)">التوقيع / التاريخ</div></div>').join('') +

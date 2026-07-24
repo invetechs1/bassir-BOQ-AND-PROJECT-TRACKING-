@@ -419,7 +419,13 @@
             <div class="f-field"><label>ملاحظات</label><input type="text" id="mb-notes" placeholder="اختياري"></div>
             <div class="f-field"><label>محتجز ضمان %</label><input type="number" id="mb-ret" min="0" max="100" step="0.5"></div>
             <div class="f-field"><label>استرداد دفعة مقدمة %</label><input type="number" id="mb-adv" min="0" max="100" step="0.5"></div>
+            <div class="f-field full">
+              <label>📎 مرفقات المستخلص * (ملفات المستخلص كاملة + استلامات الاستشاري — PDF أو صور)</label>
+              <input type="file" id="mb-files" accept="image/*,.pdf,application/pdf" multiple onchange="mbFilesPicked(this)">
+              <div id="mb-files-list" style="display:flex;flex-direction:column;gap:4px;margin-top:6px"></div>
+            </div>
           </div>
+          <div class="alert warning" style="font-size:11px;margin-top:8px" id="mb-flow-note">⬆ بعد الحفظ يذهب المستخلص إلى مدير المشاريع لمراجعته واعتماده وإصدار الفاتورة.</div>
           <div class="divider"></div>
           <div id="mb-totals"></div>
           <div class="divider"></div>
@@ -1027,7 +1033,7 @@ function migrateProject(p){
   p.blockerLog = p.blockerLog || []; p.workLogs = p.workLogs || [];
   p.villas = p.villas || []; p.villaProgress = p.villaProgress || {}; p.boqItems = p.boqItems || [];
   p.mustakhlasat = p.mustakhlasat || [];
-  p.mustakhlasat.forEach(m => { m.payments = m.payments || []; });
+  p.mustakhlasat.forEach(m => { m.payments = m.payments || []; m.attachments = m.attachments || []; });
   p.boqItems.forEach(i => {
     if (i.blocker) { i.blocker.since = i.blocker.since || ''; i.blocker.expected = i.blocker.expected || ''; }
   });
@@ -1610,6 +1616,15 @@ function renderAlerts(){
   const blockedItems = proj().boqItems.filter(i => statusOf(i) === 'blocked');
   const reasons = [...new Set(blockedItems.map(i => i.blocker.reason))];
   let html = '';
+  // تنبيه المراجع: مستخلصات بانتظار الاعتماد
+  const pendingMus = proj().mustakhlasat.filter(m => m.status === 'submitted');
+  if (canReviewMus() && pendingMus.length) {
+    html += '<div class="alert warning">🔔 <div><strong>' + pendingMus.length + ' مستخلص بانتظار مراجعتك واعتمادك</strong> (' + money(pendingMus.reduce((s,m)=>s+m.gross,0)) + ') — <a href="#" onclick="switchTab(\'invoice\');switchInvView(\'history\');return false" style="color:var(--amber);font-weight:700">افتح المستخلصات ←</a></div></div>';
+  }
+  const myRejected = proj().mustakhlasat.filter(m => m.status === 'rejected');
+  if (state.me.role === 'pm' && myRejected.length) {
+    html += '<div class="alert danger">↩ <div><strong>' + myRejected.length + ' مستخلص معاد لك للتعديل</strong> — راجع سبب الإرجاع، احذفه وأعد رفعه بعد التصحيح.</div></div>';
+  }
   if (t.net > 1) html += '<div class="alert success">✅ <div>عندك <strong>' + money(t.net) + '</strong> جاهزة للرفع الآن — روح لتبويب المستخلصات.</div></div>';
   if (blockedItems.length) html += '<div class="alert danger">⛔ <div><strong>' + blockedItems.length + ' بند</strong> موقوف بعوائق خارجية (' + reasons.map(esc).join('، ') + ') — راجع تبويب العوائق للأثر المالي.</div></div>';
   const stale = proj().boqItems.filter(i => statusOf(i) === 'available');
@@ -1958,18 +1973,76 @@ function renderMbTotals(){
     '<div class="sc-item"><span class="sc-item-name" style="font-weight:700">صافي المستحق</span><span class="sc-item-val" style="color:var(--green-bright);font-size:15px;font-weight:700">' + money(c.net) + '</span></div>';
 }
 
-function saveMustakhlas(){
+// ---- مرفقات المستخلص (ملفات المستخلص + استلامات الاستشاري) ----
+let mbPendingFiles = []; // [{dataUrl, name}]
+
+function readFileAsDataURL(f){
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = () => reject(new Error('تعذر قراءة الملف'));
+    r.readAsDataURL(f);
+  });
+}
+
+async function mbFilesPicked(input){
+  const files = [...(input.files || [])].slice(0, 15 - mbPendingFiles.length);
+  for (const f of files) {
+    try {
+      if (f.type === 'application/pdf') {
+        if (f.size > 9 * 1024 * 1024) { alert(f.name + ': الملف أكبر من 9MB'); continue; }
+        mbPendingFiles.push({dataUrl: await readFileAsDataURL(f), name: f.name});
+      } else if (f.type.startsWith('image/')) {
+        mbPendingFiles.push({dataUrl: await compressImage(f), name: f.name});
+      } else {
+        alert(f.name + ': الصيغة غير مدعومة (PDF أو صور فقط)');
+      }
+    } catch(e) { alert(e.message); }
+  }
+  input.value = '';
+  renderMbFilesList();
+}
+
+function renderMbFilesList(){
+  $('mb-files-list').innerHTML = mbPendingFiles.map((f, i) =>
+    '<div class="sc-item" style="padding:3px 0"><span class="sc-item-name" style="font-size:11px">' +
+    (f.name.toLowerCase().endsWith('.pdf') ? '📄' : '🖼') + ' ' + esc(f.name) + '</span>' +
+    '<button class="mini-btn red" onclick="mbPendingFiles.splice(' + i + ',1);renderMbFilesList()">✕</button></div>'
+  ).join('');
+}
+
+async function uploadMbFiles(){
+  const uploaded = [];
+  for (const f of mbPendingFiles) {
+    const r = await API.req('POST', '/api/projects/' + proj().id + '/photos', {dataUrl: f.dataUrl});
+    uploaded.push({url: r.url, name: f.name});
+  }
+  return uploaded;
+}
+
+async function saveMustakhlas(){
   const c = mbCompute();
   if (!c.lines.length) { alert('حدّد بنود أولاً'); return; }
-  if (!confirm('حفظ المستخلص بقيمة ' + money(c.gross) + '؟ سيتم خصم الكميات من الرصيد القابل للرفع.')) return;
+  if (offlineMode) { alert('📴 لا يمكن الرفع بدون اتصال'); return; }
+  if (!mbPendingFiles.length && state.me.role === 'pm' &&
+      !confirm('⚠️ لم ترفق ملفات المستخلص واستلامات الاستشاري — مدير المشاريع يحتاجها للاعتماد. متابعة بدون مرفقات؟')) return;
+  if (!confirm('رفع المستخلص بقيمة ' + money(c.gross) + ' للمراجعة والاعتماد؟ سيتم خصم الكميات من الرصيد القابل للرفع.')) return;
+  let attachments = [];
+  if (mbPendingFiles.length) {
+    try { attachments = await uploadMbFiles(); }
+    catch(e) { alert('تعذر رفع المرفقات: ' + e.message); return; }
+  }
   const no = 'MUS-' + String(proj().mustakhlasat.length + 1).padStart(3,'0');
   const rec = {id: nextSeq(), no, date: $('mb-date').value || todayStr(), status:'submitted',
     lines:c.lines, gross:c.gross, vatRate:c.vatRate, retRate:c.retRate, advRate:c.advRate,
-    vat:c.vat, retention:c.retention, advance:c.advance, net:c.net, notes:$('mb-notes').value.trim(), payments:[], by: currentUser().name};
+    vat:c.vat, retention:c.retention, advance:c.advance, net:c.net, notes:$('mb-notes').value.trim(),
+    payments:[], by: currentUser().name, attachments};
   c.lines.forEach(l => { const it = getItem(l.itemId); if (it) it.claimedQty = Math.min(it.totalQty, it.claimedQty + l.currQty); });
   proj().mustakhlasat.push(rec);
   mbSel = {}; $('mb-notes').value = '';
+  mbPendingFiles = []; renderMbFilesList();
   save(); renderAll(); switchInvView('history'); showDoc(rec);
+  if (state.me.role === 'pm') setTimeout(() => alert('✅ تم رفع المستخلص للمراجعة — سيظهر لمدير المشاريع لاعتماده وإصدار الفاتورة.'), 300);
 }
 
 function previewMustakhlas(){
@@ -1981,7 +2054,14 @@ function previewMustakhlas(){
 // ============================================================
 //  MUSTAKHLAS HISTORY
 // ============================================================
-const MUS_STATUS = {submitted:{label:'مرفوع', color:'amber'}, approved:{label:'معتمد', color:'blue'}, paid:{label:'مدفوع', color:'green'}};
+const MUS_STATUS = {
+  submitted:{label:'⏳ بانتظار الاعتماد', color:'amber'},
+  rejected:{label:'↩ معاد للتعديل', color:'red'},
+  approved:{label:'✅ معتمد', color:'blue'},
+  paid:{label:'💵 مدفوع', color:'green'}
+};
+// من يراجع ويعتمد ويصدر الفواتير ويسجل الدفعات؟ مدير المشاريع فأعلى
+const canReviewMus = () => ['admin','client','pmo'].includes(state.me.role);
 
 let invView = 'new';
 function switchInvView(v){
@@ -2018,21 +2098,28 @@ function renderHistory(){
   $('mus-history-tbody').innerHTML = list.map(m => {
     const stm = MUS_STATUS[m.status] || MUS_STATUS.submitted;
     const paid = paidAmount(m);
-    const nextBtn = m.status === 'submitted' ? '<button class="mini-btn" onclick="musStatus(' + m.id + ',\'approved\')">اعتماد ✓</button>'
-      : m.status === 'approved' ? '<button class="mini-btn green" onclick="musStatus(' + m.id + ',\'paid\')">تم الدفع 💵</button>' : '';
+    const nAtt = (m.attachments||[]).length;
+    // أزرار سير العمل حسب الدور والحالة
+    let flowBtns = '';
+    if (canReviewMus()) {
+      if (m.status === 'submitted') flowBtns = '<button class="mini-btn green" onclick="approveMus(' + m.id + ')">✅ اعتماد</button> <button class="mini-btn red" onclick="rejectMus(' + m.id + ')">↩ إرجاع</button> ';
+      else if (m.status === 'approved' && !m.invoiceNo) flowBtns = '<button class="mini-btn green" onclick="issueInvoice(' + m.id + ')">🧾 إصدار الفاتورة</button> ';
+      if (m.invoiceNo) flowBtns += '<button class="mini-btn" onclick="viewInvoice(' + m.id + ')">🧾 ' + esc(m.invoiceNo) + '</button> ';
+      if (['approved','paid'].includes(m.status)) flowBtns += '<button class="mini-btn green" onclick="openPay(' + m.id + ')">💵 دفعة</button> ';
+    }
+    const canDelete = canReviewMus() || ['submitted','rejected'].includes(m.status);
     return '<tr>' +
-      '<td><span class="item-no">' + esc(m.no) + '</span></td>' +
+      '<td><span class="item-no">' + esc(m.no) + '</span>' + (nAtt ? '<br><span class="pill blue" style="font-size:9px" data-tip="مرفقات: ' + (m.attachments||[]).map(a=>esc(a.name||'ملف')).join(' · ') + '">📎 ' + nAtt + '</span>' : '') + '</td>' +
       '<td style="font-family:var(--mono);font-size:12px">' + esc(m.date) + '</td>' +
       '<td>' + m.lines.length + '</td>' +
       '<td class="amount">' + fmtN(m.gross) + '</td>' +
       '<td class="amount" style="color:var(--teal)">' + fmtN(cumMap[m.id]) + '</td>' +
       '<td class="amount claimable">' + fmtN(m.net) + '</td>' +
       '<td class="amount" style="color:' + (paid >= m.net - 1 ? 'var(--green-bright)' : paid > 0 ? 'var(--amber)' : 'var(--text3)') + '" data-tip="' + (m.payments||[]).map(p => esc(p.date) + ': ' + fmtN(p.amount)).join(' | ') + '">' + (paid > 0 ? fmtN(paid) : '—') + '</td>' +
-      '<td><span class="pill ' + stm.color + '">' + stm.label + '</span></td>' +
+      '<td><span class="pill ' + stm.color + '"' + (m.status === 'rejected' && m.rejectReason ? ' data-tip="سبب الإرجاع: ' + esc(m.rejectReason) + '"' : '') + (m.status !== 'submitted' && m.approvedBy ? ' data-tip="اعتمده ' + esc(m.approvedBy) + ' في ' + esc(m.approvedAt||'') + '"' : '') + '>' + stm.label + '</span></td>' +
       '<td style="font-size:11px;color:var(--text3)">' + esc(m.by || '—') + '</td>' +
-      '<td style="white-space:nowrap"><button class="mini-btn" onclick="viewMus(' + m.id + ')">📄 عرض</button> ' +
-      '<button class="mini-btn green" onclick="openPay(' + m.id + ')">💵 دفعة</button> ' + nextBtn +
-      ' <button class="mini-btn red" onclick="deleteMus(' + m.id + ')">🗑</button></td>' +
+      '<td style="white-space:nowrap"><button class="mini-btn" onclick="viewMus(' + m.id + ')">📄 عرض</button> ' + flowBtns +
+      (canDelete ? '<button class="mini-btn red" onclick="deleteMus(' + m.id + ')">🗑</button>' : '') + '</td>' +
       '</tr>';
   }).join('') || '<tr><td colspan="10"><div class="empty-state"><p>لا توجد مستخلصات مرفوعة بعد — أعد مستخلصك الأول من "إعداد مستخلص جديد"</p></div></td></tr>';
 
@@ -2057,6 +2144,7 @@ function renderHistory(){
 // ---- payments ----
 let payMusId = null;
 function openPay(id){
+  if (!canReviewMus()) { alert('تسجيل الدفعات صلاحية مدير المشاريع فأعلى'); return; }
   const m = proj().mustakhlasat.find(x => x.id === id);
   if (!m) return;
   payMusId = id;
@@ -2077,11 +2165,52 @@ function savePayment(){
   closeModal('pay-modal'); save(); renderAll();
 }
 
-function musStatus(id, st){ const m = proj().mustakhlasat.find(x => x.id === id); if (m) { m.status = st; save(); renderHistory(); } }
+// ---- سير الاعتماد: مراجعة مدير المشاريع → اعتماد → إصدار فاتورة ----
+function approveMus(id){
+  if (!canReviewMus()) { alert('الاعتماد صلاحية مدير المشاريع فأعلى'); return; }
+  const m = proj().mustakhlasat.find(x => x.id === id);
+  if (!m) return;
+  if (!confirm('اعتماد المستخلص ' + m.no + ' بقيمة ' + money(m.gross) + '؟ راجع المرفقات واستلامات الاستشاري قبل الاعتماد.')) return;
+  m.status = 'approved';
+  m.approvedBy = currentUser().name;
+  m.approvedAt = todayStr();
+  m.rejectReason = '';
+  save(); renderAll();
+}
+
+function rejectMus(id){
+  if (!canReviewMus()) return;
+  const m = proj().mustakhlasat.find(x => x.id === id);
+  if (!m) return;
+  const reason = prompt('سبب الإرجاع للتعديل (سيظهر لمدير المشروع):');
+  if (reason === null) return;
+  m.status = 'rejected';
+  m.rejectReason = reason.trim() || 'يحتاج تعديل';
+  m.approvedBy = currentUser().name;
+  m.approvedAt = todayStr();
+  save(); renderAll();
+  alert('↩ تم إرجاع المستخلص — مدير المشروع يحذفه ويعيد رفعه بعد التصحيح (الكميات ترجع للرصيد عند الحذف).');
+}
+
+function issueInvoice(id){
+  if (!canReviewMus()) { alert('إصدار الفواتير صلاحية مدير المشاريع فأعلى'); return; }
+  const m = proj().mustakhlasat.find(x => x.id === id);
+  if (!m || m.status !== 'approved') return;
+  const invCount = proj().mustakhlasat.filter(x => x.invoiceNo).length;
+  m.invoiceNo = 'INV-' + String(invCount + 1).padStart(3,'0');
+  m.invoiceDate = todayStr();
+  m.invoiceBy = currentUser().name;
+  save(); renderAll(); showInvoice(m);
+}
+
+function viewInvoice(id){ const m = proj().mustakhlasat.find(x => x.id === id); if (m && m.invoiceNo) showInvoice(m); }
+
 function viewMus(id){ const m = proj().mustakhlasat.find(x => x.id === id); if (m) showDoc(m); }
+
 function deleteMus(id){
   const m = proj().mustakhlasat.find(x => x.id === id);
   if (!m) return;
+  if (!canReviewMus() && !['submitted','rejected'].includes(m.status)) { alert('لا يمكن حذف مستخلص معتمد — راجع مدير المشاريع'); return; }
   if (!confirm('حذف المستخلص ' + m.no + '؟ سيتم إرجاع كمياته إلى الرصيد القابل للرفع.')) return;
   m.lines.forEach(l => { const it = getItem(l.itemId); if (it) it.claimedQty = Math.max(0, it.claimedQty - l.currQty); });
   proj().mustakhlasat = proj().mustakhlasat.filter(x => x.id !== id);
@@ -2126,6 +2255,10 @@ function showDoc(m){
       '<div><span style="color:var(--text2)">تاريخ المستخلص:</span> <strong>' + esc(m.date) + '</strong></div>' +
       '<div><span style="color:var(--text2)">عدد البنود:</span> <strong>' + m.lines.length + '</strong></div>' +
       (m.by ? '<div><span style="color:var(--text2)">معد المستخلص:</span> <strong>' + esc(m.by) + '</strong></div>' : '') +
+      (m.status ? '<div><span style="color:var(--text2)">الحالة:</span> <strong>' + (MUS_STATUS[m.status] ? MUS_STATUS[m.status].label : m.status) + '</strong></div>' : '') +
+      (m.approvedBy && m.status !== 'rejected' ? '<div><span style="color:var(--text2)">اعتمده:</span> <strong>' + esc(m.approvedBy) + (m.approvedAt ? ' — ' + esc(m.approvedAt) : '') + '</strong></div>' : '') +
+      (m.status === 'rejected' && m.rejectReason ? '<div style="grid-column:1/-1;color:var(--red)"><span>سبب الإرجاع:</span> <strong>' + esc(m.rejectReason) + '</strong></div>' : '') +
+      (m.invoiceNo ? '<div><span style="color:var(--text2)">رقم الفاتورة:</span> <strong>' + esc(m.invoiceNo) + '</strong></div>' : '') +
       (m.notes ? '<div style="grid-column:1/-1"><span style="color:var(--text2)">ملاحظات:</span> ' + esc(m.notes) + '</div>' : '') +
     '</div>' +
     '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px">' +
@@ -2140,10 +2273,49 @@ function showDoc(m){
     sumRow('− استرداد دفعة مقدمة ' + m.advRate + '%', -m.advance, 'var(--red)') +
     sumRow('صافي المستحق للدفع (الحالي)', m.net, '', true) +
     '</tfoot></table></div>' +
+    ((m.attachments||[]).length ?
+      '<div style="margin-top:14px"><div style="font-size:13px;font-weight:700;color:var(--amber);margin-bottom:6px">📎 المرفقات (' + m.attachments.length + ') — ملفات المستخلص واستلامات الاستشاري</div>' +
+      m.attachments.map(a => '<div style="font-size:12px;padding:3px 0"><a href="' + esc(a.url) + '" target="_blank" style="color:var(--blue);text-decoration:none">' +
+        (String(a.url).endsWith('.pdf') ? '📄' : '🖼') + ' ' + esc(a.name || 'ملف مرفق') + ' ↗</a></div>').join('') + '</div>' : '') +
     '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-top:28px;font-size:12px">' +
       ['معد المستخلص','مدير الموقع','مدير المشروع'].map(r => '<div style="text-align:center;border-top:1px solid var(--border);padding-top:8px"><div style="color:var(--text2)">' + r + '</div><div style="margin-top:26px;color:var(--text3)">التوقيع / التاريخ</div></div>').join('') +
     '</div></div>';
   $('doc-modal').classList.add('open');
+}
+
+// 🧾 الفاتورة الضريبية للمستخلص المعتمد
+function showInvoice(m){
+  const p = proj().info;
+  const totalWithVat = m.gross + m.vat;
+  const html = '<div style="font-family:var(--font)">' +
+    '<div style="text-align:center;padding:14px 0;border-bottom:2px solid var(--amber);margin-bottom:14px">' +
+      '<div style="font-size:11px;color:var(--text2);letter-spacing:2px">' + esc(p.contractor) + '</div>' +
+      '<div style="font-size:18px;font-weight:700;color:var(--amber);margin:4px 0">فاتورة ضريبية — Tax Invoice</div>' +
+      '<div style="font-size:14px;font-family:var(--mono);color:var(--teal)">' + esc(m.invoiceNo) + '</div></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;font-size:12px">' +
+      '<div><span style="color:var(--text2)">المورد:</span> <strong>' + esc(p.contractor) + '</strong></div>' +
+      '<div><span style="color:var(--text2)">تاريخ الفاتورة:</span> <strong>' + esc(m.invoiceDate) + '</strong></div>' +
+      '<div><span style="color:var(--text2)">العميل:</span> <strong>' + esc(p.client || '—') + '</strong></div>' +
+      '<div><span style="color:var(--text2)">المشروع:</span> <strong>' + esc(p.name) + '</strong></div>' +
+      '<div><span style="color:var(--text2)">مرجع المستخلص:</span> <strong>' + esc(m.no) + ' بتاريخ ' + esc(m.date) + '</strong></div>' +
+      '<div><span style="color:var(--text2)">اعتمده:</span> <strong>' + esc(m.approvedBy || '—') + '</strong></div>' +
+    '</div>' +
+    '<table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:14px">' +
+    '<thead><tr style="background:var(--bg3)">' + ['البيان','المبلغ (ر.س)'].map(hcell).join('') + '</tr></thead>' +
+    '<tbody><tr>' + cell('قيمة الأعمال المنفذة حسب المستخلص رقم ' + esc(m.no) + ' (' + m.lines.length + ' بند)') +
+      cell(fmtN(m.gross), 'text-align:center;font-family:var(--mono)') + '</tr></tbody>' +
+    '<tfoot>' +
+      '<tr>' + cell('<strong>الإجمالي قبل الضريبة</strong>', 'text-align:right') + cell(fmtN(m.gross), 'text-align:center;font-family:var(--mono)') + '</tr>' +
+      '<tr>' + cell('ضريبة القيمة المضافة ' + m.vatRate + '%', 'text-align:right') + cell(fmtN(m.vat), 'text-align:center;font-family:var(--mono)') + '</tr>' +
+      '<tr style="background:var(--green-dim)">' + cell('<strong style="color:var(--green-bright)">الإجمالي شامل الضريبة</strong>', 'text-align:right') +
+        cell('<strong style="color:var(--green-bright);font-size:15px">' + fmtN(totalWithVat) + '</strong>', 'text-align:center;font-family:var(--mono)') + '</tr>' +
+    '</tfoot></table>' +
+    '<div style="font-size:11px;color:var(--text2);margin-bottom:10px">ملاحظة: تُطبق المحتجزات (ضمان ' + m.retRate + '% / دفعة مقدمة ' + m.advRate + '%) عند السداد حسب شروط العقد — صافي المستحق: ' + money(m.net) + '</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:24px;font-size:12px">' +
+      '<div style="text-align:center;border-top:1px solid var(--border);padding-top:8px"><div style="color:var(--text2)">عن المورد</div><div style="margin-top:26px;color:var(--text3)">التوقيع / الختم</div></div>' +
+      '<div style="text-align:center;border-top:1px solid var(--border);padding-top:8px"><div style="color:var(--text2)">استلمها عن العميل</div><div style="margin-top:26px;color:var(--text3)">التوقيع / التاريخ</div></div>' +
+    '</div></div>';
+  showPrintable('🧾 فاتورة ' + m.invoiceNo, html);
 }
 
 // عرض وثيقة عامة (خطاب / تقرير) في نافذة الطباعة

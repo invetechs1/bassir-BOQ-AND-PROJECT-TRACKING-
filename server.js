@@ -271,6 +271,35 @@ app.put('/api/projects/:id', auth, (req, res) => {
   const managerUserId = canAssign ? (data.managerUserId ?? null) : stored.managerUserId;
   const companyId = isAdmin(req.user) && data.companyId && loadCompanies().some(c => c.id === Number(data.companyId))
     ? Number(data.companyId) : stored.companyId;
+
+  // دورة اعتماد المستخلصات: مدير المشروع يرفع فقط — لا يعتمد ولا يصدر فواتير ولا يسجل دفعات
+  // ولا يحذف مستخلصاً معتمداً/صادراً (يُفرض هنا حتى لو تجاوز الواجهة)
+  if (req.user.role === 'pm') {
+    const storedMus = stored.mustakhlasat || [];
+    const incomingMus = Array.isArray(data.mustakhlasat) ? data.mustakhlasat : [];
+    const inIds = new Set(incomingMus.map(m => m.id));
+    for (const s of storedMus) {
+      if (!inIds.has(s.id) && !['submitted','rejected'].includes(s.status || 'submitted')) {
+        return res.status(403).json({ error: 'لا يمكن لمدير المشروع حذف مستخلص معتمد أو صادرت له فاتورة' });
+      }
+    }
+    const stMap = new Map(storedMus.map(m => [m.id, m]));
+    incomingMus.forEach(m => {
+      const s = stMap.get(m.id);
+      if (s) {
+        // الحقول الاعتمادية والمالية تبقى كما اعتمدها المراجع
+        m.status = s.status; m.approvedBy = s.approvedBy; m.approvedAt = s.approvedAt;
+        m.rejectReason = s.rejectReason; m.invoiceNo = s.invoiceNo; m.invoiceDate = s.invoiceDate; m.invoiceBy = s.invoiceBy;
+        m.payments = s.payments || [];
+      } else {
+        // مستخلص جديد من مدير المشروع = مرفوع للمراجعة دائماً
+        m.status = 'submitted';
+        delete m.approvedBy; delete m.approvedAt; delete m.invoiceNo; delete m.invoiceDate; delete m.invoiceBy;
+        m.payments = [];
+      }
+    });
+  }
+
   const p = { ...data, managerUserId, companyId, id, version: stored.version + 1 };
   saveProject(p);
   res.json({ version: p.version });
@@ -363,11 +392,11 @@ app.post('/api/projects/:id/photos', auth, (req, res) => {
   if (!stored) return res.status(404).json({ error: 'المشروع غير موجود' });
   if (!canAccessProject(req.user, stored)) return res.status(403).json({ error: 'لا تملك صلاحية على هذا المشروع' });
   const dataUrl = req.body && req.body.dataUrl;
-  const m = /^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/=]+)$/.exec(String(dataUrl || '').slice(0, 12 * 1024 * 1024));
-  if (!m) return res.status(400).json({ error: 'صيغة الصورة غير مدعومة (jpeg/png/webp)' });
+  const m = /^data:(image\/(?:jpeg|png|webp)|application\/pdf);base64,([A-Za-z0-9+/=]+)$/.exec(String(dataUrl || '').slice(0, 16 * 1024 * 1024));
+  if (!m) return res.status(400).json({ error: 'الصيغة غير مدعومة (صور jpeg/png/webp أو PDF)' });
   const buf = Buffer.from(m[2], 'base64');
-  if (buf.length > 8 * 1024 * 1024) return res.status(400).json({ error: 'الصورة كبيرة جداً (الحد 8MB)' });
-  const ext = m[1] === 'jpeg' ? 'jpg' : m[1];
+  if (buf.length > 10 * 1024 * 1024) return res.status(400).json({ error: 'الملف كبير جداً (الحد 10MB)' });
+  const ext = m[1] === 'application/pdf' ? 'pdf' : (m[1] === 'image/jpeg' ? 'jpg' : m[1].split('/')[1]);
   const file = crypto.randomBytes(14).toString('hex') + '.' + ext;
   const dir = path.join(UPLOADS_DIR, String(id));
   fs.mkdirSync(dir, { recursive: true });
@@ -381,7 +410,7 @@ app.delete('/api/projects/:id/photos/:file', auth, (req, res) => {
   if (!stored) return res.status(404).json({ error: 'المشروع غير موجود' });
   if (!canAccessProject(req.user, stored)) return res.status(403).json({ error: 'لا تملك صلاحية' });
   const file = String(req.params.file);
-  if (!/^[a-f0-9]{28}\.(jpg|png|webp)$/.test(file)) return res.status(400).json({ error: 'اسم ملف غير صالح' });
+  if (!/^[a-f0-9]{28}\.(jpg|png|webp|pdf)$/.test(file)) return res.status(400).json({ error: 'اسم ملف غير صالح' });
   const fp = path.join(UPLOADS_DIR, String(id), file);
   if (fs.existsSync(fp)) fs.unlinkSync(fp);
   res.json({ ok: true });

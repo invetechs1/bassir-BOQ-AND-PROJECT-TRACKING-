@@ -27,6 +27,7 @@ const PORT = Number(process.env.PORT || 3000);
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const PROJECTS_DIR = path.join(DATA_DIR, 'projects');
 const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');
+const PRICEDB_DIR = path.join(DATA_DIR, 'pricedb');
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
 const COMPANIES_FILE = path.join(DATA_DIR, 'companies.json');
 const META_FILE = path.join(DATA_DIR, 'meta.json');
@@ -34,6 +35,7 @@ const SECRET_FILE = path.join(DATA_DIR, '.jwt-secret');
 
 fs.mkdirSync(PROJECTS_DIR, { recursive: true });
 fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+fs.mkdirSync(PRICEDB_DIR, { recursive: true });
 
 // ---------- أدوات تخزين ذرية ----------
 function readJSON(file, fallback) {
@@ -121,6 +123,48 @@ function loadProject(id) { return readJSON(projectFile(id), null); }
 function saveProject(p) { writeJSON(projectFile(p.id), p); }
 
 const sanitizeUser = u => ({ id: u.id, username: u.username, name: u.name, role: u.role, companyId: u.companyId ?? null });
+
+// ---------- قاعدة بيانات الأسعار والعروض (لكل شركة) ----------
+function pricedbFile(companyId) { return path.join(PRICEDB_DIR, companyId + '.json'); }
+function loadPricedb(companyId) {
+  return readJSON(pricedbFile(companyId), { version: 0, seq: 1000, offers: [], items: [] });
+}
+function savePricedb(companyId, db) { writeJSON(pricedbFile(companyId), db); }
+
+// ربط ملفات العروض الأصلية (PDF) بالعروض عند التعبئة الأولية
+const SEED_ATTACHMENTS = {
+  'ASF26071502': [
+    { src: 'moddah-financial.pdf', name: 'العرض المالي - تجاري سكني (المودة).pdf' },
+    { src: 'moddah-technical.pdf', name: 'العرض الفني - تجاري سكني (المودة).pdf' }
+  ],
+  '1103-52': [{ src: 'nakheel-offer.pdf', name: 'العرض المالي والفني - ذات النخيل.pdf' }],
+  '1103-57': [{ src: 'qalbnajd-offer.pdf', name: 'العرض المالي - قلب نجد.pdf' }]
+};
+
+// تعبئة أولية: تحميل عروض عزوم من ملف البذور إلى شركة عند طلبها
+function seedPricedb(companyId) {
+  const seedFile = path.join(__dirname, 'seed-pricedb.json');
+  const seed = readJSON(seedFile, null);
+  if (!seed) return { error: 'ملف البيانات الأولية غير موجود' };
+  const seedFilesDir = path.join(__dirname, 'seed-files');
+  const destDir = path.join(UPLOADS_DIR, 'pricedb', String(companyId));
+  fs.mkdirSync(destDir, { recursive: true });
+  const offers = (seed.offers || []).map(o => {
+    const atts = (SEED_ATTACHMENTS[o.ref] || []).map(a => {
+      const srcPath = path.join(seedFilesDir, a.src);
+      if (!fs.existsSync(srcPath)) return null;
+      const ext = path.extname(a.src);
+      const file = crypto.randomBytes(14).toString('hex') + ext;
+      try { fs.copyFileSync(srcPath, path.join(destDir, file)); }
+      catch (e) { return null; }
+      return { url: '/uploads/pricedb/' + companyId + '/' + file, name: a.name };
+    }).filter(Boolean);
+    return { ...o, attachments: atts };
+  });
+  const db = { version: 1, seq: seed.seq || 1000, offers, items: seed.items || [] };
+  savePricedb(companyId, db);
+  return db;
+}
 
 // ---------- التطبيق ----------
 const app = express();
@@ -383,6 +427,67 @@ app.delete('/api/users/:id', auth, (req, res) => {
   res.json({ ok: true });
 });
 
+// ---------- قاعدة بيانات الأسعار والعروض ----------
+// نطاق: كل شركة لها قاعدتها. الأدمن يحدد الشركة عبر ?companyId، وغيره شركته.
+function pricedbCompanyOf(req) {
+  if (isAdmin(req.user)) {
+    const q = Number(req.query.companyId || req.body && req.body.companyId);
+    return q || (loadCompanies()[0] ? loadCompanies()[0].id : null);
+  }
+  return req.user.companyId || null;
+}
+const canEditPricedb = u => ['admin', 'client', 'pmo'].includes(u.role);
+
+app.get('/api/pricedb', auth, (req, res) => {
+  const companyId = pricedbCompanyOf(req);
+  if (!companyId) return res.json({ companyId: null, version: 0, seq: 1000, offers: [], items: [], canEdit: false });
+  res.json({ ...loadPricedb(companyId), companyId, canEdit: canEditPricedb(req.user) });
+});
+
+app.put('/api/pricedb', auth, (req, res) => {
+  if (!canEditPricedb(req.user)) return res.status(403).json({ error: 'تعديل قاعدة الأسعار صلاحية مدير المشاريع فأعلى' });
+  const companyId = pricedbCompanyOf(req);
+  if (!companyId) return res.status(400).json({ error: 'لا توجد شركة محددة' });
+  const { baseVersion, data } = req.body || {};
+  if (!data) return res.status(400).json({ error: 'بيانات ناقصة' });
+  const stored = loadPricedb(companyId);
+  if (Number(baseVersion) !== stored.version) return res.status(409).json({ error: 'conflict', version: stored.version });
+  const db = { version: stored.version + 1, seq: data.seq || stored.seq, offers: data.offers || [], items: data.items || [] };
+  savePricedb(companyId, db);
+  res.json({ version: db.version });
+});
+
+app.post('/api/pricedb/seed', auth, (req, res) => {
+  if (!canEditPricedb(req.user)) return res.status(403).json({ error: 'صلاحية مدير المشاريع فأعلى' });
+  const companyId = pricedbCompanyOf(req);
+  if (!companyId) return res.status(400).json({ error: 'لا توجد شركة محددة' });
+  const existing = loadPricedb(companyId);
+  if ((existing.offers || []).length || (existing.items || []).length) {
+    if (!req.body || !req.body.force) return res.status(400).json({ error: 'قاعدة الأسعار غير فارغة — استخدم force للاستبدال' });
+  }
+  const db = seedPricedb(companyId);
+  if (db.error) return res.status(500).json(db);
+  res.json({ ...db, companyId, canEdit: true });
+});
+
+// رفع ملفات العروض (PDF/صور) لقاعدة الأسعار — تخزن تحت uploads/pricedb/<companyId>
+app.post('/api/pricedb/upload', auth, (req, res) => {
+  if (!canEditPricedb(req.user)) return res.status(403).json({ error: 'صلاحية مدير المشاريع فأعلى' });
+  const companyId = pricedbCompanyOf(req);
+  if (!companyId) return res.status(400).json({ error: 'لا توجد شركة محددة' });
+  const dataUrl = req.body && req.body.dataUrl;
+  const m = /^data:(image\/(?:jpeg|png|webp)|application\/pdf);base64,([A-Za-z0-9+/=]+)$/.exec(String(dataUrl || '').slice(0, 16 * 1024 * 1024));
+  if (!m) return res.status(400).json({ error: 'الصيغة غير مدعومة (PDF أو صور)' });
+  const buf = Buffer.from(m[2], 'base64');
+  if (buf.length > 10 * 1024 * 1024) return res.status(400).json({ error: 'الملف كبير جداً (الحد 10MB)' });
+  const ext = m[1] === 'application/pdf' ? 'pdf' : (m[1] === 'image/jpeg' ? 'jpg' : m[1].split('/')[1]);
+  const file = crypto.randomBytes(14).toString('hex') + '.' + ext;
+  const dir = path.join(UPLOADS_DIR, 'pricedb', String(companyId));
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, file), buf);
+  res.json({ url: '/uploads/pricedb/' + companyId + '/' + file });
+});
+
 // ---------- صور الموقع ----------
 // الرفع: JSON بصيغة dataURL (الواجهة تضغط الصورة قبل الإرسال)
 // أسماء الملفات عشوائية غير قابلة للتخمين، وتُخدم من /uploads
@@ -421,7 +526,8 @@ app.use('/uploads', express.static(UPLOADS_DIR, { maxAge: '30d', immutable: true
 // ---------- نسخ احتياطي واستعادة ----------
 app.get('/api/backup', auth, adminOnly, (req, res) => {
   res.setHeader('Content-Disposition', 'attachment; filename="azoom-backup-' + new Date().toISOString().slice(0, 10) + '.json"');
-  res.json({ exportedAt: new Date().toISOString(), projects: listProjects(), users: loadUsers().map(sanitizeUser), companies: loadCompanies() });
+  const pricedbs = loadCompanies().map(c => ({ companyId: c.id, db: loadPricedb(c.id) }));
+  res.json({ exportedAt: new Date().toISOString(), projects: listProjects(), users: loadUsers().map(sanitizeUser), companies: loadCompanies(), pricedbs });
 });
 
 app.post('/api/restore', auth, adminOnly, (req, res) => {

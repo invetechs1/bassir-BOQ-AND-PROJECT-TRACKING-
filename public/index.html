@@ -307,6 +307,7 @@
   <div class="nav-tab" data-tab="blocked" onclick="switchTab('blocked')">🚫 العوائق <span class="tab-count" id="tc-blocked">0</span></div>
   <div class="nav-tab" data-tab="villas" onclick="switchTab('villas')">🏠 <span id="villas-tab-label">الوحدات</span> <span class="tab-count" id="tc-villas">0</span></div>
   <div class="nav-tab" data-tab="prod" onclick="switchTab('prod')">👷 الإنتاجية <span class="tab-count" id="tc-prod">0</span></div>
+  <div class="nav-tab" data-tab="pricedb" onclick="switchTab('pricedb')">💲 قاعدة الأسعار <span class="tab-count" id="tc-pricedb">0</span></div>
 </div>
 
 <div class="main">
@@ -564,6 +565,44 @@
     </div>
   </div>
 
+  <!-- ===================== PRICE DATABASE ===================== -->
+  <div class="tab-panel" id="tab-pricedb">
+    <div class="filter-bar">
+      <button class="filter-btn active" id="pdb-tab-items" onclick="switchPdbView('items')">📋 بنود الأسعار <span class="tab-count" id="pdb-items-count">0</span></button>
+      <button class="filter-btn" id="pdb-tab-offers" onclick="switchPdbView('offers')">📁 العروض <span class="tab-count" id="pdb-offers-count">0</span></button>
+      <span id="pdb-company-badge" style="margin-inline-start:auto;color:var(--text2);font-size:12px"></span>
+    </div>
+    <div id="pdb-loading" class="empty-state"><p>⏳ جاري تحميل قاعدة الأسعار...</p></div>
+
+    <!-- بنود الأسعار -->
+    <div id="pdb-view-items" style="display:none">
+      <div class="alert info" style="font-size:12px">💡 مكتبة أسعار الشركة من العروض السابقة — ابحث، أدرج البنود مباشرة في جدول كميات المشروع الحالي، أو استورد قائمتك من Excel.</div>
+      <div class="filter-bar">
+        <input type="text" class="search-box" id="pdb-search" placeholder="🔍 بحث بالوصف أو الكود..." oninput="renderPdbItems()">
+        <select id="pdb-cat-filter" class="search-box" style="width:auto" onchange="renderPdbItems()"></select>
+        <span style="margin-inline-start:auto"></span>
+        <button class="btn btn-ghost" id="pdb-btn-import" onclick="openPdbImport()">📥 استيراد Excel</button>
+        <button class="btn btn-ghost" id="pdb-btn-export" onclick="exportPdbItemsCSV()">⬇ Excel</button>
+        <button class="btn btn-amber" id="pdb-btn-additem" onclick="openPdbItemModal(null)">+ إضافة بند سعر</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>الكود</th><th>الوصف</th><th>الوحدة</th><th>سعر الوحدة</th><th>التصنيف</th><th>المصدر</th><th>إجراء</th></tr></thead>
+          <tbody id="pdb-items-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- العروض -->
+    <div id="pdb-view-offers" style="display:none">
+      <div class="filter-bar">
+        <span style="margin-inline-start:auto"></span>
+        <button class="btn btn-amber" id="pdb-btn-addoffer" onclick="openPdbOfferModal(null)">+ إضافة عرض</button>
+      </div>
+      <div class="status-cards" id="pdb-offers-grid"></div>
+    </div>
+  </div>
+
 </div><!-- /main -->
 
 <!-- ===================== MODALS ===================== -->
@@ -721,6 +760,70 @@
     <div style="display:flex;gap:10px;margin-top:8px">
       <button class="btn btn-green" onclick="addUser()">+ إضافة المستخدم</button>
       <button class="btn btn-ghost" onclick="closeModal('users-modal')">إغلاق</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="pdb-item-modal">
+  <div class="modal">
+    <div class="modal-title"><span id="pdb-item-title">إضافة بند سعر</span><span class="modal-close" onclick="closeModal('pdb-item-modal')">✕</span></div>
+    <div class="f-grid">
+      <div class="f-field"><label>الكود</label><input type="text" id="pdi-code" placeholder="اختياري"></div>
+      <div class="f-field"><label>الوحدة *</label><input type="text" id="pdi-unit" list="pdi-units" placeholder="م² / م³ / عدد"><datalist id="pdi-units"></datalist></div>
+      <div class="f-field full"><label>الوصف *</label><input type="text" id="pdi-desc"></div>
+      <div class="f-field"><label>سعر الوحدة (ر.س) *</label><input type="number" id="pdi-rate" min="0" step="0.01"></div>
+      <div class="f-field"><label>التصنيف</label><input type="text" id="pdi-cat" list="pdi-cats" placeholder="أعمال البناء..."><datalist id="pdi-cats"></datalist></div>
+      <div class="f-field"><label>المصدر / رقم العرض</label><input type="text" id="pdi-ref" placeholder="اختياري"></div>
+      <div class="f-field"><label>المشروع</label><input type="text" id="pdi-project" placeholder="اختياري"></div>
+      <div class="f-field full"><label>ملاحظات</label><input type="text" id="pdi-note"></div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
+      <button class="btn btn-green" onclick="savePdbItem()">💾 حفظ</button>
+      <button class="btn btn-red" id="pdi-delete" onclick="deletePdbItem()">🗑 حذف</button>
+      <button class="btn btn-ghost" onclick="closeModal('pdb-item-modal')">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="pdb-offer-modal">
+  <div class="modal">
+    <div class="modal-title"><span id="pdb-offer-title">إضافة عرض</span><span class="modal-close" onclick="closeModal('pdb-offer-modal')">✕</span></div>
+    <div class="f-grid">
+      <div class="f-field"><label>رقم العرض *</label><input type="text" id="pdo-ref"></div>
+      <div class="f-field"><label>التاريخ</label><input type="date" id="pdo-date"></div>
+      <div class="f-field"><label>العميل</label><input type="text" id="pdo-client"></div>
+      <div class="f-field"><label>الموقع</label><input type="text" id="pdo-location"></div>
+      <div class="f-field full"><label>المشروع *</label><input type="text" id="pdo-project"></div>
+      <div class="f-field"><label>نوع العرض</label>
+        <select id="pdo-type"><option value="financial">مالي</option><option value="technical">فني</option><option value="both">مالي + فني</option></select>
+      </div>
+      <div class="f-field"><label>صلاحية العرض (يوم)</label><input type="number" id="pdo-validity" min="0" value="0"></div>
+      <div class="f-field"><label>الإجمالي قبل الضريبة (ر.س) *</label><input type="number" id="pdo-subtotal" min="0" step="0.01" oninput="pdoRecalc()"></div>
+      <div class="f-field"><label>نسبة الضريبة %</label><input type="number" id="pdo-vat" min="0" step="0.5" value="15" oninput="pdoRecalc()"></div>
+      <div class="f-field full"><label>الإجمالي شامل الضريبة</label><input type="text" id="pdo-grand" readonly style="color:var(--green-bright)"></div>
+      <div class="f-field full"><label>الأقسام (اسم = مبلغ في كل سطر)</label><textarea id="pdo-sections" rows="4" placeholder="التشطيبات الداخلية = 10393288.65&#10;اللاندسكيب = 3819595.06"></textarea></div>
+      <div class="f-field full"><label>ملاحظات</label><textarea id="pdo-notes" rows="2"></textarea></div>
+      <div class="f-field full"><label>📎 ملفات العرض (PDF أو صور)</label><input type="file" id="pdo-files" accept="image/*,.pdf,application/pdf" multiple onchange="pdoFilesPicked(this)"><div id="pdo-files-list" style="display:flex;flex-direction:column;gap:4px;margin-top:6px"></div></div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
+      <button class="btn btn-green" onclick="savePdbOffer()">💾 حفظ العرض</button>
+      <button class="btn btn-red" id="pdo-delete" onclick="deletePdbOffer()">🗑 حذف</button>
+      <button class="btn btn-ghost" onclick="closeModal('pdb-offer-modal')">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="pdb-insert-modal">
+  <div class="modal">
+    <div class="modal-title"><span>➕ إدراج في جدول كميات المشروع</span><span class="modal-close" onclick="closeModal('pdb-insert-modal')">✕</span></div>
+    <div id="pdb-insert-info" class="alert info" style="font-size:12px"></div>
+    <div class="f-grid">
+      <div class="f-field"><label>رقم البند في المشروع</label><input type="text" id="pdb-ins-id"></div>
+      <div class="f-field"><label>الكمية</label><input type="number" id="pdb-ins-qty" min="0" step="0.01" value="0"></div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:16px">
+      <button class="btn btn-green" onclick="confirmInsertToBoq()">➕ إدراج في المشروع الحالي</button>
+      <button class="btn btn-ghost" onclick="closeModal('pdb-insert-modal')">إلغاء</button>
     </div>
   </div>
 </div>
@@ -1066,6 +1169,7 @@ async function refreshState(){
     state.currentProjectId = state.projects.length ? state.projects[0].id : 0;
   }
   offlineMode = false;
+  priceDBLoaded = false; // إعادة تحميل قاعدة الأسعار حسب سياق المستخدم
   $('offline-banner').style.display = 'none';
   try { localStorage.setItem('azoom_cache', JSON.stringify({me:d.me, users:d.users, companies:d.companies||[], projects:d.projects})) } catch(e) {}
   renderAll();
@@ -1543,6 +1647,7 @@ function switchTab(id){
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === id));
   $('tab-' + id).classList.add('active');
+  if (id === 'pricedb') onOpenPricedb();
 }
 
 function statusPill(st){
@@ -2908,8 +3013,281 @@ function deleteWorkLog(id){
 }
 
 // ============================================================
+//  PRICE DATABASE & OFFERS (قاعدة بيانات الأسعار والعروض)
+// ============================================================
+let priceDB = null;          // {version, seq, offers, items, companyId, canEdit}
+let priceDBLoaded = false;
+let pdbView = 'items';
+
+const pdbCanEdit = () => priceDB && priceDB.canEdit;
+
+async function loadPriceDB(force){
+  if (priceDBLoaded && !force) return;
+  try {
+    priceDB = await API.req('GET', '/api/pricedb');
+    priceDBLoaded = true;
+  } catch(e) { priceDB = {version:0, seq:1000, offers:[], items:[], canEdit:false}; }
+}
+
+async function savePriceDB(){
+  if (!pdbCanEdit()) return;
+  try {
+    const r = await API.req('PUT', '/api/pricedb', {baseVersion: priceDB.version, data: {seq: priceDB.seq, offers: priceDB.offers, items: priceDB.items}});
+    priceDB.version = r.version;
+  } catch(e) {
+    if (e.status === 409) { alert('⚠️ عُدّلت قاعدة الأسعار من مستخدم آخر — سيتم إعادة التحميل.'); await loadPriceDB(true); renderPdb(); }
+    else alert('تعذر الحفظ: ' + e.message);
+  }
+}
+const pdbSeq = () => (priceDB.seq = (priceDB.seq||1000) + 1);
+
+async function onOpenPricedb(){
+  $('pdb-loading').style.display = 'block';
+  $('pdb-view-items').style.display = 'none';
+  $('pdb-view-offers').style.display = 'none';
+  await loadPriceDB();
+  $('pdb-loading').style.display = 'none';
+  renderPdb();
+}
+
+function switchPdbView(v){
+  pdbView = v;
+  $('pdb-tab-items').classList.toggle('active', v === 'items');
+  $('pdb-tab-offers').classList.toggle('active', v === 'offers');
+  $('pdb-view-items').style.display = v === 'items' ? 'block' : 'none';
+  $('pdb-view-offers').style.display = v === 'offers' ? 'block' : 'none';
+}
+
+function renderPdb(){
+  if (!priceDB) return;
+  $('tc-pricedb').textContent = priceDB.items.length;
+  $('pdb-items-count').textContent = priceDB.items.length;
+  $('pdb-offers-count').textContent = priceDB.offers.length;
+  const co = isAdmin() ? companyName(priceDB.companyId) : companyName(state.me.companyId);
+  $('pdb-company-badge').textContent = co ? '🏢 ' + co : '';
+  // زر الإضافة والتعديل حسب الصلاحية
+  ['pdb-btn-additem','pdb-btn-import','pdb-btn-addoffer'].forEach(id => { if($(id)) $(id).style.display = pdbCanEdit() ? '' : 'none'; });
+  switchPdbView(pdbView);
+  renderPdbItems();
+  renderPdbOffers();
+}
+
+function renderPdbItems(){
+  const search = ($('pdb-search').value || '').toLowerCase();
+  const catFilter = $('pdb-cat-filter').value;
+  const cats = [...new Set(priceDB.items.map(i => i.category).filter(Boolean))].sort();
+  const cur = $('pdb-cat-filter').value;
+  $('pdb-cat-filter').innerHTML = '<option value="">كل التصنيفات</option>' + cats.map(c => '<option value="' + esc(c) + '"' + (c===cur?' selected':'') + '>' + esc(c) + '</option>').join('');
+
+  let list = priceDB.items.filter(i => {
+    if (catFilter && i.category !== catFilter) return false;
+    if (search && !((i.desc||'').toLowerCase().includes(search) || (i.code||'').toLowerCase().includes(search))) return false;
+    return true;
+  });
+  const boqReady = proj().id && (isManagerial() || ['pmo','pm'].includes(state.me.role));
+  $('pdb-items-tbody').innerHTML = list.map(i =>
+    '<tr>' +
+    '<td><span class="item-no">' + esc(i.code||'—') + '</span></td>' +
+    '<td><div class="desc-text" style="max-width:340px" data-tip="' + esc(i.desc) + '">' + esc(i.desc) + '</div></td>' +
+    '<td><span class="pill gray" style="font-size:10px">' + esc(i.unit||'—') + '</span></td>' +
+    '<td class="amount claimable">' + fmtN(i.rate) + '</td>' +
+    '<td style="font-size:11px;color:var(--text2)">' + esc(i.category||'—') + '</td>' +
+    '<td style="font-size:10px;color:var(--text3)" data-tip="' + esc(i.project||'') + '">' + esc(i.offerRef||'—') + '</td>' +
+    '<td style="white-space:nowrap">' +
+      (boqReady ? '<button class="mini-btn green" onclick="openInsertToBoq(' + i.id + ')">➕ للمشروع</button> ' : '') +
+      (pdbCanEdit() ? '<button class="mini-btn" onclick="openPdbItemModal(' + i.id + ')">✏️</button>' : '') +
+    '</td></tr>'
+  ).join('') || '<tr><td colspan="7"><div class="empty-state">' +
+    (priceDB.items.length === 0 && pdbCanEdit()
+      ? '<div class="icon">💲</div><p>قاعدة الأسعار فارغة</p><button class="btn btn-green" style="margin-top:10px" onclick="seedAzoomOffers()">📥 تحميل عروض عزوم الجاهزة (3 عروض + بنودها)</button><br><span style="font-size:11px;color:var(--text3)">أو أضف بنودك يدوياً / استورد من Excel</span>'
+      : '<p>لا توجد بنود مطابقة</p>') + '</div></td></tr>';
+}
+
+function renderPdbOffers(){
+  const typeLabel = {financial:'مالي', technical:'فني', both:'مالي + فني'};
+  $('pdb-offers-grid').innerHTML = priceDB.offers.map(o => {
+    const sections = (o.sections||[]).map(s =>
+      '<div class="sc-item"><span class="sc-item-name">' + esc(s.name) + '</span><span class="sc-item-val">' + fmtN(s.amount) + '</span></div>').join('');
+    const atts = (o.attachments||[]).map(a =>
+      '<a href="' + esc(a.url) + '" target="_blank" style="color:var(--blue);font-size:11px;text-decoration:none;display:block">' +
+      (String(a.url).endsWith('.pdf') ? '📄' : '🖼') + ' ' + esc(a.name||'ملف') + ' ↗</a>').join('');
+    return '<div class="card"><div class="card-title" style="flex-direction:column;align-items:stretch;gap:2px">' +
+      '<span>📁 ' + esc(o.project||'—') + '</span>' +
+      '<span style="font-size:11px;color:var(--text2);font-weight:400">' + esc(o.client||'') + (o.location ? ' · ' + esc(o.location) : '') + '</span></div>' +
+      '<div class="sc-item"><span class="sc-item-name">رقم العرض</span><span class="sc-item-val" style="color:var(--amber)">' + esc(o.ref||'—') + '</span></div>' +
+      '<div class="sc-item"><span class="sc-item-name">التاريخ / النوع</span><span class="sc-item-val">' + esc(o.date||'—') + ' · ' + (typeLabel[o.type]||'') + '</span></div>' +
+      sections +
+      '<div class="sc-item" style="border-top:1px solid var(--border)"><span class="sc-item-name">الإجمالي قبل الضريبة</span><span class="sc-item-val" style="color:var(--amber)">' + money(o.subtotal) + '</span></div>' +
+      '<div class="sc-item"><span class="sc-item-name">شامل الضريبة ' + (o.vatRate||15) + '%</span><span class="sc-item-val" style="color:var(--green-bright);font-weight:700">' + money(o.grandTotal) + '</span></div>' +
+      (o.validityDays ? '<div class="sc-item"><span class="sc-item-name">صلاحية العرض</span><span class="sc-item-val">' + o.validityDays + ' يوم</span></div>' : '') +
+      (o.notes ? '<div style="font-size:11px;color:var(--text2);margin-top:6px">📝 ' + esc(o.notes) + '</div>' : '') +
+      (atts ? '<div style="margin-top:8px">' + atts + '</div>' : '') +
+      (pdbCanEdit() ? '<div style="margin-top:10px"><button class="mini-btn" onclick="openPdbOfferModal(' + o.id + ')">✏️ تعديل</button></div>' : '') +
+      '</div>';
+  }).join('') || '<div class="empty-state" style="grid-column:1/-1"><div class="icon">📁</div><p>لا توجد عروض مسجلة</p></div>';
+}
+
+async function seedAzoomOffers(){
+  if (!confirm('تحميل عروض عزوم الجاهزة (المودة، ذات النخيل، قلب نجد) مع بنود أسعارها إلى قاعدة الشركة؟')) return;
+  try {
+    priceDB = await API.req('POST', '/api/pricedb/seed', {force: (priceDB.items.length||priceDB.offers.length) ? true : false});
+    priceDBLoaded = true;
+    renderPdb();
+    alert('✅ تم تحميل ' + priceDB.offers.length + ' عروض و ' + priceDB.items.length + ' بند سعر.');
+  } catch(e) { alert(e.message); }
+}
+
+// ---- إضافة/تعديل بند سعر ----
+let pdbEditItemId = null;
+function openPdbItemModal(id){
+  if (!pdbCanEdit()) return;
+  pdbEditItemId = id;
+  const it = id ? priceDB.items.find(x => x.id === id) : null;
+  $('pdb-item-title').textContent = it ? 'تعديل بند سعر' : 'إضافة بند سعر';
+  $('pdi-delete').style.display = it ? '' : 'none';
+  $('pdi-code').value = it ? (it.code||'') : '';
+  $('pdi-unit').value = it ? (it.unit||'') : '';
+  $('pdi-desc').value = it ? it.desc : '';
+  $('pdi-rate').value = it ? it.rate : '';
+  $('pdi-cat').value = it ? (it.category||'') : '';
+  $('pdi-ref').value = it ? (it.offerRef||'') : '';
+  $('pdi-project').value = it ? (it.project||'') : '';
+  $('pdi-note').value = it ? (it.note||'') : '';
+  $('pdi-units').innerHTML = [...new Set(priceDB.items.map(i=>i.unit).filter(Boolean))].map(u=>'<option value="'+esc(u)+'">').join('');
+  $('pdi-cats').innerHTML = [...new Set(priceDB.items.map(i=>i.category).filter(Boolean))].map(c=>'<option value="'+esc(c)+'">').join('');
+  $('pdb-item-modal').classList.add('open');
+}
+async function savePdbItem(){
+  const desc = $('pdi-desc').value.trim(), rate = Number($('pdi-rate').value), unit = $('pdi-unit').value.trim();
+  if (!desc || !unit || !($('pdi-rate').value)) { alert('أكمل: الوصف، الوحدة، السعر'); return; }
+  const data = {code:$('pdi-code').value.trim(), desc, unit, rate, category:$('pdi-cat').value.trim(), offerRef:$('pdi-ref').value.trim(), project:$('pdi-project').value.trim(), note:$('pdi-note').value.trim()};
+  if (pdbEditItemId) { const it = priceDB.items.find(x=>x.id===pdbEditItemId); Object.assign(it, data); }
+  else priceDB.items.push({id: pdbSeq(), ...data});
+  closeModal('pdb-item-modal'); await savePriceDB(); renderPdb();
+}
+async function deletePdbItem(){
+  if (!pdbEditItemId || !confirm('حذف بند السعر؟')) return;
+  priceDB.items = priceDB.items.filter(x => x.id !== pdbEditItemId);
+  closeModal('pdb-item-modal'); await savePriceDB(); renderPdb();
+}
+
+// ---- إضافة/تعديل عرض ----
+let pdbEditOfferId = null;
+let pdoPendingFiles = [];
+function pdoRecalc(){
+  const sub = Number($('pdo-subtotal').value)||0, vr = Number($('pdo-vat').value)||0;
+  $('pdo-grand').value = money(sub * (1 + vr/100));
+}
+function openPdbOfferModal(id){
+  if (!pdbCanEdit()) return;
+  pdbEditOfferId = id; pdoPendingFiles = [];
+  const o = id ? priceDB.offers.find(x => x.id === id) : null;
+  $('pdb-offer-title').textContent = o ? 'تعديل عرض' : 'إضافة عرض';
+  $('pdo-delete').style.display = o ? '' : 'none';
+  $('pdo-ref').value = o ? (o.ref||'') : '';
+  $('pdo-date').value = o ? (o.date||'') : todayStr();
+  $('pdo-client').value = o ? (o.client||'') : '';
+  $('pdo-location').value = o ? (o.location||'') : '';
+  $('pdo-project').value = o ? (o.project||'') : '';
+  $('pdo-type').value = o ? (o.type||'financial') : 'financial';
+  $('pdo-validity').value = o ? (o.validityDays||0) : 0;
+  $('pdo-subtotal').value = o ? o.subtotal : '';
+  $('pdo-vat').value = o ? o.vatRate : 15;
+  $('pdo-sections').value = o ? (o.sections||[]).map(s => s.name + ' = ' + s.amount).join('\n') : '';
+  $('pdo-notes').value = o ? (o.notes||'') : '';
+  renderPdoFiles();
+  pdoRecalc();
+  $('pdb-offer-modal').classList.add('open');
+}
+async function pdoFilesPicked(input){
+  for (const f of [...input.files].slice(0, 10 - pdoPendingFiles.length)) {
+    try {
+      if (f.type === 'application/pdf') { if (f.size > 9*1024*1024) { alert(f.name+': أكبر من 9MB'); continue; } pdoPendingFiles.push({dataUrl: await readFileAsDataURL(f), name: f.name}); }
+      else if (f.type.startsWith('image/')) pdoPendingFiles.push({dataUrl: await compressImage(f), name: f.name});
+    } catch(e) { alert(e.message); }
+  }
+  input.value = ''; renderPdoFiles();
+}
+function renderPdoFiles(){
+  const existing = (pdbEditOfferId ? (priceDB.offers.find(x=>x.id===pdbEditOfferId)||{}).attachments || [] : []);
+  $('pdo-files-list').innerHTML =
+    existing.map(a => '<div class="sc-item" style="padding:3px 0"><span class="sc-item-name" style="font-size:11px"><a href="'+esc(a.url)+'" target="_blank" style="color:var(--blue)">'+(String(a.url).endsWith('.pdf')?'📄':'🖼')+' '+esc(a.name||'ملف')+'</a></span></div>').join('') +
+    pdoPendingFiles.map((f,i) => '<div class="sc-item" style="padding:3px 0"><span class="sc-item-name" style="font-size:11px">⏳ '+esc(f.name)+'</span><button class="mini-btn red" onclick="pdoPendingFiles.splice('+i+',1);renderPdoFiles()">✕</button></div>').join('');
+}
+function parseSections(txt){
+  return txt.split('\n').map(l => l.trim()).filter(Boolean).map(l => {
+    const i = l.lastIndexOf('=');
+    if (i < 0) return null;
+    return {name: l.slice(0,i).trim(), amount: Number(l.slice(i+1).replace(/[,،\s]/g,'')) || 0};
+  }).filter(Boolean);
+}
+async function savePdbOffer(){
+  const ref = $('pdo-ref').value.trim(), project = $('pdo-project').value.trim(), subtotal = Number($('pdo-subtotal').value);
+  if (!ref || !project || !($('pdo-subtotal').value)) { alert('أكمل: رقم العرض، المشروع، الإجمالي'); return; }
+  let uploaded = [];
+  if (pdoPendingFiles.length) {
+    try { for (const f of pdoPendingFiles) { const r = await API.req('POST','/api/pricedb/upload',{dataUrl:f.dataUrl}); uploaded.push({url:r.url, name:f.name}); } }
+    catch(e) { alert('تعذر رفع الملفات: ' + e.message); return; }
+  }
+  const vatRate = Number($('pdo-vat').value)||0;
+  const data = {ref, date:$('pdo-date').value, client:$('pdo-client').value.trim(), location:$('pdo-location').value.trim(),
+    project, type:$('pdo-type').value, validityDays:Number($('pdo-validity').value)||0,
+    subtotal, vatRate, vat: subtotal*vatRate/100, grandTotal: subtotal*(1+vatRate/100),
+    sections: parseSections($('pdo-sections').value), notes:$('pdo-notes').value.trim()};
+  if (pdbEditOfferId) {
+    const o = priceDB.offers.find(x=>x.id===pdbEditOfferId);
+    o.attachments = (o.attachments||[]).concat(uploaded);
+    Object.assign(o, data);
+  } else priceDB.offers.push({id: pdbSeq(), ...data, attachments: uploaded});
+  closeModal('pdb-offer-modal'); await savePriceDB(); renderPdb();
+}
+async function deletePdbOffer(){
+  if (!pdbEditOfferId || !confirm('حذف العرض؟ (لا تُحذف بنود الأسعار المرتبطة)')) return;
+  priceDB.offers = priceDB.offers.filter(x => x.id !== pdbEditOfferId);
+  closeModal('pdb-offer-modal'); await savePriceDB(); renderPdb();
+}
+
+// ---- إدراج بند من القاعدة إلى جدول كميات المشروع ----
+let pdbInsertItemId = null;
+function openInsertToBoq(itemId){
+  const it = priceDB.items.find(x => x.id === itemId);
+  if (!it) return;
+  if (!proj().id) { alert('افتح مشروعاً أولاً'); return; }
+  pdbInsertItemId = itemId;
+  $('pdb-insert-info').innerHTML = '<strong>' + esc(it.desc) + '</strong><br>الوحدة: ' + esc(it.unit) + ' · السعر: ' + fmtN(it.rate) + ' ر.س → المشروع: ' + esc(proj().info.name);
+  // اقترح رقم بند غير مكرر
+  let base = it.code || 'P1', cand = base, n = 1;
+  while (getItem(cand)) { cand = base + '-' + (++n); }
+  $('pdb-ins-id').value = cand;
+  $('pdb-ins-qty').value = 0;
+  $('pdb-insert-modal').classList.add('open');
+}
+function confirmInsertToBoq(){
+  const it = priceDB.items.find(x => x.id === pdbInsertItemId);
+  if (!it) return;
+  const id = $('pdb-ins-id').value.trim();
+  if (!id) { alert('اكتب رقم البند'); return; }
+  if (getItem(id)) { alert('رقم البند موجود في المشروع'); return; }
+  const qty = Number($('pdb-ins-qty').value) || 0;
+  proj().boqItems.push({id, div:it.category||'—', divAr:'', desc:it.desc, unit:it.unit,
+    qtyPerVilla:0, totalQty:qty, unitRate:it.rate, scope:'azoom', predecessors:[], blocker:null,
+    executedQty:0, claimedQty:0, notes: it.offerRef ? 'من عرض ' + it.offerRef : ''});
+  closeModal('pdb-insert-modal'); save(); renderAll();
+  alert('✅ أُضيف البند ' + id + ' إلى جدول كميات المشروع.');
+}
+
+function exportPdbItemsCSV(){
+  const rows = [['الكود','الوصف','الوحدة','سعر الوحدة','التصنيف','رقم العرض','المشروع','ملاحظات']];
+  priceDB.items.forEach(i => rows.push([i.code||'', i.desc, i.unit, i.rate, i.category||'', i.offerRef||'', i.project||'', i.note||'']));
+  dlCSV('price-database-' + todayStr() + '.csv', rows);
+}
+
+function openPdbImport(){ biTarget = 'pricedb'; openBoqImport(); }
+
+// ============================================================
 //  BOQ EXCEL IMPORT (استيراد جدول الكميات)
 // ============================================================
+let biTarget = 'boq'; // 'boq' | 'pricedb'
 let biWB = null, biRows = [], biHeaderIdx = 0;
 
 // تحميل مكتبة قراءة Excel عند الحاجة (مخزنة محلياً في السيرفر)
@@ -2929,6 +3307,9 @@ function openBoqImport(){
   $('bi-config').style.display = 'none';
   $('bi-dup').value = 'skip';
   biWB = null; biRows = [];
+  // عنوان النافذة حسب الهدف
+  const isPdb = biTarget === 'pricedb';
+  document.querySelector('#boq-import-modal .modal-title span').textContent = isPdb ? '📥 استيراد بنود أسعار من Excel' : '📥 استيراد جدول كميات من Excel';
   $('boq-import-modal').classList.add('open');
   loadXLSX().catch(e => alert(e.message));
 }
@@ -3023,12 +3404,19 @@ function biParseRows(){
     if (!id && !desc) continue; // صف فارغ
     const qty = numVal(get('qty'));
     const rate = numVal(get('rate'));
+    const isPdb = biTarget === 'pricedb';
     let err = '';
-    if (!id) err = 'رقم البند مفقود';
-    else if (!desc) err = 'الوصف مفقود';
-    else if (qty === null || qty <= 0) err = 'الكمية غير صالحة';
-    else if (rate === null || rate < 0) err = 'السعر غير صالح';
-    const dup = !err && !!getItem(id);
+    if (isPdb) {
+      // بنود الأسعار: الوصف والسعر إلزامي، رقم البند والكمية اختياريان
+      if (!desc) err = 'الوصف مفقود';
+      else if (rate === null || rate < 0) err = 'السعر غير صالح';
+    } else {
+      if (!id) err = 'رقم البند مفقود';
+      else if (!desc) err = 'الوصف مفقود';
+      else if (qty === null || qty <= 0) err = 'الكمية غير صالحة';
+      else if (rate === null || rate < 0) err = 'السعر غير صالح';
+    }
+    const dup = !err && !isPdb && !!getItem(id);
     out.push({row:i+1, id, desc, unit:strVal(get('unit')) || '—', qty, rate,
       div:strVal(get('div')), qtyPerUnit:numVal(get('qtyPerUnit')) || 0, exec:numVal(get('exec')) || 0, err, dup});
   }
@@ -3064,10 +3452,23 @@ function biRenderPreview(){
     '<tr><td colspan="8"><div class="empty-state"><p>لا توجد صفوف بيانات</p></div></td></tr>';
 }
 
-function biDoImport(){
+async function biDoImport(){
   const all = biParseRows();
   const rows = all.filter(r => !r.err);
   if (!rows.length) { alert('لا توجد صفوف صالحة للاستيراد — راجع مطابقة الأعمدة'); return; }
+  const errCount = all.length - rows.length;
+
+  // استيراد إلى قاعدة الأسعار
+  if (biTarget === 'pricedb') {
+    rows.forEach(r => priceDB.items.push({id: pdbSeq(), code: r.id||'', desc: r.desc, unit: r.unit, rate: r.rate,
+      category: r.div||'', offerRef:'', project:'', note:''}));
+    closeModal('boq-import-modal');
+    await savePriceDB(); renderPdb();
+    biTarget = 'boq';
+    alert('✅ أُضيف ' + rows.length + ' بند سعر' + (errCount ? '\n⚠️ صفوف بها أخطاء لم تُستورد: ' + errCount : ''));
+    return;
+  }
+
   const dupPolicy = $('bi-dup').value;
   let added = 0, updated = 0, skipped = 0;
   rows.forEach(r => {
@@ -3089,7 +3490,6 @@ function biDoImport(){
     });
     added++;
   });
-  const errCount = all.length - rows.length;
   save(); renderAll();
   closeModal('boq-import-modal');
   alert('✅ تم الاستيراد:\n• بنود جديدة: ' + added + '\n• تم تحديثها: ' + updated + '\n• متجاهلة (مكررة): ' + skipped + (errCount ? '\n⚠️ صفوف فيها أخطاء لم تُستورد: ' + errCount : ''));

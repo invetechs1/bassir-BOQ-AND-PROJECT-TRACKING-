@@ -370,6 +370,7 @@
       <input type="text" class="search-box" placeholder="🔍 بحث بالوصف أو رقم البند..." id="search-items" oninput="renderItemsTable()">
       <span id="items-filters"></span>
       <button class="btn btn-ghost" style="margin-right:auto" onclick="exportItemsCSV()">⬇ Excel</button>
+      <button class="btn btn-blue" id="btn-ar-audit" onclick="buildApprovalAudit()">🔍 تدقيق استلامات الاستشاري</button>
       <button class="btn btn-green" onclick="openBoqImport()">📥 استيراد جدول كميات Excel</button>
       <button class="btn btn-amber" onclick="openItemModal(null)">+ إضافة بند</button>
     </div>
@@ -694,14 +695,17 @@
     <div class="modal-title"><span>📋 اعتماد كمية من الاستشاري</span><span class="modal-close" onclick="closeModal('approve-qty-modal')">✕</span></div>
     <div id="aq-info" class="alert info" style="font-size:12px"></div>
     <div class="f-grid">
-      <div class="f-field"><label>الكمية المعتمدة الآن</label><input type="number" id="aq-qty" min="0" step="0.01"></div>
+      <div class="f-field"><label>الكمية المنفذة حسب النظام (أدخلها المهندس)</label><input type="number" id="aq-sysqty" readonly style="color:var(--blue)"></div>
+      <div class="f-field"><label>🖊 الكمية الموقّعة على الاستلام (AR) *</label><input type="number" id="aq-arqty" min="0" step="0.01" oninput="aqCheckMatch()" placeholder="كما هي على ورقة الاستشاري"></div>
+      <div class="f-field full" id="aq-match" style="display:none"></div>
       <div class="f-field"><label>تاريخ الاعتماد</label><input type="date" id="aq-date"></div>
       <div class="f-field"><label>اسم الاستشاري / المهندس</label><input type="text" id="aq-consultant" placeholder="من وقّع الاستلام"></div>
       <div class="f-field"><label>رقم الاستلام (AR)</label><input type="text" id="aq-arno" placeholder="اختياري"></div>
+      <div class="f-field"><label>الكمية المعتمدة (تدخل المستخلص)</label><input type="number" id="aq-qty" min="0" step="0.01" oninput="aqCheckMatch()"></div>
       <div class="f-field full"><label>📎 استلام الاستشاري الموقّع (AR) * — PDF أو صورة</label><input type="file" id="aq-file" accept="image/*,.pdf,application/pdf" onchange="aqFilePicked(this)"><div id="aq-file-name" style="font-size:11px;color:var(--text2);margin-top:4px"></div></div>
       <div class="f-field full"><label>ملاحظات</label><input type="text" id="aq-note"></div>
     </div>
-    <div class="alert warning" style="font-size:11px;margin-top:8px">✅ بعد الاعتماد تصبح الكمية جاهزة للرفع في المستخلص. الاستلام الموقّع من الاستشاري إلزامي.</div>
+    <div class="alert warning" style="font-size:11px;margin-top:8px">✅ الكمية المعتمدة يجب أن تطابق الكمية الموقّعة على الاستلام. الاستلام الموقّع من الاستشاري إلزامي — يبقى دليلاً يراجعه المالك.</div>
     <div style="display:flex;gap:10px;margin-top:12px">
       <button class="btn btn-green" onclick="saveApproveQty()">✅ اعتماد الكمية</button>
       <button class="btn btn-ghost" onclick="closeModal('approve-qty-modal')">إلغاء</button>
@@ -2011,12 +2015,26 @@ function openApproveQty(id){
   const pend = pendingApprovalQty(it);
   $('aq-info').innerHTML = '<strong>' + esc(it.desc) + '</strong><br>منفذ ميدانياً: ' + fmtQ(it.executedQty) + ' ' + esc(it.unit) +
     ' · معتمد سابقاً: ' + fmtQ(approvedOf(it)) + ' · <span style="color:var(--orange)">بانتظار الاعتماد: ' + fmtQ(pend) + '</span>';
+  $('aq-sysqty').value = Math.round(pend*100)/100; // المنفذ غير المعتمد الذي أدخله المهندس
+  $('aq-arqty').value = Math.round(pend*100)/100;
   $('aq-qty').value = Math.round(pend*100)/100;
   $('aq-qty').max = pend;
   $('aq-date').value = todayStr();
   $('aq-consultant').value = ''; $('aq-arno').value = ''; $('aq-note').value = '';
   $('aq-file').value = ''; $('aq-file-name').textContent = '';
+  aqCheckMatch();
   $('approve-qty-modal').classList.add('open');
+}
+// تنبيه فوري عند اختلاف الكمية المعتمدة عن الموقّعة على الاستلام أو عن المنفذ في النظام
+function aqCheckMatch(){
+  const sys = Number($('aq-sysqty').value)||0, ar = Number($('aq-arqty').value)||0, ap = Number($('aq-qty').value)||0;
+  const box = $('aq-match');
+  let msg = '', color = '';
+  if (ar && Math.abs(ar - ap) > 0.01) { msg = '⚠️ الكمية المعتمدة (' + fmtQ(ap) + ') لا تطابق الموقّعة على الاستلام (' + fmtQ(ar) + ')'; color = 'red'; }
+  else if (ar && Math.abs(ar - sys) > 0.01) { msg = '⚠️ تنبيه: الموقّع على الاستلام (' + fmtQ(ar) + ') يختلف عن المنفذ في النظام (' + fmtQ(sys) + ') — سيُسجّل الفرق للمراجعة.'; color = 'amber'; }
+  else if (ar) { msg = '✅ الكميات متطابقة'; color = 'green'; }
+  if (msg) { box.style.display = 'block'; box.innerHTML = '<div style="font-size:12px;color:var(--' + color + ')">' + msg + '</div>'; }
+  else box.style.display = 'none';
 }
 async function aqFilePicked(input){
   const f = input.files[0];
@@ -2040,24 +2058,91 @@ async function saveApproveQty(){
   let ar;
   try { const r = await API.req('POST', '/api/projects/' + proj().id + '/photos', {dataUrl: aqPendingFile.dataUrl}); ar = {url: r.url, name: aqPendingFile.name}; }
   catch(e) { alert('تعذر رفع الاستلام: ' + e.message); return; }
+  const arQty = Number($('aq-arqty').value) || qty;
   it.approvals = it.approvals || [];
-  it.approvals.push({id: nextSeq(), qty, date: $('aq-date').value || todayStr(), consultant: $('aq-consultant').value.trim(),
+  it.approvals.push({id: nextSeq(), qty, arQty, sysQty: Number($('aq-sysqty').value)||0,
+    date: $('aq-date').value || todayStr(), consultant: $('aq-consultant').value.trim(),
     arNo: $('aq-arno').value.trim(), ar, note: $('aq-note').value.trim(), by: currentUser().name});
   it.approvedQty = Math.min(it.executedQty, (it.approvedQty||0) + qty);
   closeModal('approve-qty-modal'); save(); renderAll();
   alert('✅ اعتُمدت ' + fmtQ(qty) + ' ' + esc(it.unit) + ' — أصبحت جاهزة للرفع في المستخلص.');
 }
 
+// 🔍 تدقيق استلامات الاستشاري — يراجعه المالك: مطابقة الكمية المنفذة (المهندس) مع الموقّعة على الاستلام (الاستشاري)
+function buildApprovalAudit(){
+  const p = proj();
+  // كل الاستلامات
+  const rows = [];
+  p.boqItems.forEach(it => {
+    (it.approvals||[]).forEach(a => rows.push({it, a}));
+  });
+  rows.sort((x,y) => (y.a.date||'').localeCompare(x.a.date||''));
+
+  const arLink = a => a.ar ? '<a href="' + esc(a.ar.url) + '" target="_blank" style="color:var(--blue)">' + (String(a.ar.url).endsWith('.pdf')?'📄':'🖼') + ' فتح ↗</a>' : '<span style="color:var(--red)">لا يوجد</span>';
+  const auditRows = rows.map(({it,a}) => {
+    const arq = a.arQty !== undefined ? a.arQty : a.qty;
+    const mismatch = Math.abs(arq - a.qty) > 0.01;               // المعتمد ≠ الموقّع على الاستلام
+    const sysDiff = a.sysQty !== undefined && Math.abs((a.sysQty) - arq) > 0.01; // الموقّع ≠ ما أدخله المهندس وقتها
+    const flag = mismatch ? '<span style="color:var(--red);font-weight:700">⚠️ لا تطابق</span>'
+      : sysDiff ? '<span style="color:var(--amber)">⚠️ فرق عن إدخال المهندس</span>'
+      : '<span style="color:var(--green)">✅ مطابق</span>';
+    return '<tr' + (mismatch||sysDiff ? ' style="background:' + (mismatch?'var(--red-dim)':'var(--amber-dim)') + '"' : '') + '>' +
+      cell('<span style="font-family:var(--mono);color:var(--amber)">' + esc(it.id) + '</span> ' + esc(it.desc.slice(0,40))) +
+      cell(esc(a.date), 'text-align:center;font-family:var(--mono)') +
+      cell(a.sysQty !== undefined ? fmtQ(a.sysQty) : '—', 'text-align:center;font-family:var(--mono);color:var(--blue)') +
+      cell(fmtQ(arq), 'text-align:center;font-family:var(--mono);color:var(--purple)') +
+      cell(fmtQ(a.qty), 'text-align:center;font-family:var(--mono);color:var(--green)') +
+      cell(esc(a.consultant||'—') + (a.arNo ? '<br><span style="font-size:10px;color:var(--text3)">استلام ' + esc(a.arNo) + '</span>' : ''), 'font-size:11px') +
+      cell(esc(a.by||'—'), 'font-size:11px') +
+      cell(arLink(a), 'text-align:center') +
+      cell(flag, 'text-align:center') +
+      '</tr>';
+  }).join('');
+
+  // بنود منفذة لم تُعتمد بعد (بانتظار استلام الاستشاري)
+  const pendingItems = p.boqItems.filter(i => pendingApprovalQty(i) > 0.001);
+  const pendingRows = pendingItems.map(it =>
+    '<tr>' + cell('<span style="font-family:var(--mono);color:var(--amber)">' + esc(it.id) + '</span> ' + esc(it.desc.slice(0,45))) +
+    cell(fmtQ(it.executedQty), 'text-align:center;font-family:var(--mono);color:var(--blue)') +
+    cell(fmtQ(approvedOf(it)), 'text-align:center;font-family:var(--mono);color:var(--green)') +
+    cell(fmtQ(pendingApprovalQty(it)), 'text-align:center;font-family:var(--mono);color:var(--orange)') +
+    cell(esc(it.unit), 'text-align:center') + '</tr>').join('');
+
+  const mismatches = rows.filter(({a}) => { const arq=a.arQty!==undefined?a.arQty:a.qty; return Math.abs(arq-a.qty)>0.01; }).length;
+  const sec = (t,c) => '<div style="font-size:14px;font-weight:700;color:var(--' + (c||'amber') + ');margin:16px 0 8px">' + t + '</div>';
+  const tbl = (heads, body) => '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:var(--bg3)">' + heads.map(hcell).join('') + '</tr></thead><tbody>' + body + '</tbody></table></div>';
+
+  const html = '<div style="font-family:var(--font)">' +
+    docHeader('تقرير تدقيق استلامات الاستشاري', todayStr()) +
+    '<div class="alert ' + (mismatches ? 'danger' : 'success') + '" style="font-size:12px">' +
+      (mismatches ? '⚠️ يوجد ' + mismatches + ' استلام الكمية المعتمدة فيه لا تطابق الكمية الموقّعة — راجعها.' : '✅ جميع الكميات المعتمدة مطابقة للكميات الموقّعة على الاستلامات.') +
+      ' الأعمدة: <strong>المنفذ حسب النظام</strong> (أدخله المهندس) مقابل <strong>الموقّع على الاستلام</strong> (وقّعه الاستشاري) مقابل <strong>المعتمد</strong> (دخل المستخلص).</div>' +
+    sec('استلامات الاستشاري المسجّلة (' + rows.length + ')') +
+    (rows.length ? tbl(['البند','التاريخ','منفذ (النظام)','موقّع (الاستلام)','معتمد','الاستشاري','سجّله','الاستلام','المطابقة'], auditRows) : '<p style="font-size:12px;color:var(--text2)">لا توجد استلامات مسجّلة بعد</p>') +
+    sec('بنود منفذة بانتظار اعتماد الاستشاري (' + pendingItems.length + ')', 'orange') +
+    (pendingItems.length ? tbl(['البند','منفذ','معتمد','بانتظار الاعتماد','الوحدة'], pendingRows) : '<p style="font-size:12px;color:var(--green)">لا توجد كميات منفذة بانتظار الاعتماد ✅</p>') +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:24px;font-size:12px">' +
+      '<div style="text-align:center;border-top:1px solid var(--border);padding-top:8px"><div style="color:var(--text2)">دقّقه</div><div style="margin-top:26px;color:var(--text3)">التوقيع / التاريخ</div></div>' +
+      '<div style="text-align:center;border-top:1px solid var(--border);padding-top:8px"><div style="color:var(--text2)">المالك / الإدارة</div><div style="margin-top:26px;color:var(--text3)">التوقيع / التاريخ</div></div>' +
+    '</div></div>';
+  showPrintable('🔍 تدقيق استلامات الاستشاري', html);
+}
+
 function viewApprovals(id){
   const it = getItem(id);
   if (!it || !(it.approvals||[]).length) return;
-  const rows = it.approvals.map((a,i) =>
-    '<div class="sc-item" style="align-items:flex-start"><span class="sc-item-name" style="white-space:normal">' +
-    '✅ <strong>' + fmtQ(a.qty) + ' ' + esc(it.unit) + '</strong> — ' + esc(a.date) + (a.consultant ? ' · الاستشاري: ' + esc(a.consultant) : '') + (a.arNo ? ' · استلام رقم ' + esc(a.arNo) : '') +
+  const rows = it.approvals.map((a,i) => {
+    const arq = a.arQty !== undefined ? a.arQty : a.qty;
+    const mism = Math.abs(arq - a.qty) > 0.01;
+    return '<div class="sc-item" style="align-items:flex-start"><span class="sc-item-name" style="white-space:normal">' +
+    (mism ? '⚠️' : '✅') + ' معتمد <strong>' + fmtQ(a.qty) + ' ' + esc(it.unit) + '</strong>' +
+    ' · موقّع على الاستلام: <strong style="color:' + (mism?'var(--red)':'var(--purple)') + '">' + fmtQ(arq) + '</strong>' +
+    ' — ' + esc(a.date) + (a.consultant ? ' · الاستشاري: ' + esc(a.consultant) : '') + (a.arNo ? ' · استلام رقم ' + esc(a.arNo) : '') +
     '<br><span style="font-size:11px">سجّله: ' + esc(a.by||'—') + (a.note ? ' · ' + esc(a.note) : '') + '</span></span>' +
     (a.ar ? '<a href="' + esc(a.ar.url) + '" target="_blank" style="color:var(--blue);font-size:11px">' + (String(a.ar.url).endsWith('.pdf')?'📄':'🖼') + ' الاستلام ↗</a>' : '') +
     (pdbCanApproveQty() ? ' <button class="mini-btn red" onclick="deleteApproval(\'' + esc(id) + '\',' + a.id + ')">🗑</button>' : '') +
-    '</div>').join('');
+    '</div>';
+  }).join('');
   showPrintable('📋 استلامات بند ' + it.id, '<div style="font-family:var(--font)"><div style="font-size:13px;font-weight:700;margin-bottom:8px">' + esc(it.desc) + '</div>' + rows + '</div>');
 }
 

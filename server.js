@@ -344,6 +344,22 @@ app.put('/api/projects/:id', auth, (req, res) => {
     });
   }
 
+  // اعتماد كميات الاستشاري: أي زيادة في الكمية المعتمدة يجب أن تُقابلها استلامات (approvals) بمرفق موقّع
+  const storedItems = new Map((stored.boqItems || []).map(i => [i.id, i]));
+  for (const it of (data.boqItems || [])) {
+    const prev = storedItems.get(it.id);
+    // ترحيل: البنود القديمة بدون approvedQty تُعامل كمعتمدة بمقدار المنفذ سابقاً (لا تتطلب استلاماً)
+    const prevApproved = prev ? (prev.approvedQty !== undefined ? prev.approvedQty : (prev.executedQty || 0)) : 0;
+    const newApproved = it.approvedQty || 0;
+    if (newApproved > prevApproved + 0.001) {
+      const approvalsSum = (it.approvals || []).reduce((s, a) => s + (Number(a.qty) || 0), 0);
+      const allHaveAR = (it.approvals || []).every(a => a.ar && a.ar.url);
+      if (approvalsSum + 0.01 < newApproved || !allHaveAR) {
+        return res.status(400).json({ error: 'اعتماد الكمية يتطلب استلاماً موقّعاً من الاستشاري لكل كمية معتمدة (البند ' + it.id + ')' });
+      }
+    }
+  }
+
   const p = { ...data, managerUserId, companyId, id, version: stored.version + 1 };
   saveProject(p);
   res.json({ version: p.version });

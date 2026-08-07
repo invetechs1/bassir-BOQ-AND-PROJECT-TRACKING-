@@ -378,7 +378,7 @@
         <thead>
           <tr>
             <th>البند</th><th>الوصف</th><th>الوحدة</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th>
-            <th>الكمية المنفذة</th><th>مرفوع %</th><th>صافي للمطالبة</th><th>الحالة</th><th>العائق / يعتمد على</th><th></th>
+            <th>الكمية المنفذة</th><th>اعتماد الاستشاري</th><th>مرفوع %</th><th>صافي للمطالبة</th><th>الحالة</th><th>العائق / يعتمد على</th><th></th>
           </tr>
         </thead>
         <tbody id="items-tbody"></tbody>
@@ -406,7 +406,7 @@
         <div class="table-wrap">
           <table>
             <thead>
-              <tr><th>✓</th><th>البند</th><th>الوصف</th><th>الوحدة</th><th>السعر</th><th>منفذ</th><th>مرفوع سابقاً</th><th>كمية المطالبة الآن</th><th>قيمة المطالبة</th></tr>
+              <tr><th>✓</th><th>البند</th><th>الوصف</th><th>الوحدة</th><th>السعر</th><th>معتمد</th><th>مرفوع سابقاً</th><th>كمية المطالبة الآن</th><th>قيمة المطالبة</th></tr>
             </thead>
             <tbody id="mb-tbody"></tbody>
           </table>
@@ -685,6 +685,26 @@
       <button class="btn btn-green" onclick="printDoc()">🖨️ طباعة / PDF</button>
       <button class="btn btn-ghost" id="doc-csv-btn" onclick="exportDocCSV()">⬇ تصدير Excel (CSV)</button>
       <button class="btn btn-ghost" onclick="closeModal('doc-modal')">إغلاق</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="approve-qty-modal">
+  <div class="modal">
+    <div class="modal-title"><span>📋 اعتماد كمية من الاستشاري</span><span class="modal-close" onclick="closeModal('approve-qty-modal')">✕</span></div>
+    <div id="aq-info" class="alert info" style="font-size:12px"></div>
+    <div class="f-grid">
+      <div class="f-field"><label>الكمية المعتمدة الآن</label><input type="number" id="aq-qty" min="0" step="0.01"></div>
+      <div class="f-field"><label>تاريخ الاعتماد</label><input type="date" id="aq-date"></div>
+      <div class="f-field"><label>اسم الاستشاري / المهندس</label><input type="text" id="aq-consultant" placeholder="من وقّع الاستلام"></div>
+      <div class="f-field"><label>رقم الاستلام (AR)</label><input type="text" id="aq-arno" placeholder="اختياري"></div>
+      <div class="f-field full"><label>📎 استلام الاستشاري الموقّع (AR) * — PDF أو صورة</label><input type="file" id="aq-file" accept="image/*,.pdf,application/pdf" onchange="aqFilePicked(this)"><div id="aq-file-name" style="font-size:11px;color:var(--text2);margin-top:4px"></div></div>
+      <div class="f-field full"><label>ملاحظات</label><input type="text" id="aq-note"></div>
+    </div>
+    <div class="alert warning" style="font-size:11px;margin-top:8px">✅ بعد الاعتماد تصبح الكمية جاهزة للرفع في المستخلص. الاستلام الموقّع من الاستشاري إلزامي.</div>
+    <div style="display:flex;gap:10px;margin-top:12px">
+      <button class="btn btn-green" onclick="saveApproveQty()">✅ اعتماد الكمية</button>
+      <button class="btn btn-ghost" onclick="closeModal('approve-qty-modal')">إلغاء</button>
     </div>
   </div>
 </div>
@@ -1139,6 +1159,9 @@ function migrateProject(p){
   p.mustakhlasat.forEach(m => { m.payments = m.payments || []; m.attachments = m.attachments || []; });
   p.boqItems.forEach(i => {
     if (i.blocker) { i.blocker.since = i.blocker.since || ''; i.blocker.expected = i.blocker.expected || ''; }
+    // اعتماد الاستشاري على الكميات: الكميات القائمة تُعامل كمعتمدة (ترحيل)، والجديد يبدأ بانتظار الاعتماد
+    if (i.approvedQty === undefined) i.approvedQty = i.executedQty || 0;
+    i.approvals = i.approvals || [];
   });
   return p;
 }
@@ -1256,9 +1279,14 @@ setInterval(async () => {
 // ============================================================
 const getItem = id => proj().boqItems.find(i => i.id === id);
 const amt = it => (it.totalQty||0) * (it.unitRate||0);
-const itemPct = it => it.totalQty > 0 ? clamp(it.executedQty / it.totalQty, 0, 1) : 0;
+const approvedOf = it => Math.min(it.executedQty||0, it.approvedQty!==undefined ? it.approvedQty : (it.executedQty||0));
+const itemPct = it => it.totalQty > 0 ? clamp(it.executedQty / it.totalQty, 0, 1) : 0;      // نسبة المنفذ ميدانياً
+const approvedPct = it => it.totalQty > 0 ? clamp(approvedOf(it) / it.totalQty, 0, 1) : 0;    // نسبة المعتمد من الاستشاري
 const claimedPct = it => it.totalQty > 0 ? clamp(it.claimedQty / it.totalQty, 0, 1) : 0;
-const availQty = it => Math.max(0, (it.executedQty||0) - (it.claimedQty||0));
+const pendingApprovalQty = it => it.scope === 'others' ? 0 : Math.max(0, (it.executedQty||0) - approvedOf(it)); // منفذ بانتظار اعتماد الاستشاري
+const pendingApprovalValue = it => pendingApprovalQty(it) * (it.unitRate||0);
+// المتاح للمستخلص = المعتمد من الاستشاري ناقص المرفوع سابقاً (وليس المنفذ)
+const availQty = it => Math.max(0, approvedOf(it) - (it.claimedQty||0));
 const netClaimable = it => it.scope === 'others' ? 0 : availQty(it) * it.unitRate;
 const remainingValue = it => it.scope === 'others' ? 0 : (1 - itemPct(it)) * amt(it);
 const DONE = 0.995;
@@ -1270,7 +1298,8 @@ const STATUS_META = {
   waiting:      {label:'بانتظار أعمال سابقة', color:'orange', icon:'⏳'},
   available:    {label:'متاح للبدء الآن', color:'blue',   icon:'▶'},
   partial:      {label:'قيد التنفيذ', color:'amber',  icon:'🟡'},
-  done:         {label:'مكتمل', color:'green',  icon:'✅'},
+  pending_consultant: {label:'بانتظار اعتماد الاستشاري', color:'orange', icon:'🕵'},
+  done:         {label:'مكتمل - معتمد', color:'green',  icon:'✅'},
   claimed_full: {label:'مكتمل ومرفوع', color:'teal',   icon:'📤'}
 };
 
@@ -1280,10 +1309,12 @@ function statusOf(it){
   if (it.blocker && it.blocker.active && pct < DONE) return 'blocked';
   if (it.scope === 'client_supply' && pct === 0) return 'by_client';
   const preds = (it.predecessors||[]).map(getItem).filter(Boolean);
-  const incomplete = preds.filter(p => itemPct(p) < DONE);
+  const incomplete = preds.filter(p => approvedPct(p) < DONE);
   if (pct === 0 && incomplete.length) return 'waiting';
   if (pct === 0) return 'available';
-  if (pct >= DONE) return claimedPct(it) >= pct - 0.005 ? 'claimed_full' : 'done';
+  // يوجد منفذ بانتظار اعتماد الاستشاري ولا يوجد رصيد معتمد متاح للرفع
+  if (pendingApprovalQty(it) > 0.001 && availQty(it) < 0.001) return 'pending_consultant';
+  if (pct >= DONE && approvedPct(it) >= DONE) return claimedPct(it) >= approvedPct(it) - 0.005 ? 'claimed_full' : 'done';
   return 'partial';
 }
 
@@ -1309,7 +1340,7 @@ function chainOf(it){
 function rootCauseOf(it){ const c = chainOf(it); return c.length ? c[c.length-1] : null; }
 
 function totalsFor(p){
-  const t = {contract:0, azoomScope:0, executed:0, claimed:0, net:0, locked:0, othersVal:0, musNet:0, collected:0, blockedCount:0};
+  const t = {contract:0, azoomScope:0, executed:0, approved:0, pendingApproval:0, claimed:0, net:0, locked:0, othersVal:0, musNet:0, collected:0, blockedCount:0, pendingApprovalCount:0};
   const getP = id => p.boqItems.find(i => i.id === id);
   p.boqItems.forEach(it => {
     const a = amt(it);
@@ -1317,10 +1348,12 @@ function totalsFor(p){
     if (it.scope === 'others') { t.othersVal += a; return; }
     t.azoomScope += a;
     t.executed += itemPct(it) * a;
+    t.approved += approvedPct(it) * a;
+    t.pendingApproval += pendingApprovalValue(it);
+    if (pendingApprovalQty(it) > 0.001) t.pendingApprovalCount++;
     t.claimed += claimedPct(it) * a;
-    t.net += Math.max(0, (it.executedQty||0) - (it.claimedQty||0)) * it.unitRate;
+    t.net += netClaimable(it); // المعتمد من الاستشاري ناقص المرفوع
     if (it.blocker && it.blocker.active && itemPct(it) < DONE) t.blockedCount++;
-    // محجوب: عائق خارجي أو انتظار سلف غير مكتمل أو توريد عميل
     let locked = it.blocker && it.blocker.active && itemPct(it) < DONE;
     if (!locked && itemPct(it) === 0) {
       if (it.scope === 'client_supply') locked = true;
@@ -1668,8 +1701,9 @@ function renderKPIs(){
   const kpis = [
     {label:'قيمة نطاق أعمالنا', value:money(t.azoomScope), color:'amber', sub:'من إجمالي البنود ' + money(t.contract)},
     {label:'قيمة الأعمال المنفذة', value:money(t.executed), color:'blue', sub:'نسبة الإنجاز ' + progressPct.toFixed(1) + '%'},
+    {label:'🕵 بانتظار اعتماد الاستشاري', value:money(t.pendingApproval), color:'orange', sub:t.pendingApprovalCount + ' بند - منفذ يحتاج اعتماد + استلام'},
+    {label:'✅ جاهز للرفع الآن (صافي)', value:money(t.net), color:'green', sub:proj().boqItems.filter(i=>netClaimable(i)>1).length + ' بند - المعتمد ناقص المرفوع'},
     {label:'مرفوع بمستخلصات سابقة', value:money(t.claimed), color:'teal', sub:proj().mustakhlasat.length + ' مستخلص'},
-    {label:'✅ جاهز للرفع الآن (صافي)', value:money(t.net), color:'green', sub:proj().boqItems.filter(i=>netClaimable(i)>1).length + ' بند - المنفذ ناقص المرفوع'},
     {label:'محجوب بعوائق وتسلسل', value:money(t.locked), color:'red', sub:'قيمة الأعمال غير الممكنة حالياً'},
     {label:'💵 محصل نقداً', value:money(t.collected), color:'teal', sub:'متبقي تحصيله ' + money(Math.max(0, t.musNet - t.collected)) + ' من المستخلصات'},
     {label:'خارج نطاقنا (منفذ سابقاً)', value:money(t.othersVal), color:'purple', sub:'لا مطالبة عليها'}
@@ -1730,7 +1764,8 @@ function renderAlerts(){
   if (state.me.role === 'pm' && myRejected.length) {
     html += '<div class="alert danger">↩ <div><strong>' + myRejected.length + ' مستخلص معاد لك للتعديل</strong> — راجع سبب الإرجاع، احذفه وأعد رفعه بعد التصحيح.</div></div>';
   }
-  if (t.net > 1) html += '<div class="alert success">✅ <div>عندك <strong>' + money(t.net) + '</strong> جاهزة للرفع الآن — روح لتبويب المستخلصات.</div></div>';
+  if (t.pendingApprovalCount) html += '<div class="alert warning">🕵 <div><strong>' + t.pendingApprovalCount + ' بند بانتظار اعتماد الاستشاري</strong> (' + money(t.pendingApproval) + ') — منفذ ميدانياً ولا يمكن رفعه بمستخلص قبل اعتماد الاستشاري وإرفاق الاستلام الموقّع. <a href="#" onclick="switchTab(\'items\');setFilter(\'pending_approval\');return false" style="color:var(--amber);font-weight:700">اعرض البنود ←</a></div></div>';
+  if (t.net > 1) html += '<div class="alert success">✅ <div>عندك <strong>' + money(t.net) + '</strong> معتمدة وجاهزة للرفع الآن — روح لتبويب المستخلصات.</div></div>';
   if (blockedItems.length) html += '<div class="alert danger">⛔ <div><strong>' + blockedItems.length + ' بند</strong> موقوف بعوائق خارجية (' + reasons.map(esc).join('، ') + ') — راجع تبويب العوائق للأثر المالي.</div></div>';
   const stale = proj().boqItems.filter(i => statusOf(i) === 'available');
   if (stale.length) html += '<div class="alert warning">▶ <div><strong>' + stale.length + ' بند</strong> متاح تبدأ فيه الحين بدون أي عائق — بقيمة ' + money(stale.reduce((s,i)=>s+remainingValue(i),0)) + '.</div></div>';
@@ -1741,7 +1776,9 @@ function renderClaimSummary(){
   const t = totals();
   const vat = t.net * proj().info.vatRate/100;
   $('claim-summary').innerHTML =
-    '<div class="sc-item"><span class="sc-item-name">إجمالي المنفذ</span><span class="sc-item-val" style="color:var(--blue)">' + money(t.executed) + '</span></div>' +
+    '<div class="sc-item"><span class="sc-item-name">إجمالي المنفذ ميدانياً</span><span class="sc-item-val" style="color:var(--blue)">' + money(t.executed) + '</span></div>' +
+    '<div class="sc-item"><span class="sc-item-name">🕵 بانتظار اعتماد الاستشاري</span><span class="sc-item-val" style="color:var(--orange)">' + money(t.pendingApproval) + '</span></div>' +
+    '<div class="sc-item"><span class="sc-item-name">معتمد من الاستشاري</span><span class="sc-item-val" style="color:var(--green)">' + money(t.approved) + '</span></div>' +
     '<div class="sc-item"><span class="sc-item-name">مرفوع بمستخلصات سابقة</span><span class="sc-item-val" style="color:var(--teal)">− ' + money(t.claimed) + '</span></div>' +
     '<div class="sc-item"><span class="sc-item-name" style="font-weight:700">الصافي الجاهز للرفع</span><span class="sc-item-val" style="color:var(--green-bright);font-size:13px">' + money(t.net) + '</span></div>' +
     '<div class="sc-item"><span class="sc-item-name">+ ضريبة ' + proj().info.vatRate + '%</span><span class="sc-item-val">' + money(vat) + '</span></div>' +
@@ -1870,7 +1907,7 @@ function renderPlan(){
 // ============================================================
 let currentFilter = 'all';
 const FILTERS = [
-  ['all','الكل'], ['claimable','💰 له مطالبة'], ['partial','🟡 قيد التنفيذ'], ['available','▶ متاح للبدء'],
+  ['all','الكل'], ['pending_approval','🕵 بانتظار اعتماد الاستشاري'], ['claimable','💰 له مطالبة'], ['partial','🟡 قيد التنفيذ'], ['available','▶ متاح للبدء'],
   ['waiting','⏳ ينتظر أعمال'], ['blocked','⛔ معيق'], ['done','✅ مكتمل'], ['claimed_full','📤 مرفوع بالكامل'], ['others','⚪ خارج النطاق']
 ];
 function renderItemFilters(){
@@ -1886,6 +1923,7 @@ function renderItemsTable(){
     if (search && !(it.desc.toLowerCase().includes(search) || it.id.toLowerCase().includes(search) || (it.divAr||'').includes(search))) return false;
     if (currentFilter === 'all') return true;
     if (currentFilter === 'claimable') return netClaimable(it) > 1;
+    if (currentFilter === 'pending_approval') return pendingApprovalQty(it) > 0.001;
     return statusOf(it) === currentFilter;
   });
 
@@ -1912,6 +1950,8 @@ function renderItemsTable(){
         '<input type="number" class="qty-input" min="0" max="' + it.totalQty + '" step="any" value="' + (Math.round((it.executedQty||0)*100)/100) + '" onchange="setItemQty(\'' + esc(it.id) + '\', this.value)" data-tip="أدخل الكمية المنفذة (من أصل ' + fmtQ(it.totalQty) + ' ' + esc(it.unit) + ') — العميل يحاسب بالكميات">' +
         '<span style="display:inline-flex;align-items:center;gap:5px"><span style="font-family:var(--mono);font-size:10px;color:var(--text2)">' + (itemPct(it)*100).toFixed(1) + '%</span><span class="prog-bar" style="width:56px"><span class="prog-fill ' + (itemPct(it)>=DONE?'green':itemPct(it)>0?'amber':'red') + '" style="width:' + (itemPct(it)*100) + '%;display:block"></span></span></span>' +
         '</span>') + '</td>' +
+      // اعتماد الاستشاري: معتمد + بانتظار الاعتماد + زر الاعتماد مع استلام موقّع
+      '<td>' + approvalCell(it) + '</td>' +
       '<td class="amount" style="color:var(--teal)">' + (claimedPct(it)*100).toFixed(0) + '%</td>' +
       '<td class="amount ' + (net>1?'claimable':'muted') + '">' + (net>1?fmtN(net):'—') + '</td>' +
       '<td>' + statusPill(st) + '</td>' +
@@ -1919,22 +1959,119 @@ function renderItemsTable(){
       '<td style="white-space:nowrap"><button class="mini-btn" onclick="openItemModal(\'' + esc(it.id) + '\')">✏️ تعديل</button>' +
       (net>1 ? ' <button class="mini-btn green" onclick="mbAddItem(\'' + esc(it.id) + '\')">+ مستخلص</button>' : '') + '</td>' +
       '</tr>';
-  }).join('') || '<tr><td colspan="12"><div class="empty-state"><p>لا توجد بنود مطابقة</p></div></td></tr>';
+  }).join('') || '<tr><td colspan="13"><div class="empty-state"><p>لا توجد بنود مطابقة</p></div></td></tr>';
 
   $('items-tfoot').innerHTML = '<tr class="summary-row"><td colspan="5" style="text-align:right;color:var(--text2)">الإجمالي (' + list.length + ' بند)</td>' +
-    '<td class="amount" style="color:var(--amber)">' + fmtN(sumAmt) + '</td><td colspan="2"></td>' +
+    '<td class="amount" style="color:var(--amber)">' + fmtN(sumAmt) + '</td><td colspan="3"></td>' +
     '<td class="amount claimable">' + fmtN(sumNet) + '</td><td colspan="3"></td></tr>';
 }
+
+// خلية اعتماد الاستشاري في جدول الكميات
+function approvalCell(it){
+  if (it.scope === 'others') return '<span style="color:var(--text3)">—</span>';
+  const pend = pendingApprovalQty(it), appr = approvedOf(it);
+  const canApprove = pdbCanApproveQty();
+  let html = '<div style="display:flex;flex-direction:column;gap:3px;align-items:flex-start">';
+  if (appr > 0.001) html += '<span style="font-size:11px;color:var(--green)">✅ معتمد ' + fmtQ(appr) + '</span>';
+  if (pend > 0.001) {
+    html += '<span style="font-size:11px;color:var(--orange)">🕵 بانتظار ' + fmtQ(pend) + '</span>';
+    if (canApprove) html += '<button class="mini-btn" style="border-color:rgba(240,136,62,0.5);color:var(--orange)" onclick="openApproveQty(\'' + esc(it.id) + '\')">📋 اعتماد + استلام</button>';
+  }
+  if (appr < 0.001 && pend < 0.001) html += '<span style="color:var(--text3);font-size:11px">—</span>';
+  // عرض استلامات سابقة
+  if ((it.approvals||[]).length) html += '<button class="mini-btn" style="font-size:10px;padding:1px 5px" onclick="viewApprovals(\'' + esc(it.id) + '\')">📎 ' + it.approvals.length + ' استلام</button>';
+  html += '</div>';
+  return html;
+}
+// من يعتمد كميات الاستشاري؟ الموظف الميداني فأعلى (يرفع الاستلام الموقّع)
+const pdbCanApproveQty = () => ['admin','client','pmo','pm'].includes(state.me.role);
 
 // إدخال الكمية المنفذة مباشرة — العميل يحاسب بالكميات فالحسبة تكون دقيقة
 function setItemQty(id, val){
   const it = getItem(id);
   if (!it) return;
   it.executedQty = Math.round(clamp(val, 0, it.totalQty) * 100) / 100;
+  // المعتمد لا يتجاوز المنفذ (لو خفّض المنفذ تحت المعتمد يُقلّص المعتمد)
+  if ((it.approvedQty||0) > it.executedQty) it.approvedQty = it.executedQty;
   if (it.executedQty < it.claimedQty) {
     alert('تنبيه: الكمية المنفذة (' + fmtQ(it.executedQty) + ') أصبحت أقل من الكمية المرفوعة بمستخلصات سابقة (' + fmtQ(it.claimedQty) + ').');
   }
   save(); renderAll();
+}
+
+// ============================================================
+//  اعتماد الاستشاري على الكميات (مع استلام موقّع)
+// ============================================================
+let aqItemId = null, aqPendingFile = null;
+function openApproveQty(id){
+  const it = getItem(id);
+  if (!it) return;
+  if (!pdbCanApproveQty()) { alert('اعتماد الكميات صلاحية فريق المشروع'); return; }
+  aqItemId = id; aqPendingFile = null;
+  const pend = pendingApprovalQty(it);
+  $('aq-info').innerHTML = '<strong>' + esc(it.desc) + '</strong><br>منفذ ميدانياً: ' + fmtQ(it.executedQty) + ' ' + esc(it.unit) +
+    ' · معتمد سابقاً: ' + fmtQ(approvedOf(it)) + ' · <span style="color:var(--orange)">بانتظار الاعتماد: ' + fmtQ(pend) + '</span>';
+  $('aq-qty').value = Math.round(pend*100)/100;
+  $('aq-qty').max = pend;
+  $('aq-date').value = todayStr();
+  $('aq-consultant').value = ''; $('aq-arno').value = ''; $('aq-note').value = '';
+  $('aq-file').value = ''; $('aq-file-name').textContent = '';
+  $('approve-qty-modal').classList.add('open');
+}
+async function aqFilePicked(input){
+  const f = input.files[0];
+  if (!f) return;
+  try {
+    if (f.type === 'application/pdf') { if (f.size > 9*1024*1024) { alert('الملف أكبر من 9MB'); input.value=''; return; } aqPendingFile = {dataUrl: await readFileAsDataURL(f), name: f.name}; }
+    else if (f.type.startsWith('image/')) aqPendingFile = {dataUrl: await compressImage(f), name: f.name};
+    else { alert('PDF أو صورة فقط'); input.value=''; return; }
+    $('aq-file-name').textContent = '📎 ' + f.name;
+  } catch(e) { alert(e.message); }
+}
+async function saveApproveQty(){
+  const it = getItem(aqItemId);
+  if (!it) return;
+  const pend = pendingApprovalQty(it);
+  const qty = Number($('aq-qty').value);
+  if (!qty || qty <= 0) { alert('اكتب الكمية المعتمدة'); return; }
+  if (qty > pend + 0.001) { alert('الكمية المعتمدة تتجاوز الكمية المنفذة بانتظار الاعتماد (' + fmtQ(pend) + ')'); return; }
+  if (!aqPendingFile) { alert('📎 إرفاق استلام الاستشاري الموقّع إلزامي'); return; }
+  if (offlineMode) { alert('📴 لا يمكن الاعتماد بدون اتصال'); return; }
+  let ar;
+  try { const r = await API.req('POST', '/api/projects/' + proj().id + '/photos', {dataUrl: aqPendingFile.dataUrl}); ar = {url: r.url, name: aqPendingFile.name}; }
+  catch(e) { alert('تعذر رفع الاستلام: ' + e.message); return; }
+  it.approvals = it.approvals || [];
+  it.approvals.push({id: nextSeq(), qty, date: $('aq-date').value || todayStr(), consultant: $('aq-consultant').value.trim(),
+    arNo: $('aq-arno').value.trim(), ar, note: $('aq-note').value.trim(), by: currentUser().name});
+  it.approvedQty = Math.min(it.executedQty, (it.approvedQty||0) + qty);
+  closeModal('approve-qty-modal'); save(); renderAll();
+  alert('✅ اعتُمدت ' + fmtQ(qty) + ' ' + esc(it.unit) + ' — أصبحت جاهزة للرفع في المستخلص.');
+}
+
+function viewApprovals(id){
+  const it = getItem(id);
+  if (!it || !(it.approvals||[]).length) return;
+  const rows = it.approvals.map((a,i) =>
+    '<div class="sc-item" style="align-items:flex-start"><span class="sc-item-name" style="white-space:normal">' +
+    '✅ <strong>' + fmtQ(a.qty) + ' ' + esc(it.unit) + '</strong> — ' + esc(a.date) + (a.consultant ? ' · الاستشاري: ' + esc(a.consultant) : '') + (a.arNo ? ' · استلام رقم ' + esc(a.arNo) : '') +
+    '<br><span style="font-size:11px">سجّله: ' + esc(a.by||'—') + (a.note ? ' · ' + esc(a.note) : '') + '</span></span>' +
+    (a.ar ? '<a href="' + esc(a.ar.url) + '" target="_blank" style="color:var(--blue);font-size:11px">' + (String(a.ar.url).endsWith('.pdf')?'📄':'🖼') + ' الاستلام ↗</a>' : '') +
+    (pdbCanApproveQty() ? ' <button class="mini-btn red" onclick="deleteApproval(\'' + esc(id) + '\',' + a.id + ')">🗑</button>' : '') +
+    '</div>').join('');
+  showPrintable('📋 استلامات بند ' + it.id, '<div style="font-family:var(--font)"><div style="font-size:13px;font-weight:700;margin-bottom:8px">' + esc(it.desc) + '</div>' + rows + '</div>');
+}
+
+function deleteApproval(id, approvalId){
+  const it = getItem(id);
+  if (!it) return;
+  const a = (it.approvals||[]).find(x => x.id === approvalId);
+  if (!a) return;
+  if (approvedOf(it) - a.qty < claimedPct(it)*it.totalQty - 0.001) { alert('لا يمكن حذف هذا الاعتماد: كمية معتمدة منه مرفوعة بمستخلص. احذف المستخلص أولاً.'); return; }
+  if (!confirm('حذف اعتماد ' + fmtQ(a.qty) + ' ' + esc(it.unit) + '؟ سترجع الكمية لبانتظار الاعتماد.')) return;
+  if (a.ar) { const file = String(a.ar.url).split('/').pop(); API.req('DELETE', '/api/projects/' + proj().id + '/photos/' + file).catch(()=>{}); }
+  it.approvals = it.approvals.filter(x => x.id !== approvalId);
+  it.approvedQty = Math.max(0, (it.approvedQty||0) - a.qty);
+  closeModal('doc-modal'); save(); renderAll();
 }
 
 // ============================================================
@@ -1990,9 +2127,13 @@ function saveItem(){
   if (editingItemId) {
     const it = getItem(editingItemId);
     data.claimedQty = it.claimedQty;
+    data.approvedQty = Math.min(it.approvedQty||0, data.executedQty);
+    data.approvals = it.approvals || [];
     Object.assign(it, data);
   } else {
     data.claimedQty = 0;
+    data.approvedQty = 0; // الكميات الجديدة تبدأ بانتظار اعتماد الاستشاري
+    data.approvals = [];
     proj().boqItems.push(data);
   }
   closeModal('item-modal'); save(); renderAll();
@@ -2030,12 +2171,12 @@ function renderBuilder(){
       '<td><div class="desc-text" style="max-width:200px" data-tip="' + esc(it.desc) + '">' + esc(it.desc) + '</div></td>' +
       '<td>' + esc(it.unit) + '</td>' +
       '<td class="amount muted">' + fmtN(it.unitRate) + '</td>' +
-      '<td class="amount">' + fmtQ(it.executedQty) + '</td>' +
+      '<td class="amount" style="color:var(--green)">' + fmtQ(approvedOf(it)) + '</td>' +
       '<td class="amount muted">' + fmtQ(it.claimedQty) + '</td>' +
       '<td><input type="number" class="qty-input" min="0" max="' + availQty(it) + '" step="0.1" value="' + (Math.round(qty*100)/100) + '"' + (sel?'':' disabled') + ' onchange="mbQty(\'' + esc(it.id) + '\', this.value)"></td>' +
       '<td class="amount claimable">' + (sel ? fmtN(qty * it.unitRate) : '—') + '</td>' +
       '</tr>';
-  }).join('') || '<tr><td colspan="9"><div class="empty-state"><p>لا توجد كميات منفذة غير مرفوعة — سجّل تنفيذ أولاً</p></div></td></tr>';
+  }).join('') || '<tr><td colspan="9"><div class="empty-state"><p>لا توجد كميات معتمدة غير مرفوعة — اعتمد الكميات من الاستشاري أولاً (بمرفق الاستلام)</p></div></td></tr>';
   renderMbTotals();
 }
 
@@ -2598,12 +2739,12 @@ function dlCSV(name, rows){
 }
 
 function exportItemsCSV(){
-  const rows = [['رقم البند','القسم','الوصف','الوحدة','الكمية الكلية','سعر الوحدة','الإجمالي','الكمية المنفذة','نسبة التنفيذ %','الكمية المرفوعة','صافي المطالبة','الحالة','العائق / يعتمد على']];
+  const rows = [['رقم البند','القسم','الوصف','الوحدة','الكمية الكلية','سعر الوحدة','الإجمالي','الكمية المنفذة','المعتمد من الاستشاري','بانتظار الاعتماد','الكمية المرفوعة','صافي المطالبة','الحالة','العائق / يعتمد على']];
   proj().boqItems.forEach(it => {
     const st = STATUS_META[statusOf(it)].label;
     const dep = it.blocker && it.blocker.active ? it.blocker.reason : (it.predecessors||[]).join(' + ');
     rows.push([it.id, it.div + ' ' + (it.divAr||''), it.desc, it.unit, it.totalQty, it.unitRate, amt(it),
-      it.executedQty, (itemPct(it)*100).toFixed(1), it.claimedQty, Math.round(netClaimable(it)), st, dep]);
+      it.executedQty, approvedOf(it), pendingApprovalQty(it), it.claimedQty, Math.round(netClaimable(it)), st, dep]);
   });
   dlCSV('BOQ-' + todayStr() + '.csv', rows);
 }
@@ -3271,7 +3412,7 @@ function confirmInsertToBoq(){
   const qty = Number($('pdb-ins-qty').value) || 0;
   proj().boqItems.push({id, div:it.category||'—', divAr:'', desc:it.desc, unit:it.unit,
     qtyPerVilla:0, totalQty:qty, unitRate:it.rate, scope:'azoom', predecessors:[], blocker:null,
-    executedQty:0, claimedQty:0, notes: it.offerRef ? 'من عرض ' + it.offerRef : ''});
+    executedQty:0, approvedQty:0, approvals:[], claimedQty:0, notes: it.offerRef ? 'من عرض ' + it.offerRef : ''});
   closeModal('pdb-insert-modal'); save(); renderAll();
   alert('✅ أُضيف البند ' + id + ' إلى جدول كميات المشروع.');
 }
@@ -3486,7 +3627,7 @@ async function biDoImport(){
       id:r.id, div:r.div || '—', divAr:'', desc:r.desc, unit:r.unit,
       qtyPerVilla:r.qtyPerUnit || 0, totalQty:r.qty, unitRate:r.rate,
       scope:'azoom', predecessors:[], blocker:null,
-      executedQty: clamp(r.exec || 0, 0, r.qty), claimedQty:0, notes:''
+      executedQty: clamp(r.exec || 0, 0, r.qty), approvedQty:0, approvals:[], claimedQty:0, notes:''
     });
     added++;
   });
@@ -3539,7 +3680,7 @@ async function resetDemo(){
   if (!isManagerial()) { alert('صلاحية أدمن النظام أو العميل فقط'); return; }
   if (!confirm('إضافة مشروع تجريبي كامل (مشروع SANG بفلله وبنوده ويومياته) للتعرف على النظام؟')) return;
   try {
-    const data = demoProjectData();
+    const data = migrateProject(demoProjectData()); // يضبط approvedQty/approvals للبنود التجريبية
     data.companyId = isAdmin() ? ((state.companies[0]||{}).id || null) : state.me.companyId;
     const r = await API.req('POST', '/api/projects', {data});
     state.projects.push({...data, id:r.id, version:r.version});

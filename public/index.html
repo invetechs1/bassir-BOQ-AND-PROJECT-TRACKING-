@@ -727,7 +727,7 @@
     <div id="companies-list" style="margin-bottom:14px"></div>
     <div class="divider"></div>
     <div class="f-grid" style="grid-template-columns:2fr 1fr;align-items:end">
-      <div class="f-field"><label data-i18n="اسم الشركة الجديدة">اسم الشركة الجديدة</label><input type="text" id="co-name" placeholder="شركة الإنشاءات الحديثة"></div>
+      <div class="f-field"><label data-i18n="اسم الشركة الجديدة">اسم الشركة الجديدة</label><input type="text" id="co-name" placeholder="شركة الإنشاءات الحديثة" data-i18n-ph="شركة الإنشاءات الحديثة"></div>
       <button class="btn btn-green" onclick="addCompany()" data-i18n="+ إضافة شركة">+ إضافة شركة</button>
     </div>
   </div>
@@ -735,43 +735,43 @@
 
 <div class="modal-overlay" id="boq-import-modal">
   <div class="modal wide">
-    <div class="modal-title"><span>📥 استيراد جدول كميات من Excel</span><span class="modal-close" onclick="closeModal('boq-import-modal')">✕</span></div>
+    <div class="modal-title"><span data-i18n="📥 استيراد جدول كميات من Excel">📥 استيراد جدول كميات من Excel</span><span class="modal-close" onclick="closeModal('boq-import-modal')">✕</span></div>
 
     <div class="alert info" style="font-size:12px">
-      💡 ارفع ملف جدول الكميات (xlsx / xls / csv) — النظام يتعرف على الأعمدة تلقائياً وتقدر تعدّل المطابقة قبل الاستيراد.
-      الأعمدة المطلوبة: <strong>رقم البند، الوصف، الكمية، سعر الوحدة</strong>. والاختيارية: الوحدة، القسم، الكمية لكل وحدة، الكمية المنفذة.
+      <span data-i18n="💡 ارفع ملف جدول الكميات (xlsx / xls / csv) — النظام يتعرف على الأعمدة تلقائياً وتقدر تعدّل المطابقة قبل الاستيراد.">💡 ارفع ملف جدول الكميات (xlsx / xls / csv) — النظام يتعرف على الأعمدة تلقائياً وتقدر تعدّل المطابقة قبل الاستيراد.</span>
+      <span data-i18n="الأعمدة المطلوبة:">الأعمدة المطلوبة:</span> <strong data-i18n="رقم البند، الوصف، الكمية، سعر الوحدة">رقم البند، الوصف، الكمية، سعر الوحدة</strong><span data-i18n=". والاختيارية: الوحدة، القسم، الكمية لكل وحدة، الكمية المنفذة.">. والاختيارية: الوحدة، القسم، الكمية لكل وحدة، الكمية المنفذة.</span>
     </div>
 
     <div class="filter-bar">
       <input type="file" id="bi-file" accept=".xlsx,.xls,.csv" onchange="biFilePicked(this)" style="font-size:12px">
-      <button class="mini-btn" onclick="biDownloadTemplate()">⬇ تحميل نموذج Excel جاهز</button>
+      <button class="mini-btn" onclick="biDownloadTemplate()" data-i18n="⬇ تحميل نموذج Excel جاهز">⬇ تحميل نموذج Excel جاهز</button>
     </div>
 
     <div id="bi-config" style="display:none">
       <div class="f-grid" style="grid-template-columns:repeat(3,1fr)">
-        <div class="f-field"><label>الورقة (Sheet)</label><select id="bi-sheet" onchange="biSheetChanged()"></select></div>
-        <div class="f-field"><label>صف العناوين</label><input type="number" id="bi-header-row" min="1" onchange="biHeaderChanged()"></div>
-        <div class="f-field"><label>البنود المكررة (نفس رقم البند)</label>
+        <div class="f-field"><label data-i18n="الورقة (Sheet)">الورقة (Sheet)</label><select id="bi-sheet" onchange="biSheetChanged()"></select></div>
+        <div class="f-field"><label data-i18n="صف العناوين">صف العناوين</label><input type="number" id="bi-header-row" min="1" onchange="biHeaderChanged()"></div>
+        <div class="f-field"><label data-i18n="البنود المكررة (نفس رقم البند)">البنود المكررة (نفس رقم البند)</label>
           <select id="bi-dup">
-            <option value="skip">تجاهلها (لا تستورد)</option>
-            <option value="update">تحديث الموجود (الوصف/الكمية/السعر)</option>
+            <option value="skip" data-i18n="تجاهلها (لا تستورد)">تجاهلها (لا تستورد)</option>
+            <option value="update" data-i18n="تحديث الموجود (الوصف/الكمية/السعر)">تحديث الموجود (الوصف/الكمية/السعر)</option>
           </select>
         </div>
       </div>
       <div class="divider"></div>
-      <div class="card-title" style="font-size:13px">🔗 مطابقة الأعمدة</div>
+      <div class="card-title" style="font-size:13px" data-i18n="🔗 مطابقة الأعمدة">🔗 مطابقة الأعمدة</div>
       <div class="f-grid" style="grid-template-columns:repeat(4,1fr)" id="bi-mapping"></div>
       <div class="divider"></div>
-      <div class="card-title" style="font-size:13px">👁 معاينة <span id="bi-counts" class="pill blue" style="font-size:10px"></span></div>
+      <div class="card-title" style="font-size:13px"><span data-i18n="👁 معاينة">👁 معاينة</span> <span id="bi-counts" class="pill blue" style="font-size:10px"></span></div>
       <div class="table-wrap" style="max-height:260px">
         <table>
-          <thead><tr><th></th><th>رقم البند</th><th>الوصف</th><th>الوحدة</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th><th>ملاحظة</th></tr></thead>
+          <thead><tr><th></th><th data-i18n="رقم البند">رقم البند</th><th data-i18n="الوصف">الوصف</th><th data-i18n="الوحدة">الوحدة</th><th data-i18n="الكمية">الكمية</th><th data-i18n="السعر">السعر</th><th data-i18n="الإجمالي">الإجمالي</th><th data-i18n="ملاحظة">ملاحظة</th></tr></thead>
           <tbody id="bi-preview"></tbody>
         </table>
       </div>
       <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
-        <button class="btn btn-green" onclick="biDoImport()">📥 استيراد البنود الآن</button>
-        <button class="btn btn-ghost" onclick="closeModal('boq-import-modal')">إلغاء</button>
+        <button class="btn btn-green" onclick="biDoImport()" data-i18n="📥 استيراد البنود الآن">📥 استيراد البنود الآن</button>
+        <button class="btn btn-ghost" onclick="closeModal('boq-import-modal')" data-i18n="إلغاء">إلغاء</button>
       </div>
     </div>
   </div>
@@ -1608,6 +1608,18 @@ function renderUsersList(){
   }).join('');
 }
 
+Object.assign(I18N_EN, {
+  'أدمن النظام':'System admin',
+  'العميل - مالك الشركة':'Client - company owner',
+  'مدير المشاريع':'Projects manager',
+  'مدير مشروع':'Project manager',
+  'مدير مشروع (مشروعه فقط)':'Project manager (their project only)',
+  'مدير المشاريع (كل مشاريع شركته)':'Projects manager (all of their company\'s projects)',
+  'العميل - مالك الشركة (كامل صلاحيات شركته)':'Client - company owner (full permissions over their company)',
+  'أدمن النظام (كل شيء)':'System admin (everything)',
+  'مدير المشاريع (كل مشاريع الشركة)':'Projects manager (all of the company\'s projects)'
+});
+
 async function addUser(){
   const name = $('us-name').value.trim();
   const username = $('us-username').value.trim();
@@ -2193,10 +2205,16 @@ let mbSel = {}; // itemId -> qty
 
 function claimableItems(){ return proj().boqItems.filter(i => i.scope !== 'others' && availQty(i) > 0.01); }
 
+let mbRatesProjectId = null; // آخر مشروع زُامنت له حقول محتجز الضمان / الدفعة المقدمة
 function renderBuilder(){
   if (!$('mb-date').value) $('mb-date').value = todayStr();
-  if ($('mb-ret').value === '') $('mb-ret').value = proj().info.retentionRate;
-  if ($('mb-adv').value === '') $('mb-adv').value = proj().info.advanceRate;
+  // زامن حقول النسب مع المشروع الحالي عند أول عرض أو عند تبديل المشروع
+  // (وليس فقط عند كون الحقل فارغاً — وإلا تبقى نسب مشروع سابق عالقة بعد التبديل)
+  if (mbRatesProjectId !== proj().id) {
+    $('mb-ret').value = proj().info.retentionRate;
+    $('mb-adv').value = proj().info.advanceRate;
+    mbRatesProjectId = proj().id;
+  }
   const list = claimableItems();
   $('mb-tbody').innerHTML = list.map(it => {
     const sel = mbSel[it.id] !== undefined;
@@ -2316,12 +2334,12 @@ function renderHistory(){
   // ملخص مالي أعلى صفحة المستخلصات السابقة
   const t = totals();
   $('mus-kpis').innerHTML = [
-    {label:'عدد المستخلصات', value:asc.length, color:'amber', sub:asc.length ? 'آخرها ' + asc[asc.length-1].date : '—'},
-    {label:'إجمالي قيمة الأعمال المرفوعة', value:money(totGross), color:'teal', sub:((t.azoomScope>0? (totGross/t.azoomScope*100).toFixed(1):0)) + '% من قيمة النطاق'},
-    {label:'إجمالي صافي المستحق', value:money(totNet), color:'blue', sub:'بعد الضريبة والمحتجزات'},
-    {label:'💵 المحصل نقداً', value:money(totPaid), color:'green', sub:'من المستخلصات المرفوعة'},
-    {label:'متبقي التحصيل', value:money(Math.max(0, totNet - totPaid)), color:'red', sub:'مستحق لم يُدفع بعد'}
-  ].map(k => '<div class="kpi-card ' + k.color + '"><div class="kpi-label">' + k.label + '</div><div class="kpi-value ' + k.color + '">' + k.value + '</div><div class="kpi-sub">' + k.sub + '</div></div>').join('');
+    {label:'عدد المستخلصات', value:asc.length, color:'amber', sub:asc.length ? T('آخرها') + ' ' + asc[asc.length-1].date : '—'},
+    {label:'إجمالي قيمة الأعمال المرفوعة', value:money(totGross), color:'teal', sub:((t.azoomScope>0? (totGross/t.azoomScope*100).toFixed(1):0)) + T('% من قيمة النطاق')},
+    {label:'إجمالي صافي المستحق', value:money(totNet), color:'blue', sub:T('بعد الضريبة والمحتجزات')},
+    {label:'💵 المحصل نقداً', value:money(totPaid), color:'green', sub:T('من المستخلصات المرفوعة')},
+    {label:'متبقي التحصيل', value:money(Math.max(0, totNet - totPaid)), color:'red', sub:T('مستحق لم يُدفع بعد')}
+  ].map(k => '<div class="kpi-card ' + k.color + '"><div class="kpi-label">' + T(k.label) + '</div><div class="kpi-value ' + k.color + '">' + k.value + '</div><div class="kpi-sub">' + k.sub + '</div></div>').join('');
 
   const list = [...asc].reverse(); // الأحدث أولاً
   $('mus-history-tbody').innerHTML = list.map(m => {
@@ -2369,7 +2387,19 @@ Object.assign(I18N_EN, {
   'دفعة':'Payment',
   'لا توجد مستخلصات مرفوعة بعد':'No claims submitted yet',
   'لا توجد مستخلصات بعد':'No claims yet',
-  'لا توجد مستخلصات مرفوعة بعد — أعد مستخلصك الأول من "إعداد مستخلص جديد"':'No claims submitted yet — prepare your first one from "New Claim"'
+  'لا توجد مستخلصات مرفوعة بعد — أعد مستخلصك الأول من "إعداد مستخلص جديد"':'No claims submitted yet — prepare your first one from "New Claim"',
+  'عدد المستخلصات':'Number of claims',
+  'آخرها':'Last one',
+  'إجمالي قيمة الأعمال المرفوعة':'Total value of submitted work',
+  '% من قيمة النطاق':'% of scope value',
+  'إجمالي صافي المستحق':'Total net due',
+  'بعد الضريبة والمحتجزات':'After VAT and retentions',
+  '💵 المحصل نقداً':'💵 Collected in cash',
+  'من المستخلصات المرفوعة':'From submitted claims',
+  'متبقي التحصيل':'Remaining to collect',
+  'مستحق لم يُدفع بعد':'Due but not yet paid',
+  'التراكمي حتى تاريخه':'Cumulative to date',
+  'سجّله':'Logged by'
 });
 
 // ---- payments ----
@@ -3255,10 +3285,11 @@ function loadXLSX(){
     const s = document.createElement('script');
     s.src = '/vendor/xlsx.full.min.js';
     s.onload = () => resolve();
-    s.onerror = () => reject(new Error('تعذر تحميل مكتبة قراءة Excel'));
+    s.onerror = () => reject(new Error(T('تعذر تحميل مكتبة قراءة Excel')));
     document.head.appendChild(s);
   });
 }
+Object.assign(I18N_EN, { 'تعذر تحميل مكتبة قراءة Excel':'Failed to load the Excel reading library' });
 
 function openBoqImport(){
   $('bi-file').value = '';
@@ -3292,8 +3323,9 @@ async function biFilePicked(input){
     $('bi-sheet').innerHTML = biWB.SheetNames.map((n,i) => '<option value="' + i + '">' + esc(n) + '</option>').join('');
     $('bi-config').style.display = '';
     biSheetChanged();
-  } catch(e) { alert('تعذر قراءة الملف: ' + e.message); }
+  } catch(e) { alert(T('تعذر قراءة الملف:') + ' ' + e.message); }
 }
+Object.assign(I18N_EN, { 'تعذر قراءة الملف:':'Failed to read the file:' });
 
 function biSheetChanged(){
   const ws = biWB.Sheets[biWB.SheetNames[Number($('bi-sheet').value)]];
@@ -3322,10 +3354,10 @@ const BI_FIELDS = [
 function biHeaderChanged(){
   biHeaderIdx = clamp(Number($('bi-header-row').value) - 1, 0, Math.max(0, biRows.length - 1));
   const headers = (biRows[biHeaderIdx]||[]).map(strVal);
-  const opts = ['<option value="">— غير موجود —</option>'].concat(
-    headers.map((h,i) => '<option value="' + i + '">' + esc(h || ('عمود ' + (i+1))) + '</option>')).join('');
+  const opts = ['<option value="">' + T('— غير موجود —') + '</option>'].concat(
+    headers.map((h,i) => '<option value="' + i + '">' + esc(h || (T('عمود') + ' ' + (i+1))) + '</option>')).join('');
   $('bi-mapping').innerHTML = BI_FIELDS.map(f =>
-    '<div class="f-field"><label>' + f.label + '</label><select id="bi-map-' + f.key + '" onchange="biRenderPreview()">' + opts + '</select></div>'
+    '<div class="f-field"><label>' + T(f.label) + '</label><select id="bi-map-' + f.key + '" onchange="biRenderPreview()">' + opts + '</select></div>'
   ).join('');
   // تخمين تلقائي للمطابقة (مطابقة تامة أولاً ثم جزئية)
   const norm = s => String(s).toLowerCase().replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/\s+/g,' ').trim();
@@ -3346,6 +3378,17 @@ function biHeaderChanged(){
   });
   biRenderPreview();
 }
+Object.assign(I18N_EN, {
+  '— غير موجود —':'— Not present —',
+  'عمود':'Column',
+  'رقم البند *':'Item No. *',
+  'الوصف *':'Description *',
+  'الكمية الكلية *':'Total quantity *',
+  'سعر الوحدة *':'Unit price *',
+  'القسم':'Division',
+  'الكمية لكل وحدة':'Quantity per unit',
+  'الكمية المنفذة':'Executed quantity'
+});
 
 function biParseRows(){
   const map = {};
@@ -3360,10 +3403,10 @@ function biParseRows(){
     const qty = numVal(get('qty'));
     const rate = numVal(get('rate'));
     let err = '';
-    if (!id) err = 'رقم البند مفقود';
-    else if (!desc) err = 'الوصف مفقود';
-    else if (qty === null || qty <= 0) err = 'الكمية غير صالحة';
-    else if (rate === null || rate < 0) err = 'السعر غير صالح';
+    if (!id) err = T('رقم البند مفقود');
+    else if (!desc) err = T('الوصف مفقود');
+    else if (qty === null || qty <= 0) err = T('الكمية غير صالحة');
+    else if (rate === null || rate < 0) err = T('السعر غير صالح');
     const dup = !err && !!getItem(id);
     out.push({row:i+1, id, desc, unit:strVal(get('unit')) || '—', qty, rate,
       div:strVal(get('div')), qtyPerUnit:numVal(get('qtyPerUnit')) || 0, exec:numVal(get('exec')) || 0, err, dup});
@@ -3372,8 +3415,15 @@ function biParseRows(){
   const seen = {};
   out.forEach(r => {
     if (r.err) return;
-    if (seen[r.id]) r.err = 'مكرر داخل الملف (صف ' + seen[r.id] + ')';
+    if (seen[r.id]) r.err = T('مكرر داخل الملف (صف') + ' ' + seen[r.id] + ')';
     else seen[r.id] = r.row;
+  });
+  Object.assign(I18N_EN, {
+    'رقم البند مفقود':'Item number missing',
+    'الوصف مفقود':'Description missing',
+    'الكمية غير صالحة':'Invalid quantity',
+    'السعر غير صالح':'Invalid price',
+    'مكرر داخل الملف (صف':'Duplicate within the file (row'
   });
   return out;
 }
@@ -3384,7 +3434,7 @@ function biRenderPreview(){
   const ok = rows.filter(r => !r.err && !r.dup).length;
   const dups = rows.filter(r => !r.err && r.dup).length;
   const errs = rows.filter(r => r.err).length;
-  $('bi-counts').textContent = ok + ' جديد · ' + dups + ' موجود مسبقاً · ' + errs + ' خطأ';
+  $('bi-counts').textContent = ok + ' ' + T('جديد') + ' · ' + dups + ' ' + T('موجود مسبقاً') + ' · ' + errs + ' ' + T('خطأ');
   $('bi-preview').innerHTML = rows.slice(0, 30).map(r =>
     '<tr style="' + (r.err ? 'background:var(--red-dim)' : r.dup ? 'background:var(--amber-dim)' : '') + '">' +
     '<td style="font-family:var(--mono);font-size:10px;color:var(--text3)">' + r.row + '</td>' +
@@ -3394,16 +3444,24 @@ function biRenderPreview(){
     '<td class="amount">' + (r.qty === null ? '—' : fmtQ(r.qty)) + '</td>' +
     '<td class="amount">' + (r.rate === null ? '—' : Number(r.rate).toLocaleString('en-US', {maximumFractionDigits:2})) + '</td>' +
     '<td class="amount">' + ((r.qty !== null && r.rate !== null) ? fmtN(r.qty * r.rate) : '—') + '</td>' +
-    '<td style="font-size:11px;color:' + (r.err ? 'var(--red)' : r.dup ? 'var(--amber)' : 'var(--green)') + '">' + (r.err || (r.dup ? 'موجود مسبقاً' : '✓')) + '</td>' +
+    '<td style="font-size:11px;color:' + (r.err ? 'var(--red)' : r.dup ? 'var(--amber)' : 'var(--green)') + '">' + (r.err || (r.dup ? T('موجود مسبقاً') : '✓')) + '</td>' +
     '</tr>').join('') +
-    (rows.length > 30 ? '<tr><td colspan="8" style="color:var(--text3);font-size:11px">... و ' + (rows.length - 30) + ' صف إضافي (سيُستورد كاملاً)</td></tr>' : '') ||
-    '<tr><td colspan="8"><div class="empty-state"><p>لا توجد صفوف بيانات</p></div></td></tr>';
+    (rows.length > 30 ? '<tr><td colspan="8" style="color:var(--text3);font-size:11px">... ' + T('و') + ' ' + (rows.length - 30) + ' ' + T('صف إضافي (سيُستورد كاملاً)') + '</td></tr>' : '') ||
+    '<tr><td colspan="8"><div class="empty-state"><p>' + T('لا توجد صفوف بيانات') + '</p></div></td></tr>';
 }
+Object.assign(I18N_EN, {
+  'جديد':'new',
+  'موجود مسبقاً':'already exists',
+  'خطأ':'error',
+  'و':'and',
+  'صف إضافي (سيُستورد كاملاً)':'more row(s) (will be fully imported)',
+  'لا توجد صفوف بيانات':'No data rows'
+});
 
 function biDoImport(){
   const all = biParseRows();
   const rows = all.filter(r => !r.err);
-  if (!rows.length) { alert('لا توجد صفوف صالحة للاستيراد — راجع مطابقة الأعمدة'); return; }
+  if (!rows.length) { alert(T('لا توجد صفوف صالحة للاستيراد — راجع مطابقة الأعمدة')); return; }
   const dupPolicy = $('bi-dup').value;
   let added = 0, updated = 0, skipped = 0;
   rows.forEach(r => {
@@ -3428,14 +3486,22 @@ function biDoImport(){
   const errCount = all.length - rows.length;
   save(); renderAll();
   closeModal('boq-import-modal');
-  alert('✅ تم الاستيراد:\n• بنود جديدة: ' + added + '\n• تم تحديثها: ' + updated + '\n• متجاهلة (مكررة): ' + skipped + (errCount ? '\n⚠️ صفوف فيها أخطاء لم تُستورد: ' + errCount : ''));
+  alert('✅ ' + T('تم الاستيراد:') + '\n• ' + T('بنود جديدة:') + ' ' + added + '\n• ' + T('تم تحديثها:') + ' ' + updated + '\n• ' + T('متجاهلة (مكررة):') + ' ' + skipped + (errCount ? '\n⚠️ ' + T('صفوف فيها أخطاء لم تُستورد:') + ' ' + errCount : ''));
 }
+Object.assign(I18N_EN, {
+  'لا توجد صفوف صالحة للاستيراد — راجع مطابقة الأعمدة':'No valid rows to import — check the column mapping',
+  'تم الاستيراد:':'Import complete:',
+  'بنود جديدة:':'New items:',
+  'تم تحديثها:':'Updated:',
+  'متجاهلة (مكررة):':'Skipped (duplicates):',
+  'صفوف فيها أخطاء لم تُستورد:':'Rows with errors not imported:'
+});
 
 async function biDownloadTemplate(){
   try {
     await loadXLSX();
     const data = [
-      ['رقم البند','الوصف','الوحدة','الكمية الكلية','سعر الوحدة','القسم','الكمية لكل وحدة','الكمية المنفذة'],
+      [T('رقم البند'),T('الوصف'),T('الوحدة'),T('الكمية الكلية'),T('سعر الوحدة'),T('القسم'),T('الكمية لكل وحدة'),T('الكمية المنفذة')],
       ['1.1','أعمال الحفر والردم','م³',5000,12,'أعمال الموقع','',''],
       ['2.1','خرسانة مسلحة للقواعد','م³',800,320,'الأعمال الإنشائية','',''],
       ['3.1','بلوك مصمت 20سم','م²',12000,45,'أعمال البناء','','']
@@ -3444,7 +3510,7 @@ async function biDownloadTemplate(){
     ws['!cols'] = [{wch:10},{wch:40},{wch:8},{wch:14},{wch:12},{wch:18},{wch:15},{wch:15}];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'BOQ');
-    wb.Workbook = {Views:[{RTL:true}]};
+    wb.Workbook = {Views:[{RTL: LANG !== 'en'}]};
     XLSX.writeFile(wb, 'BOQ-Template.xlsx');
   } catch(e) { alert(e.message); }
 }
@@ -3571,6 +3637,184 @@ Object.assign(I18N_EN, {
   'تعذر الاتصال بالخادم:':'Could not connect to the server:',
   'أعد تحميل الصفحة':'reload the page'
 });
+
+// ============================================================
+//  I18N — static HTML translations (data-i18n attributes)
+// ============================================================
+Object.assign(I18N_EN, {
+  'إدارة المستخدمين صلاحية أدمن النظام أو العميل':'Managing users is restricted to the system admin or the client',
+  '+ إضافة مشروع':'+ Add project',
+  '👥 إدارة المستخدمين':'👥 Manage Users',
+  '🏢 إدارة الشركات':'🏢 Manage Companies',
+  '💵 التنفيذ والمطالبة حسب القسم':'💵 Execution & Claims by Division',
+  '📌 توزيع قيمة البنود حسب الحالة':'📌 Item Value Distribution by Status',
+  '⚡ إجراءات سريعة':'⚡ Quick Actions',
+  '💰 ابنِ مستخلص من الجاهز الآن':'💰 Build a Claim from What\'s Ready Now',
+  '🧭 وش أشتغل اليوم؟':'🧭 What Should I Work On Today?',
+  '🚫 عرض العوائق وأثرها':'🚫 View Blockers & Their Impact',
+  '👷 سجّل إنتاجية اليوم':'👷 Log Today\'s Productivity',
+  '📄 تقرير تقدم شامل (طباعة)':'📄 Comprehensive Progress Report (Print)',
+  '✉️ خطاب إشعار تعثر':'✉️ Blocker Notice Letter',
+  '✅ ملخص المطالبات':'✅ Claims Summary',
+  '🧭 هذه الصفحة تجاوب على سؤال:':'🧭 This page answers the question:',
+  '"وش أشتغل الحين عشان أرفع مستخلص أكبر؟"':'"What should I work on now to submit a bigger claim?"',
+  '— مرتبة حسب الأولوية المالية.':'— ranked by financial priority.',
+  'مرفوع %':'Claimed %',
+  'صافي للمطالبة':'Net claimable',
+  '🧾 إعداد مستخلص جديد':'🧾 Prepare New Claim',
+  '📚 المستخلصات السابقة':'📚 Previous Claims',
+  '💡 الكميات المقترحة = المنفذ − المرفوع سابقاً (المستخلص الجاري). عدّل كمية المطالبة لكل بند إذا حاب، ثم احفظ المستخلص ليتم تسجيله وخصمه من الرصيد القابل للرفع.':'💡 Suggested quantities = Executed − Previously claimed (current claim). Adjust each item\'s claim quantity if you like, then save the claim to record it and deduct it from the claimable balance.',
+  '✅ تحديد كل الجاهز':'✅ Select All Ready',
+  'إلغاء التحديد':'Clear Selection',
+  'مرفوع سابقاً':'Previously claimed',
+  'كمية المطالبة الآن':'Claim quantity now',
+  'قيمة المطالبة':'Claim value',
+  '💰 ملخص المستخلص':'💰 Claim Summary',
+  'تاريخ المستخلص':'Claim date',
+  'محتجز ضمان %':'Retention %',
+  'استرداد دفعة مقدمة %':'Advance recovery %',
+  '💾 حفظ ورفع المستخلص':'💾 Save & Submit Claim',
+  '👁 معاينة الوثيقة':'👁 Preview Document',
+  'رقم':'No.',
+  'المحصل':'Collected',
+  'إجراءات':'Actions',
+  '📈 قيمة المستخلصات المرفوعة حسب الشهر':'📈 Submitted Claims Value by Month',
+  '⚠️ حل هذه العوائق = فتح شغل جديد ومستخلصات أكبر. مرتبة حسب القيمة المالية المحجوبة (المباشرة + الأعمال التي تعتمد عليها).':'⚠️ Resolving these blockers = new work opens up and bigger claims. Ranked by the financial value locked (direct + dependent work).',
+  '✉️ توليد خطاب إشعار تعثر للمقاول الرئيسي':'✉️ Generate a Blocker Notice Letter to the Main Contractor',
+  'بنود بانتظار أعمال سابقة (تسلسل فني)':'Items Awaiting Prior Work (Technical Sequence)',
+  'ينتظر':'Waiting on',
+  'سلسلة الاعتماد':'Dependency chain',
+  'القيمة المنتظرة':'Pending value',
+  'سجل العوائق المحلولة':'Resolved Blockers Log',
+  '+ إضافة':'+ Add',
+  '🔄 مزامنة نسب البنود من الوحدات':'🔄 Sync Item Percentages from Units',
+  '🗑 حذف الوحدة':'🗑 Delete Unit',
+  '← عودة':'← Back',
+  '✏️ عدّل نسبة إنجاز كل بند في هذه الوحدة — تنحفظ مباشرة.':'✏️ Edit each item\'s completion percentage for this unit — saves immediately.',
+  'نسبة الإنجاز %':'Completion %',
+  'الحالة العامة للبند':'Item\'s overall status',
+  '📝 تسجيل يومية عمل':'📝 Log a Work Entry',
+  'الفرقة / المسؤول':'Crew / Responsible',
+  'الكمية المنفذة اليوم':'Quantity executed today',
+  '📷 صور من الموقع (اختياري — من الكاميرا أو الاستوديو)':'📷 Site Photos (optional — from camera or gallery)',
+  'إضافة الكمية تلقائياً إلى نسبة إنجاز البند (والوحدة إذا محددة)':'Automatically add the quantity to the item\'s completion percentage (and the unit, if specified)',
+  '+ إضافة اليومية':'+ Add Log Entry',
+  'سجل اليوميات':'Work Log',
+  'عمال':'Workers',
+  'مضافة للنسبة':'Added to %',
+  '📈 إنتاجية آخر 14 يوم (كميات)':'📈 Last 14 Days\' Productivity (Quantities)',
+  '👷 ملخص الفرق':'👷 Crew Summary',
+  '⏱ معدلات البنود وتوقع الإنجاز':'⏱ Item Rates & Completion Forecast',
+  '📷 أحدث صور الموقع':'📷 Latest Site Photos',
+  'اسم القسم بالعربي':'Division name (Arabic)',
+  'الكمية لكل وحدة (اختياري)':'Quantity per unit (optional)',
+  'سعر الوحدة (ر.س) *':'Unit price (SAR) *',
+  'نطاق العمل':'Scope',
+  'ضمن نطاق أعمالنا':'Within our scope',
+  'خارج النطاق (منفذ سابقاً / مقاول آخر)':'Out of scope (previously done / another contractor)',
+  'تركيب فقط - توريد من العميل':'Installation only - client-supplied',
+  'يعتمد على البنود (لا يمكن البدء قبل اكتمالها)':'Depends on items (cannot start before they\'re complete)',
+  'يوجد عائق خارجي يمنع العمل':'There is an external blocker preventing work',
+  'سبب العائق':'Blocker reason',
+  'نوع العائق':'Blocker type',
+  'عائق خارجي (طرف آخر)':'External blocker (another party)',
+  'تاريخ بداية العائق':'Blocker start date',
+  'التاريخ المتوقع للحل':'Expected resolution date',
+  'تفاصيل العائق':'Blocker details',
+  '💾 حفظ البند':'💾 Save Item',
+  '🗑 حذف البند':'🗑 Delete Item',
+  'إلغاء':'Cancel',
+  '⚙ إعدادات المشروع الحالي':'⚙ Current Project Settings',
+  'اسم المشروع':'Project name',
+  'المقاول الرئيسي':'Main contractor',
+  'الاستشاري':'Consultant',
+  'المقاول من الباطن':'Subcontractor',
+  'إجمالي عدد الوحدات':'Total number of units',
+  'مسمى الوحدة (مفرد)':'Unit name (singular)',
+  'مسمى الوحدات (جمع)':'Unit name (plural)',
+  'ضريبة القيمة المضافة %':'VAT %',
+  'محتجز الضمان الافتراضي %':'Default retention %',
+  'استرداد الدفعة المقدمة الافتراضي %':'Default advance recovery %',
+  '💾 حفظ':'💾 Save',
+  '🎓 إضافة مشروع تجريبي للتعلم':'🎓 Add a Demo Project to Learn',
+  'إغلاق':'Close',
+  '🖨️ طباعة / PDF':'🖨️ Print / PDF',
+  '⬇ تصدير Excel (CSV)':'⬇ Export Excel (CSV)',
+  '💵 تسجيل دفعة مستلمة':'💵 Record a Received Payment',
+  'تاريخ الاستلام':'Received date',
+  'المبلغ (ر.س)':'Amount (SAR)',
+  '💾 حفظ الدفعة':'💾 Save Payment',
+  'اسم المشروع *':'Project name *',
+  'نوع المشروع':'Project type',
+  '🏠 فلل / وحدات سكنية':'🏠 Villas / Residential units',
+  '🏢 مباني':'🏢 Buildings',
+  '🏗 بنية تحتية':'🏗 Infrastructure',
+  '🛣 طرق':'🛣 Roads',
+  '📦 أخرى':'📦 Other',
+  'المقاول الرئيسي / العميل':'Main contractor / client',
+  'المقاول من الباطن (شركتك)':'Subcontractor (your company)',
+  'عدد الوحدات (فيلا/مبنى/قطاع...)':'Number of units (villa/building/section...)',
+  'محتجز الضمان %':'Retention %',
+  'استرداد الدفعة المقدمة %':'Advance recovery %',
+  '🏢 الشركة المالكة للمشروع':'🏢 Project\'s owning company',
+  '👤 مدير المشروع المسؤول':'👤 Responsible project manager',
+  'جدول الكميات':'BOQ',
+  '💡 مدير المشروع يشوف مشاريعه فقط عند تسجيل دخوله، ويقدر يسجل اليوميات ويحدّث النسب ويرفع المستخلصات. أضف المدراء من "إدارة المستخدمين".':'💡 A project manager only sees their assigned projects when they log in, and can log daily entries, update percentages, and submit claims. Add managers from "Manage Users".',
+  '💾 حفظ المشروع':'💾 Save Project',
+  '🗑 حذف المشروع':'🗑 Delete Project',
+  '👥 إدارة المستخدمين ومدراء المشاريع':'👥 Manage Users & Project Managers',
+  '+ إضافة مستخدم جديد':'+ Add New User',
+  'الاسم *':'Name *',
+  'اسم المستخدم للدخول *':'Login username *',
+  'الدور':'Role',
+  '🏢 الشركة':'🏢 Company',
+  'كلمة المرور *':'Password *',
+  'العميل':'Client',
+  ': يشوف مشاريع شركته بكامل الصلاحيات ·':': sees their company\'s projects with full permissions ·',
+  ': يشوف كل مشاريع شركته ·':': sees all of their company\'s projects ·',
+  ': مشروعه المعيّن له فقط.':': only their assigned project.',
+  '+ إضافة المستخدم':'+ Add User',
+  '📥 استيراد جدول كميات من Excel':'📥 Import BOQ from Excel',
+  '💡 ارفع ملف جدول الكميات (xlsx / xls / csv) — النظام يتعرف على الأعمدة تلقائياً وتقدر تعدّل المطابقة قبل الاستيراد.':'💡 Upload the BOQ file (xlsx / xls / csv) — the system detects columns automatically and you can adjust the mapping before importing.',
+  'الأعمدة المطلوبة:':'Required columns:',
+  'رقم البند، الوصف، الكمية، سعر الوحدة':'Item No., Description, Quantity, Unit price',
+  '. والاختيارية: الوحدة، القسم، الكمية لكل وحدة، الكمية المنفذة.':'. Optional: Unit, Division, Quantity per unit, Executed quantity.',
+  '⬇ تحميل نموذج Excel جاهز':'⬇ Download Ready Excel Template',
+  'الورقة (Sheet)':'Sheet',
+  'صف العناوين':'Header row',
+  'البنود المكررة (نفس رقم البند)':'Duplicate items (same item number)',
+  'تجاهلها (لا تستورد)':'Ignore them (don\'t import)',
+  'تحديث الموجود (الوصف/الكمية/السعر)':'Update existing (description/quantity/price)',
+  '🔗 مطابقة الأعمدة':'🔗 Column Mapping',
+  '👁 معاينة':'👁 Preview',
+  'ملاحظة':'Note',
+  '📥 استيراد البنود الآن':'📥 Import Items Now',
+  '؟ كيف تستخدم النظام':'؟ How to Use the System',
+  'دورة العمل اليومية:':'Daily Workflow:',
+  'الإنتاجية:':'Productivity:',
+  'سجّل يوميات الشغل (فرقة + بند + كمية) — النظام يحدّث نسب الإنجاز تلقائياً ويحسب معدل إنتاج كل فرقة.':'Log daily work entries (crew + item + quantity) — the system automatically updates completion percentages and calculates each crew\'s production rate.',
+  'خطة العمل:':'Action Plan:',
+  'شوف وش الجاهز للرفع، وش تشتغل عليه الحين، وأي عائق لو انحل يفتح لك أكبر مبلغ.':'See what\'s ready to claim, what to work on now, and how resolving a blocker unlocks a bigger amount.',
+  'المستخلصات:':'Claims:',
+  'النظام يقترح الكميات (المنفذ − المرفوع سابقاً)، احفظ المستخلص واطبعه، ويسجل في التاريخ ويخصم من الرصيد.':'The system suggests quantities (executed − previously claimed), save and print the claim, and it\'s recorded in history and deducted from the balance.',
+  'العوائق:':'Blockers:',
+  'سجّل أي عائق على البند (من نافذة تعديل البند)، والنظام يحسب الأثر المالي المباشر + الأعمال المعتمدة عليه.':'Log any blocker on an item (from the item edit window), and the system calculates the direct financial impact + dependent work.',
+  'تعدد المشاريع:':'Multiple Projects:',
+  'من تبويب المشاريع أضف مشاريعك (مع نسخ جدول كميات من مشروع موجود إذا حاب)، وعيّن لكل مشروع مديره. بدّل بين المشاريع من القائمة أعلى الصفحة.':'From the Projects tab, add your projects (with the option to copy a BOQ from an existing project), and assign each project its manager. Switch between projects from the menu at the top of the page.',
+  'الأدوار:':'Roles:',
+  'يدير كل الشركات والمشاريع ·':'manages all companies and projects ·',
+  '(مالك الشركة) كامل الصلاحيات على مشاريع شركته وموظفيها ·':'(company owner) full permissions over their company\'s projects and staff ·',
+  'يعمل على كل مشاريع شركته ·':'works on all of their company\'s projects ·',
+  'يطلع ويضيف الكميات واليوميات والمستخلصات في مشروعه المعيّن فقط — وكل عملية تنختم باسم من سواها.':'views and adds quantities, logs, and claims only in their assigned project — and every action is stamped with the name of whoever performed it.',
+  'تثبيت التطبيق على الجوال:':'Installing the App on Mobile:',
+  'افتح رابط النظام من متصفح الجوال ثم: أندرويد (Chrome) → قائمة ⋮ → "إضافة إلى الشاشة الرئيسية" · آيفون (Safari) → زر المشاركة → "Add to Home Screen". يشتغل كتطبيق كامل، ولو انقطع النت يعرض آخر بيانات للقراءة.':'Open the system\'s link from your mobile browser, then: Android (Chrome) → ⋮ menu → "Add to Home Screen" · iPhone (Safari) → Share button → "Add to Home Screen". It works as a full app, and if the internet drops it shows the last saved data for reading.',
+  'صور الموقع:':'Site Photos:',
+  'مع كل يومية تقدر ترفق صور من كاميرا الجوال مباشرة — تنضغط تلقائياً وترتبط باليومية وتظهر في معرض الصور.':'With each log entry you can attach photos directly from your phone\'s camera — they\'re compressed automatically, linked to the entry, and appear in the photo gallery.',
+  'بياناتك تنحفظ تلقائياً على الخادم. المالك يقدر يأخذ':'Your data is saved automatically on the server. The owner can take a',
+  'نسخة احتياطية JSON':'full JSON backup',
+  'كاملة من الزر أعلى الصفحة.':'from the button at the top of the page.'
+});
+
 applyDir();
 translateStaticDOM();
 document.addEventListener('DOMContentLoaded', boot);

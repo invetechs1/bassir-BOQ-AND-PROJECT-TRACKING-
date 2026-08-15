@@ -972,6 +972,7 @@ const API = {
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const clamp = (n,a,b) => Math.min(b, Math.max(a, Number(n)||0));
+const round2 = n => Math.round((Number(n)||0) * 100) / 100; // تفادي أخطاء الفاصلة العائمة في المبالغ المخزّنة
 const fmtN = n => Number(n||0).toLocaleString('en-US',{maximumFractionDigits:0});
 const fmtQ = n => Number(n||0).toLocaleString('en-US',{maximumFractionDigits:1});
 const money = n => fmtN(n) + ' ر.س';
@@ -2299,12 +2300,12 @@ function mbCompute(){
     const it = getItem(id);
     if (!it || qty <= 0) return;
     lines.push({itemId:id, desc:it.desc, unit:it.unit, rate:it.unitRate, totalQty:it.totalQty,
-      prevQty:it.claimedQty, currQty:qty, cumQty:it.claimedQty + qty, amount:qty * it.unitRate});
+      prevQty:it.claimedQty, currQty:qty, cumQty:it.claimedQty + qty, amount:round2(qty * it.unitRate)});
   });
-  const gross = lines.reduce((s,l) => s + l.amount, 0);
+  const gross = round2(lines.reduce((s,l) => s + l.amount, 0));
   const vatRate = proj().info.vatRate, retRate = Number($('mb-ret').value)||0, advRate = Number($('mb-adv').value)||0;
-  const vat = gross * vatRate/100, retention = gross * retRate/100, advance = gross * advRate/100;
-  return {lines, gross, vatRate, retRate, advRate, vat, retention, advance, net: gross + vat - retention - advance};
+  const vat = round2(gross * vatRate/100), retention = round2(gross * retRate/100), advance = round2(gross * advRate/100);
+  return {lines, gross, vatRate, retRate, advRate, vat, retention, advance, net: round2(gross + vat - retention - advance)};
 }
 
 function renderMbTotals(){
@@ -3512,7 +3513,7 @@ async function savePdbOffer(){
   const vatRate = Number($('pdo-vat').value)||0;
   const data = {ref, date:$('pdo-date').value, client:$('pdo-client').value.trim(), location:$('pdo-location').value.trim(),
     project, type:$('pdo-type').value, validityDays:Number($('pdo-validity').value)||0,
-    subtotal, vatRate, vat: subtotal*vatRate/100, grandTotal: subtotal*(1+vatRate/100),
+    subtotal: round2(subtotal), vatRate, vat: round2(subtotal*vatRate/100), grandTotal: round2(subtotal + subtotal*vatRate/100),
     sections: parseSections($('pdo-sections').value), notes:$('pdo-notes').value.trim()};
   if (pdbEditOfferId) {
     const o = priceDB.offers.find(x=>x.id===pdbEditOfferId);

@@ -187,6 +187,14 @@
   .f-field label { display: block; font-size: 11px; color: var(--text2); margin-bottom: 4px; }
   .f-field input, .f-field select, .f-field textarea { width: 100%; min-width: 0; padding: 7px 10px; border-radius: 6px; background: var(--bg3); border: 1px solid var(--border); color: var(--text); font-family: var(--font); font-size: 13px; }
   .f-field input:focus, .f-field select:focus, .f-field textarea:focus { outline: none; border-color: var(--amber); }
+  /* SEARCHABLE COMBOBOX (بحث البنود) */
+  .combo { position: relative; }
+  .combo-list { position: absolute; top: 100%; right: 0; left: 0; z-index: 60; background: var(--bg3); border: 1px solid var(--amber); border-radius: 6px; max-height: 280px; overflow-y: auto; margin-top: 2px; box-shadow: 0 8px 28px rgba(0,0,0,0.5); }
+  .combo-opt { padding: 8px 10px; cursor: pointer; font-size: 13px; border-bottom: 1px solid var(--border2); white-space: normal; }
+  .combo-opt:last-child { border-bottom: none; }
+  .combo-opt:hover, .combo-opt.active { background: var(--amber-dim); }
+  .combo-opt .co-code { font-family: var(--mono); color: var(--amber); font-size: 11px; font-weight: 600; }
+  .combo-opt .co-unit { color: var(--text3); font-size: 10px; }
   .pred-list { max-height: 160px; overflow-y: auto; background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; padding: 8px; display: flex; flex-direction: column; gap: 4px; }
   .pred-list label { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text2); cursor: pointer; margin: 0; }
   .pred-list input { width: auto; }
@@ -516,7 +524,13 @@
             <div class="f-field"><label>التاريخ</label><input type="date" id="wl-date"></div>
             <div class="f-field"><label>الفرقة / المسؤول</label><input type="text" id="wl-crew" list="crew-list" placeholder="مثال: فرقة الدهانات أ"><datalist id="crew-list"></datalist></div>
             <div class="f-field"><label>عدد العمال</label><input type="number" id="wl-workers" min="1" value="4"></div>
-            <div class="f-field"><label>البند</label><select id="wl-item"></select></div>
+            <div class="f-field"><label>البند</label>
+              <div class="combo">
+                <input type="text" id="wl-item-search" autocomplete="off" placeholder="🔍 ابحث بالكود أو اسم البند..." oninput="wlItemFilter(true)" onfocus="wlItemFilter(false)" onblur="wlItemBlur()" onkeydown="wlItemKey(event)">
+                <input type="hidden" id="wl-item">
+                <div id="wl-item-list" class="combo-list" style="display:none"></div>
+              </div>
+            </div>
             <div class="f-field"><label id="wl-villa-label">الوحدة (اختياري)</label><select id="wl-villa"></select></div>
             <div class="f-field"><label>الكمية المنفذة اليوم</label><input type="number" id="wl-qty" min="0" step="0.1" placeholder="م² / خ.م / قطعة"></div>
             <div class="f-field full"><label>ملاحظات</label><input type="text" id="wl-note" placeholder="اختياري"></div>
@@ -3038,8 +3052,8 @@ function syncFromVillas(){
 function renderProd(){
   if (!$('wl-date').value) $('wl-date').value = todayStr();
   $('crew-list').innerHTML = [...new Set(proj().workLogs.map(l => l.crew))].map(c => '<option value="' + esc(c) + '">').join('');
-  $('wl-item').innerHTML = proj().boqItems.filter(i => i.scope !== 'others').map(i =>
-    '<option value="' + esc(i.id) + '">' + esc(i.id) + ' - ' + esc(i.desc.substring(0,40)) + '</option>').join('');
+  // البند: حقل بحث ذكي بدل القائمة الطويلة — إعادة الضبط لو تغيّر المشروع أو حُذف البند المختار
+  if ($('wl-item').value && !getItem($('wl-item').value)) { $('wl-item').value = ''; $('wl-item-search').value = ''; }
   $('wl-villa').innerHTML = '<option value="">— بدون ' + UL() + ' محددة —</option>' + proj().villas.map(v => '<option value="' + esc(v.no) + '">' + esc(v.no) + ' (' + esc(v.sheet) + ')</option>').join('');
 
   const logs = [...proj().workLogs].sort((a,b) => b.date.localeCompare(a.date) || b.id - a.id);
@@ -3179,12 +3193,51 @@ async function uploadPendingPhotos(){
   return uploaded;
 }
 
+// ---- حقل البحث الذكي عن البند (يدعم مئات/آلاف البنود) ----
+let wlItemActive = -1;
+function wlItemFilter(typing){
+  const q = ($('wl-item-search').value || '').toLowerCase().trim();
+  // لو غيّر النص بعد اختيار بند، أفرغ الاختيار المخزّن
+  if (typing) $('wl-item').value = '';
+  const items = proj().boqItems.filter(i => i.scope !== 'others');
+  const norm = s => String(s||'').toLowerCase();
+  let list = q ? items.filter(i => norm(i.id).includes(q) || norm(i.desc).includes(q) || norm(i.divAr).includes(q) || norm(i.div).includes(q)) : items;
+  wlItemActive = -1;
+  const box = $('wl-item-list');
+  box.innerHTML = list.slice(0, 60).map((i, idx) =>
+    '<div class="combo-opt" data-idx="' + idx + '" data-id="' + esc(i.id) + '" onmousedown="wlItemPick(\'' + esc(i.id).replace(/'/g,"\\'") + '\')">' +
+    '<span class="co-code">' + esc(i.id) + '</span> ' + esc(i.desc) + ' <span class="co-unit">(' + esc(i.unit) + ')</span></div>').join('')
+    || '<div class="combo-opt" style="color:var(--text3)">لا يوجد بند مطابق</div>';
+  if (list.length > 60) box.innerHTML += '<div class="combo-opt" style="color:var(--text3);font-size:11px">... ' + (list.length-60) + ' بند إضافي — أكمل البحث لتضييق النتائج</div>';
+  box.style.display = 'block';
+}
+function wlItemPick(id){
+  const it = getItem(id);
+  if (!it) return;
+  $('wl-item').value = id;
+  $('wl-item-search').value = id + ' - ' + it.desc;
+  $('wl-item-list').style.display = 'none';
+}
+function wlItemBlur(){ setTimeout(() => { $('wl-item-list').style.display = 'none'; }, 160); }
+function wlItemKey(e){
+  const box = $('wl-item-list');
+  if (box.style.display === 'none') return;
+  const opts = [...box.querySelectorAll('.combo-opt[data-id]')];
+  if (e.key === 'ArrowDown') { e.preventDefault(); wlItemActive = Math.min(opts.length-1, wlItemActive+1); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); wlItemActive = Math.max(0, wlItemActive-1); }
+  else if (e.key === 'Enter') { e.preventDefault(); if (opts[wlItemActive]) wlItemPick(opts[wlItemActive].dataset.id); return; }
+  else if (e.key === 'Escape') { box.style.display = 'none'; return; }
+  else return;
+  opts.forEach((o,i) => o.classList.toggle('active', i === wlItemActive));
+  if (opts[wlItemActive]) opts[wlItemActive].scrollIntoView({block:'nearest'});
+}
+
 async function addWorkLog(){
   const itemId = $('wl-item').value;
   const it = getItem(itemId);
   const qty = Number($('wl-qty').value);
   const crew = $('wl-crew').value.trim();
-  if (!it) { alert('اختر بند'); return; }
+  if (!it) { alert('اختر بند من قائمة البحث'); $('wl-item-search').focus(); return; }
   if (!crew) { alert('اكتب اسم الفرقة / المسؤول'); return; }
   if (!qty || qty <= 0) { alert('اكتب الكمية المنفذة'); return; }
   if (offlineMode) { alert('📴 لا يمكن التسجيل بدون اتصال'); return; }
@@ -3211,6 +3264,7 @@ async function addWorkLog(){
     note: $('wl-note').value.trim(), applied: apply, appliedQty, by: currentUser().name, photos
   });
   $('wl-qty').value = ''; $('wl-note').value = '';
+  $('wl-item').value = ''; $('wl-item-search').value = ''; // إفراغ حقل بحث البند للتسجيل التالي
   wlPendingPhotos = []; renderWlPhotoStrip();
   save(); renderAll();
 }

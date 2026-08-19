@@ -706,7 +706,7 @@
 
 <div class="modal-overlay" id="approve-qty-modal">
   <div class="modal">
-    <div class="modal-title"><span>📋 اعتماد كمية من الاستشاري</span><span class="modal-close" onclick="closeModal('approve-qty-modal')">✕</span></div>
+    <div class="modal-title"><span id="aq-title">📋 اعتماد كمية من الاستشاري</span><span class="modal-close" onclick="closeModal('approve-qty-modal')">✕</span></div>
     <div id="aq-info" class="alert info" style="font-size:12px"></div>
     <div class="f-grid">
       <div class="f-field"><label>الكمية المنفذة حسب النظام (أدخلها المهندس)</label><input type="number" id="aq-sysqty" readonly style="color:var(--blue)"></div>
@@ -716,10 +716,10 @@
       <div class="f-field"><label>اسم الاستشاري / المهندس</label><input type="text" id="aq-consultant" placeholder="من وقّع الاستلام"></div>
       <div class="f-field"><label>رقم الاستلام (AR)</label><input type="text" id="aq-arno" placeholder="اختياري"></div>
       <div class="f-field"><label>الكمية المعتمدة (تدخل المستخلص)</label><input type="number" id="aq-qty" min="0" step="0.01" oninput="aqCheckMatch()"></div>
-      <div class="f-field full"><label>📎 استلام الاستشاري الموقّع (AR) * — PDF أو صورة</label><input type="file" id="aq-file" accept="image/*,.pdf,application/pdf" onchange="aqFilePicked(this)"><div id="aq-file-name" style="font-size:11px;color:var(--text2);margin-top:4px"></div></div>
+      <div class="f-field full"><label>📎 استلام الاستشاري الموقّع + كل الملفات الداعمة * — PDF أو صور (يمكن اختيار عدة ملفات)</label><input type="file" id="aq-file" accept="image/*,.pdf,application/pdf" multiple onchange="aqFilePicked(this)"><div id="aq-file-name" style="font-size:11px;color:var(--text2);margin-top:4px;display:flex;flex-direction:column;gap:3px"></div></div>
       <div class="f-field full"><label>ملاحظات</label><input type="text" id="aq-note"></div>
     </div>
-    <div class="alert warning" style="font-size:11px;margin-top:8px">✅ الكمية المعتمدة يجب أن تطابق الكمية الموقّعة على الاستلام. الاستلام الموقّع من الاستشاري إلزامي — يبقى دليلاً يراجعه المالك.</div>
+    <div class="alert warning" style="font-size:11px;margin-top:8px">✅ الكمية المعتمدة يجب أن تطابق الكمية الموقّعة على الاستلام. رفع استلام الاستشاري الموقّع (وأي ملفات داعمة) إلزامي — يبقى دليلاً يُثبت أن الكمية مستلمة ويحق المطالبة بها.</div>
     <div style="display:flex;gap:10px;margin-top:12px">
       <button class="btn btn-green" onclick="saveApproveQty()">✅ اعتماد الكمية</button>
       <button class="btn btn-ghost" onclick="closeModal('approve-qty-modal')">إلغاء</button>
@@ -1976,7 +1976,8 @@ function renderItemsTable(){
       '<td>' + statusPill(st) + '</td>' +
       '<td>' + depHtml + '</td>' +
       '<td style="white-space:nowrap"><button class="mini-btn" onclick="openItemModal(\'' + esc(it.id) + '\')">✏️ تعديل</button>' +
-      (net>1 ? ' <button class="mini-btn green" onclick="mbAddItem(\'' + esc(it.id) + '\')">+ مستخلص</button>' : '') + '</td>' +
+      (it.scope !== 'others' && (availQty(it) > 0.01 || pendingApprovalQty(it) > 0.01)
+        ? ' <button class="mini-btn green" onclick="itemToMustakhlas(\'' + esc(it.id) + '\')">📤 مستخلص</button>' : '') + '</td>' +
       '</tr>';
   }).join('') || '<tr><td colspan="13"><div class="empty-state"><p>لا توجد بنود مطابقة</p></div></td></tr>';
 
@@ -2021,12 +2022,13 @@ function setItemQty(id, val){
 // ============================================================
 //  اعتماد الاستشاري على الكميات (مع استلام موقّع)
 // ============================================================
-let aqItemId = null, aqPendingFile = null;
-function openApproveQty(id){
+let aqItemId = null, aqPendingFiles = [], aqThenMustakhlas = false;
+function openApproveQty(id, opts){
   const it = getItem(id);
   if (!it) return;
   if (!pdbCanApproveQty()) { alert('اعتماد الكميات صلاحية فريق المشروع'); return; }
-  aqItemId = id; aqPendingFile = null;
+  aqItemId = id; aqPendingFiles = []; aqThenMustakhlas = !!(opts && opts.thenMustakhlas);
+  $('aq-title').textContent = aqThenMustakhlas ? '📤 تحويل الكمية إلى مستخلص (رفع الاستلام)' : '📋 اعتماد كمية من الاستشاري';
   const pend = pendingApprovalQty(it);
   $('aq-info').innerHTML = '<strong>' + esc(it.desc) + '</strong><br>منفذ ميدانياً: ' + fmtQ(it.executedQty) + ' ' + esc(it.unit) +
     ' · معتمد سابقاً: ' + fmtQ(approvedOf(it)) + ' · <span style="color:var(--orange)">بانتظار الاعتماد: ' + fmtQ(pend) + '</span>';
@@ -2036,9 +2038,14 @@ function openApproveQty(id){
   $('aq-qty').max = pend;
   $('aq-date').value = todayStr();
   $('aq-consultant').value = ''; $('aq-arno').value = ''; $('aq-note').value = '';
-  $('aq-file').value = ''; $('aq-file-name').textContent = '';
+  $('aq-file').value = ''; renderAqFiles();
   aqCheckMatch();
   $('approve-qty-modal').classList.add('open');
+}
+function renderAqFiles(){
+  $('aq-file-name').innerHTML = aqPendingFiles.map((f,i) =>
+    '<span>' + (f.name.toLowerCase().endsWith('.pdf') ? '📄' : '🖼') + ' ' + esc(f.name) +
+    ' <span style="color:var(--red);cursor:pointer" onclick="aqPendingFiles.splice(' + i + ',1);renderAqFiles()">✕</span></span>').join('');
 }
 // تنبيه فوري عند اختلاف الكمية المعتمدة عن الموقّعة على الاستلام أو عن المنفذ في النظام
 function aqCheckMatch(){
@@ -2052,14 +2059,14 @@ function aqCheckMatch(){
   else box.style.display = 'none';
 }
 async function aqFilePicked(input){
-  const f = input.files[0];
-  if (!f) return;
-  try {
-    if (f.type === 'application/pdf') { if (f.size > 9*1024*1024) { alert('الملف أكبر من 9MB'); input.value=''; return; } aqPendingFile = {dataUrl: await readFileAsDataURL(f), name: f.name}; }
-    else if (f.type.startsWith('image/')) aqPendingFile = {dataUrl: await compressImage(f), name: f.name};
-    else { alert('PDF أو صورة فقط'); input.value=''; return; }
-    $('aq-file-name').textContent = '📎 ' + f.name;
-  } catch(e) { alert(e.message); }
+  for (const f of [...input.files]) {
+    try {
+      if (f.type === 'application/pdf') { if (f.size > 9*1024*1024) { alert(f.name + ': أكبر من 9MB'); continue; } aqPendingFiles.push({dataUrl: await readFileAsDataURL(f), name: f.name}); }
+      else if (f.type.startsWith('image/')) aqPendingFiles.push({dataUrl: await compressImage(f), name: f.name});
+      else alert(f.name + ': PDF أو صورة فقط');
+    } catch(e) { alert(e.message); }
+  }
+  input.value = ''; renderAqFiles();
 }
 async function saveApproveQty(){
   const it = getItem(aqItemId);
@@ -2068,19 +2075,25 @@ async function saveApproveQty(){
   const qty = Number($('aq-qty').value);
   if (!qty || qty <= 0) { alert('اكتب الكمية المعتمدة'); return; }
   if (qty > pend + 0.001) { alert('الكمية المعتمدة تتجاوز الكمية المنفذة بانتظار الاعتماد (' + fmtQ(pend) + ')'); return; }
-  if (!aqPendingFile) { alert('📎 إرفاق استلام الاستشاري الموقّع إلزامي'); return; }
+  if (!aqPendingFiles.length) { alert('📎 إرفاق استلام الاستشاري الموقّع إلزامي (ويمكن إضافة ملفات داعمة)'); return; }
   if (offlineMode) { alert('📴 لا يمكن الاعتماد بدون اتصال'); return; }
-  let ar;
-  try { const r = await API.req('POST', '/api/projects/' + proj().id + '/photos', {dataUrl: aqPendingFile.dataUrl}); ar = {url: r.url, name: aqPendingFile.name}; }
-  catch(e) { alert('تعذر رفع الاستلام: ' + e.message); return; }
+  let docs = [];
+  try { for (const f of aqPendingFiles) { const r = await API.req('POST', '/api/projects/' + proj().id + '/photos', {dataUrl: f.dataUrl}); docs.push({url: r.url, name: f.name}); } }
+  catch(e) { alert('تعذر رفع الملفات: ' + e.message); return; }
   const arQty = Number($('aq-arqty').value) || qty;
   it.approvals = it.approvals || [];
   it.approvals.push({id: nextSeq(), qty, arQty, sysQty: Number($('aq-sysqty').value)||0,
     date: $('aq-date').value || todayStr(), consultant: $('aq-consultant').value.trim(),
-    arNo: $('aq-arno').value.trim(), ar, note: $('aq-note').value.trim(), by: currentUser().name});
+    arNo: $('aq-arno').value.trim(), ar: docs[0], docs, note: $('aq-note').value.trim(), by: currentUser().name});
   it.approvedQty = Math.min(it.executedQty, (it.approvedQty||0) + qty);
+  const toMustakhlas = aqThenMustakhlas;
   closeModal('approve-qty-modal'); save(); renderAll();
-  alert('✅ اعتُمدت ' + fmtQ(qty) + ' ' + esc(it.unit) + ' — أصبحت جاهزة للرفع في المستخلص.');
+  if (toMustakhlas) {
+    mbAddItem(it.id); // الكمية أصبحت مستلمة → ننتقل مباشرة لبناء المستخلص
+    setTimeout(() => alert('✅ تم اعتماد ' + fmtQ(qty) + ' ' + esc(it.unit) + ' بالاستلام — الكمية أُضيفت للمستخلص. أكمل باقي البنود ثم اضغط "حفظ ورفع المستخلص".'), 100);
+  } else {
+    alert('✅ اعتُمدت ' + fmtQ(qty) + ' ' + esc(it.unit) + ' بالاستلام — أصبحت جاهزة للرفع في المستخلص.');
+  }
 }
 
 // 🔍 تدقيق استلامات الاستشاري — يراجعه المالك: مطابقة الكمية المنفذة (المهندس) مع الموقّعة على الاستلام (الاستشاري)
@@ -2154,9 +2167,10 @@ function viewApprovals(id){
     ' · موقّع على الاستلام: <strong style="color:' + (mism?'var(--red)':'var(--purple)') + '">' + fmtQ(arq) + '</strong>' +
     ' — ' + esc(a.date) + (a.consultant ? ' · الاستشاري: ' + esc(a.consultant) : '') + (a.arNo ? ' · استلام رقم ' + esc(a.arNo) : '') +
     '<br><span style="font-size:11px">سجّله: ' + esc(a.by||'—') + (a.note ? ' · ' + esc(a.note) : '') + '</span></span>' +
-    (a.ar ? '<a href="' + esc(a.ar.url) + '" target="_blank" style="color:var(--blue);font-size:11px">' + (String(a.ar.url).endsWith('.pdf')?'📄':'🖼') + ' الاستلام ↗</a>' : '') +
-    (pdbCanApproveQty() ? ' <button class="mini-btn red" onclick="deleteApproval(\'' + esc(id) + '\',' + a.id + ')">🗑</button>' : '') +
-    '</div>';
+    '<span style="display:flex;flex-direction:column;gap:2px;align-items:flex-end">' +
+    ((a.docs && a.docs.length ? a.docs : (a.ar ? [a.ar] : [])).map(d => '<a href="' + esc(d.url) + '" target="_blank" style="color:var(--blue);font-size:11px">' + (String(d.url).endsWith('.pdf')?'📄':'🖼') + ' ' + esc(d.name||'ملف') + ' ↗</a>').join('')) +
+    (pdbCanApproveQty() ? '<button class="mini-btn red" onclick="deleteApproval(\'' + esc(id) + '\',' + a.id + ')">🗑</button>' : '') +
+    '</span></div>';
   }).join('');
   showPrintable('📋 استلامات بند ' + it.id, '<div style="font-family:var(--font)"><div style="font-size:13px;font-weight:700;margin-bottom:8px">' + esc(it.desc) + '</div>' + rows + '</div>');
 }
@@ -2168,7 +2182,7 @@ function deleteApproval(id, approvalId){
   if (!a) return;
   if (approvedOf(it) - a.qty < claimedPct(it)*it.totalQty - 0.001) { alert('لا يمكن حذف هذا الاعتماد: كمية معتمدة منه مرفوعة بمستخلص. احذف المستخلص أولاً.'); return; }
   if (!confirm('حذف اعتماد ' + fmtQ(a.qty) + ' ' + esc(it.unit) + '؟ سترجع الكمية لبانتظار الاعتماد.')) return;
-  if (a.ar) { const file = String(a.ar.url).split('/').pop(); API.req('DELETE', '/api/projects/' + proj().id + '/photos/' + file).catch(()=>{}); }
+  (a.docs && a.docs.length ? a.docs : (a.ar ? [a.ar] : [])).forEach(d => { const file = String(d.url).split('/').pop(); API.req('DELETE', '/api/projects/' + proj().id + '/photos/' + file).catch(()=>{}); });
   it.approvals = it.approvals.filter(x => x.id !== approvalId);
   it.approvedQty = Math.max(0, (it.approvedQty||0) - a.qty);
   closeModal('doc-modal'); save(); renderAll();
@@ -2293,6 +2307,23 @@ function mbQty(id, val){
 function mbSelectAll(){ claimableItems().forEach(it => { mbSel[it.id] = availQty(it); }); renderBuilder(); }
 function mbClear(){ mbSel = {}; renderBuilder(); }
 function mbAddItem(id){ const it = getItem(id); if (it && availQty(it) > 0.01) { mbSel[id] = availQty(it); } switchTab('invoice'); switchInvView('new'); renderBuilder(); }
+
+// زر "📤 مستخلص" في جدول الكميات: لو الكمية غير مستلمة بعد → نافذة رفع الاستلام أولاً ثم التحويل للمستخلص
+function itemToMustakhlas(id){
+  const it = getItem(id);
+  if (!it) return;
+  const pend = pendingApprovalQty(it), avail = availQty(it);
+  if (pend > 0.01) {
+    // يوجد كمية منفذة لم تُستلم بعد — نطلب استلام الاستشاري + الملفات الداعمة، ثم ننتقل للمستخلص
+    if (!pdbCanApproveQty()) { alert('رفع الاستلام وتحويل الكمية للمستخلص صلاحية فريق المشروع'); return; }
+    openApproveQty(id, {thenMustakhlas: true});
+  } else if (avail > 0.01) {
+    // الكمية مستلمة ومعتمدة مسبقاً → مباشرة للمستخلص
+    mbAddItem(id);
+  } else {
+    alert('لا توجد كمية جاهزة لهذا البند.');
+  }
+}
 
 function mbCompute(){
   const lines = [];

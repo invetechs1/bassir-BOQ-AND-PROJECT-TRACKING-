@@ -30,6 +30,7 @@ const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');
 const PRICEDB_DIR = path.join(DATA_DIR, 'pricedb');
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
 const COMPANIES_FILE = path.join(DATA_DIR, 'companies.json');
+const INTEGRATIONS_FILE = path.join(DATA_DIR, 'integrations.json');
 const META_FILE = path.join(DATA_DIR, 'meta.json');
 const SECRET_FILE = path.join(DATA_DIR, '.jwt-secret');
 
@@ -62,6 +63,57 @@ function loadUsers() { return readJSON(USERS_FILE, []); }
 function saveUsers(users) { writeJSON(USERS_FILE, users); }
 function loadCompanies() { return readJSON(COMPANIES_FILE, []); }
 function saveCompanies(c) { writeJSON(COMPANIES_FILE, c); }
+
+// ---------- التكاملات الخارجية (Bassir ERP ... ) ----------
+// تُخزّن على الخادم فقط ولا يُرسل المفتاح للواجهة. الهيكل: { "<companyId>": { bassir: {...} } }
+function loadIntegrations() { return readJSON(INTEGRATIONS_FILE, {}); }
+function saveIntegrations(o) { writeJSON(INTEGRATIONS_FILE, o); }
+function companyIntegration(companyId) {
+  const all = loadIntegrations();
+  return (all[companyId] && all[companyId].bassir) || { enabled: false, url: '', apiKey: '', authHeader: 'Authorization', authPrefix: 'Bearer ', lastStatus: '', lastAt: '' };
+}
+// نسخة آمنة للواجهة: بدون المفتاح، فقط هل هو مُعيّن
+function redactIntegration(cfg) {
+  return { enabled: !!cfg.enabled, url: cfg.url || '', apiKeySet: !!cfg.apiKey, authHeader: cfg.authHeader || 'Authorization', authPrefix: cfg.authPrefix !== undefined ? cfg.authPrefix : 'Bearer ', lastStatus: cfg.lastStatus || '', lastAt: cfg.lastAt || '' };
+}
+function setIntegrationStatus(companyId, status) {
+  const all = loadIntegrations();
+  if (!all[companyId]) all[companyId] = { bassir: {} };
+  if (!all[companyId].bassir) all[companyId].bassir = {};
+  all[companyId].bassir.lastStatus = status;
+  all[companyId].bassir.lastAt = new Date().toISOString();
+  saveIntegrations(all);
+}
+
+// إرسال المستخلص المُنشأ إلى Bassir ERP (إن كان التكامل مفعّلاً). لا يوقف حفظ المستخلص عند الفشل.
+async function pushMustakhlasToBassir(companyId, project, mus) {
+  const cfg = companyIntegration(companyId);
+  if (!cfg.enabled || !cfg.url) return;
+  const payload = {
+    event: 'mustakhlas.created',
+    source: 'azoom-project-tracking',
+    sentAt: new Date().toISOString(),
+    project: { id: project.id, name: (project.info || {}).name || '', client: (project.info || {}).client || '' },
+    mustakhlas: { no: mus.no, date: mus.date, gross: mus.gross, vat: mus.vat, net: mus.net, by: mus.by || '', status: 'delivered_to_consultant_became_mustakhlas' },
+    // البنود التي سُلّمت للاستشاري وصارت مستخلص
+    items: (mus.lines || []).map(l => ({
+      code: l.itemId, description: l.desc, unit: l.unit, rate: l.rate,
+      previousQty: l.prevQty, deliveredQty: l.currQty, cumulativeQty: l.cumQty, amount: l.amount,
+      status: 'delivered_to_consultant'
+    }))
+  };
+  try {
+    const headers = { 'Content-Type': 'application/json' };
+    if (cfg.apiKey) headers[cfg.authHeader || 'Authorization'] = (cfg.authPrefix !== undefined ? cfg.authPrefix : 'Bearer ') + cfg.apiKey;
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 12000);
+    const r = await fetch(cfg.url, { method: 'POST', headers, body: JSON.stringify(payload), signal: ctrl.signal });
+    clearTimeout(t);
+    setIntegrationStatus(companyId, r.ok ? ('نجح — ' + mus.no + ' (HTTP ' + r.status + ')') : ('فشل — HTTP ' + r.status));
+  } catch (e) {
+    setIntegrationStatus(companyId, 'فشل الإرسال: ' + (e && e.message ? e.message : 'خطأ اتصال'));
+  }
+}
 
 function bootstrapAdmin() {
   const users = loadUsers();
@@ -363,6 +415,14 @@ app.put('/api/projects/:id', auth, (req, res) => {
   const p = { ...data, managerUserId, companyId, id, version: stored.version + 1 };
   saveProject(p);
   res.json({ version: p.version });
+
+  // تكامل خارجي: عند إنشاء مستخلص جديد، أرسله إلى Bassir ERP (لا يوقف الحفظ)
+  try {
+    const oldIds = new Set((stored.mustakhlasat || []).map(x => x.id));
+    (p.mustakhlasat || []).forEach(mus => {
+      if (!oldIds.has(mus.id)) setImmediate(() => pushMustakhlasToBassir(companyId, p, mus));
+    });
+  } catch (e) { /* لا يؤثر على الحفظ */ }
 });
 
 app.delete('/api/projects/:id', auth, (req, res) => {
@@ -538,6 +598,56 @@ app.delete('/api/projects/:id/photos/:file', auth, (req, res) => {
 });
 
 app.use('/uploads', express.static(UPLOADS_DIR, { maxAge: '30d', immutable: true }));
+
+// ---------- تكامل Bassir ERP ----------
+function integrationCompanyOf(req) {
+  if (isAdmin(req.user)) return Number(req.query.companyId || (req.body && req.body.companyId)) || (loadCompanies()[0] ? loadCompanies()[0].id : null);
+  return req.user.companyId || null;
+}
+app.get('/api/integration', auth, (req, res) => {
+  if (!['admin', 'client', 'pmo'].includes(req.user.role)) return res.status(403).json({ error: 'صلاحية مدير المشاريع فأعلى' });
+  const companyId = integrationCompanyOf(req);
+  if (!companyId) return res.json({ companyId: null, bassir: redactIntegration({}) });
+  res.json({ companyId, bassir: redactIntegration(companyIntegration(companyId)), canEdit: canAdminCompany(req.user, companyId) });
+});
+app.put('/api/integration', auth, (req, res) => {
+  const companyId = integrationCompanyOf(req);
+  if (!companyId) return res.status(400).json({ error: 'لا توجد شركة' });
+  if (!canAdminCompany(req.user, companyId)) return res.status(403).json({ error: 'تعديل التكامل صلاحية أدمن النظام أو عميل الشركة' });
+  const body = (req.body && req.body.bassir) || {};
+  const all = loadIntegrations();
+  if (!all[companyId]) all[companyId] = { bassir: {} };
+  const cur = all[companyId].bassir || {};
+  cur.enabled = !!body.enabled;
+  if (body.url !== undefined) cur.url = String(body.url || '').trim();
+  if (body.authHeader !== undefined) cur.authHeader = String(body.authHeader || 'Authorization').trim() || 'Authorization';
+  if (body.authPrefix !== undefined) cur.authPrefix = String(body.authPrefix || '');
+  // تحديث المفتاح فقط إذا أُرسل نص جديد (فارغ = إبقاء القديم)
+  if (typeof body.apiKey === 'string' && body.apiKey.length) cur.apiKey = body.apiKey;
+  if (body.clearKey) cur.apiKey = '';
+  all[companyId].bassir = cur;
+  saveIntegrations(all);
+  res.json({ ok: true, bassir: redactIntegration(cur) });
+});
+// إرسال طلب تجريبي للتأكد من الاتصال
+app.post('/api/integration/test', auth, async (req, res) => {
+  const companyId = integrationCompanyOf(req);
+  if (!companyId || !canAdminCompany(req.user, companyId)) return res.status(403).json({ error: 'صلاحية أدمن النظام أو عميل الشركة' });
+  const cfg = companyIntegration(companyId);
+  if (!cfg.url) return res.status(400).json({ error: 'لم يتم إدخال رابط API' });
+  try {
+    const headers = { 'Content-Type': 'application/json' };
+    if (cfg.apiKey) headers[cfg.authHeader || 'Authorization'] = (cfg.authPrefix !== undefined ? cfg.authPrefix : 'Bearer ') + cfg.apiKey;
+    const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 12000);
+    const r = await fetch(cfg.url, { method: 'POST', headers, body: JSON.stringify({ event: 'ping', source: 'azoom-project-tracking', sentAt: new Date().toISOString() }), signal: ctrl.signal });
+    clearTimeout(t);
+    setIntegrationStatus(companyId, (r.ok ? 'اختبار ناجح' : 'اختبار — HTTP ' + r.status) + ' @ ' + new Date().toLocaleString('en-GB'));
+    res.json({ ok: r.ok, status: r.status });
+  } catch (e) {
+    setIntegrationStatus(companyId, 'فشل الاختبار: ' + (e && e.message ? e.message : 'خطأ'));
+    res.status(502).json({ error: 'تعذر الاتصال: ' + (e && e.message ? e.message : 'خطأ') });
+  }
+});
 
 // ---------- نسخ احتياطي واستعادة ----------
 app.get('/api/backup', auth, adminOnly, (req, res) => {

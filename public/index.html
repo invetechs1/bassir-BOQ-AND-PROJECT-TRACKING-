@@ -326,6 +326,7 @@
       <button class="btn btn-amber" id="btn-add-project" onclick="openProjectModal(null)">+ إضافة مشروع</button>
       <button class="btn btn-ghost" id="btn-users-manage" onclick="openUsersManage()">👥 إدارة المستخدمين</button>
       <button class="btn btn-ghost" id="btn-companies" onclick="openCompanies()">🏢 إدارة الشركات</button>
+      <button class="btn btn-ghost" id="btn-integration" onclick="openIntegration()">🔗 ربط Bassir ERP</button>
     </div>
     <div id="pm-notice"></div>
     <div class="status-cards" id="projects-grid"></div>
@@ -879,6 +880,41 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="integration-modal">
+  <div class="modal">
+    <div class="modal-title"><span>🔗 ربط Bassir ERP</span><span class="modal-close" onclick="closeModal('integration-modal')">✕</span></div>
+    <div class="alert info" style="font-size:12px">
+      عند تحويل كميات المهندس إلى <strong>مستخلص</strong>، يرسل النظام البنود المُسلَّمة للاستشاري إلى جدول كميات <strong>Bassir ERP</strong> عبر واجهة API.
+      جهّز هنا رابط الـ API ومفتاح الدخول — <strong>المبرمج يكمل الربط الفعلي</strong> من جهة Bassir.
+    </div>
+    <div id="int-company-wrap" class="f-field" style="display:none">
+      <label>الشركة</label>
+      <select id="int-company" onchange="loadIntegration()"></select>
+    </div>
+    <label class="switch-row" style="display:flex;align-items:center;gap:8px;margin:6px 0 12px;cursor:pointer">
+      <input type="checkbox" id="int-enabled" style="width:18px;height:18px">
+      <span>تفعيل الإرسال التلقائي إلى Bassir ERP عند إنشاء مستخلص جديد</span>
+    </label>
+    <div class="f-field"><label>رابط API (Endpoint URL)</label>
+      <input type="url" id="int-url" placeholder="https://erp.bassir.example/api/boq/deliveries" dir="ltr" style="text-align:left"></div>
+    <div class="f-field"><label>مفتاح الـ API (API Key / Token)</label>
+      <input type="password" id="int-key" placeholder="••••••••" dir="ltr" style="text-align:left" autocomplete="off">
+      <span id="int-key-hint" style="font-size:11px;color:var(--text2)"></span></div>
+    <details style="margin:4px 0 12px">
+      <summary style="cursor:pointer;font-size:12px;color:var(--text2)">إعدادات متقدمة (اسم ترويسة المصادقة)</summary>
+      <div class="f-grid" style="grid-template-columns:1fr 1fr;margin-top:8px">
+        <div class="f-field"><label>اسم الترويسة</label><input type="text" id="int-auth-header" placeholder="Authorization" dir="ltr" style="text-align:left"></div>
+        <div class="f-field"><label>بادئة القيمة</label><input type="text" id="int-auth-prefix" placeholder="Bearer " dir="ltr" style="text-align:left"></div>
+      </div>
+    </details>
+    <div id="int-status" style="font-size:12px;margin-bottom:12px"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-green" onclick="saveIntegration()">💾 حفظ الإعدادات</button>
+      <button class="btn btn-ghost" onclick="testIntegration()">🔌 اختبار الاتصال</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="boq-import-modal">
   <div class="modal wide">
     <div class="modal-title"><span>📥 استيراد جدول كميات من Excel</span><span class="modal-close" onclick="closeModal('boq-import-modal')">✕</span></div>
@@ -1421,6 +1457,7 @@ function renderProjects(){
   $('btn-add-project').style.display = isManagerial() ? '' : 'none';
   $('btn-users-manage').style.display = isManagerial() ? '' : 'none';
   $('btn-companies').style.display = isAdmin() ? '' : 'none';
+  $('btn-integration').style.display = isManagerial() ? '' : 'none';
   const roleNotices = {
     client:'⭐ أنت العميل (مالك الشركة) — تظهر لك مشاريع شركتك ولديك كامل الصلاحيات عليها.',
     pmo:'👔 أنت مدير المشاريع — تظهر لك جميع مشاريع شركتك للعمل عليها.',
@@ -1659,6 +1696,72 @@ async function deleteCompany(id){
     state.companies = state.companies.filter(x => x.id !== id);
     renderCompaniesList(); renderAll();
   } catch(e) { alert(e.message); }
+}
+
+// ---------- ربط Bassir ERP (خانة API — يكمل المبرمج الربط الفعلي) ----------
+function openIntegration(){
+  if (!isManagerial()) { alert('ربط ERP صلاحية أدمن النظام أو عميل الشركة'); return; }
+  const wrap = $('int-company-wrap');
+  if (isAdmin()) {
+    wrap.style.display = '';
+    $('int-company').innerHTML = (state.companies||[]).map(c => '<option value="' + c.id + '">' + esc(c.name) + '</option>').join('');
+  } else { wrap.style.display = 'none'; }
+  $('integration-modal').classList.add('open');
+  loadIntegration();
+}
+
+function intCompanyId(){ return isAdmin() ? (Number($('int-company').value) || null) : null; }
+
+async function loadIntegration(){
+  $('int-status').textContent = 'جارٍ التحميل…';
+  try {
+    const cid = intCompanyId();
+    const r = await API.req('GET', '/api/integration' + (cid ? '?companyId=' + cid : ''));
+    const b = r.bassir || {};
+    $('int-enabled').checked = !!b.enabled;
+    $('int-url').value = b.url || '';
+    $('int-key').value = '';
+    $('int-key').placeholder = b.apiKeySet ? '•••••••• (مفتاح محفوظ — اتركه فارغاً للإبقاء عليه)' : 'أدخل المفتاح';
+    $('int-key-hint').textContent = b.apiKeySet ? '🔒 يوجد مفتاح محفوظ. اتركه فارغاً للإبقاء عليه، أو اكتب مفتاحاً جديداً لاستبداله.' : 'لا يوجد مفتاح محفوظ بعد.';
+    $('int-auth-header').value = b.authHeader || 'Authorization';
+    $('int-auth-prefix').value = b.authPrefix !== undefined ? b.authPrefix : 'Bearer ';
+    const canEdit = r.canEdit !== false;
+    ['int-enabled','int-url','int-key','int-auth-header','int-auth-prefix'].forEach(id => { $(id).disabled = !canEdit; });
+    $('int-status').innerHTML = b.lastStatus
+      ? '<span style="color:var(--text2)">آخر حالة: ' + esc(b.lastStatus) + '</span>'
+      : '<span style="color:var(--text2)">لم يُرسل أي طلب بعد.</span>';
+  } catch(e){ $('int-status').innerHTML = '<span style="color:var(--danger)">تعذر التحميل: ' + esc(e.message) + '</span>'; }
+}
+
+async function saveIntegration(){
+  const cid = intCompanyId();
+  const bassir = {
+    enabled: $('int-enabled').checked,
+    url: $('int-url').value.trim(),
+    authHeader: $('int-auth-header').value.trim() || 'Authorization',
+    authPrefix: $('int-auth-prefix').value
+  };
+  const key = $('int-key').value;
+  if (key) bassir.apiKey = key; // يُرسل فقط عند إدخال مفتاح جديد
+  try {
+    const body = { bassir }; if (cid) body.companyId = cid;
+    await API.req('PUT', '/api/integration' + (cid ? '?companyId=' + cid : ''), body);
+    await loadIntegration(); // يُحدّث مؤشر المفتاح المحفوظ
+    $('int-status').innerHTML = '<span style="color:var(--success,#2e7d32)">✅ تم حفظ الإعدادات</span>';
+  } catch(e){ $('int-status').innerHTML = '<span style="color:var(--danger)">فشل الحفظ: ' + esc(e.message) + '</span>'; }
+}
+
+async function testIntegration(){
+  const cid = intCompanyId();
+  if (!$('int-url').value.trim()) { alert('أدخل رابط API أولاً ثم احفظ قبل الاختبار'); return; }
+  $('int-status').innerHTML = '<span style="color:var(--text2)">جارٍ إرسال طلب تجريبي…</span>';
+  try {
+    const body = cid ? { companyId: cid } : {};
+    const r = await API.req('POST', '/api/integration/test' + (cid ? '?companyId=' + cid : ''), body);
+    $('int-status').innerHTML = r.ok
+      ? '<span style="color:var(--success,#2e7d32)">✅ نجح الاتصال (HTTP ' + r.status + ')</span>'
+      : '<span style="color:var(--danger)">⚠️ استجابة غير متوقعة (HTTP ' + r.status + ')</span>';
+  } catch(e){ $('int-status').innerHTML = '<span style="color:var(--danger)">❌ تعذر الاتصال: ' + esc(e.message) + '</span>'; }
 }
 
 async function resetUserPassword(id){

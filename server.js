@@ -27,13 +27,16 @@ const PORT = Number(process.env.PORT || 3000);
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const PROJECTS_DIR = path.join(DATA_DIR, 'projects');
 const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');
+const PRICEDB_DIR = path.join(DATA_DIR, 'pricedb');
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
 const COMPANIES_FILE = path.join(DATA_DIR, 'companies.json');
+const INTEGRATIONS_FILE = path.join(DATA_DIR, 'integrations.json');
 const META_FILE = path.join(DATA_DIR, 'meta.json');
 const SECRET_FILE = path.join(DATA_DIR, '.jwt-secret');
 
 fs.mkdirSync(PROJECTS_DIR, { recursive: true });
 fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+fs.mkdirSync(PRICEDB_DIR, { recursive: true });
 
 // ---------- أدوات تخزين ذرية ----------
 function readJSON(file, fallback) {
@@ -60,6 +63,57 @@ function loadUsers() { return readJSON(USERS_FILE, []); }
 function saveUsers(users) { writeJSON(USERS_FILE, users); }
 function loadCompanies() { return readJSON(COMPANIES_FILE, []); }
 function saveCompanies(c) { writeJSON(COMPANIES_FILE, c); }
+
+// ---------- التكاملات الخارجية (Bassir ERP ... ) ----------
+// تُخزّن على الخادم فقط ولا يُرسل المفتاح للواجهة. الهيكل: { "<companyId>": { bassir: {...} } }
+function loadIntegrations() { return readJSON(INTEGRATIONS_FILE, {}); }
+function saveIntegrations(o) { writeJSON(INTEGRATIONS_FILE, o); }
+function companyIntegration(companyId) {
+  const all = loadIntegrations();
+  return (all[companyId] && all[companyId].bassir) || { enabled: false, url: '', apiKey: '', authHeader: 'Authorization', authPrefix: 'Bearer ', lastStatus: '', lastAt: '' };
+}
+// نسخة آمنة للواجهة: بدون المفتاح، فقط هل هو مُعيّن
+function redactIntegration(cfg) {
+  return { enabled: !!cfg.enabled, url: cfg.url || '', apiKeySet: !!cfg.apiKey, authHeader: cfg.authHeader || 'Authorization', authPrefix: cfg.authPrefix !== undefined ? cfg.authPrefix : 'Bearer ', lastStatus: cfg.lastStatus || '', lastAt: cfg.lastAt || '' };
+}
+function setIntegrationStatus(companyId, status) {
+  const all = loadIntegrations();
+  if (!all[companyId]) all[companyId] = { bassir: {} };
+  if (!all[companyId].bassir) all[companyId].bassir = {};
+  all[companyId].bassir.lastStatus = status;
+  all[companyId].bassir.lastAt = new Date().toISOString();
+  saveIntegrations(all);
+}
+
+// إرسال المستخلص المُنشأ إلى Bassir ERP (إن كان التكامل مفعّلاً). لا يوقف حفظ المستخلص عند الفشل.
+async function pushMustakhlasToBassir(companyId, project, mus) {
+  const cfg = companyIntegration(companyId);
+  if (!cfg.enabled || !cfg.url) return;
+  const payload = {
+    event: 'mustakhlas.created',
+    source: 'azoom-project-tracking',
+    sentAt: new Date().toISOString(),
+    project: { id: project.id, name: (project.info || {}).name || '', client: (project.info || {}).client || '' },
+    mustakhlas: { no: mus.no, date: mus.date, gross: mus.gross, vat: mus.vat, net: mus.net, by: mus.by || '', status: 'delivered_to_consultant_became_mustakhlas' },
+    // البنود التي سُلّمت للاستشاري وصارت مستخلص
+    items: (mus.lines || []).map(l => ({
+      code: l.itemId, description: l.desc, unit: l.unit, rate: l.rate,
+      previousQty: l.prevQty, deliveredQty: l.currQty, cumulativeQty: l.cumQty, amount: l.amount,
+      status: 'delivered_to_consultant'
+    }))
+  };
+  try {
+    const headers = { 'Content-Type': 'application/json' };
+    if (cfg.apiKey) headers[cfg.authHeader || 'Authorization'] = (cfg.authPrefix !== undefined ? cfg.authPrefix : 'Bearer ') + cfg.apiKey;
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 12000);
+    const r = await fetch(cfg.url, { method: 'POST', headers, body: JSON.stringify(payload), signal: ctrl.signal });
+    clearTimeout(t);
+    setIntegrationStatus(companyId, r.ok ? ('success — ' + mus.no + ' (HTTP ' + r.status + ')') : ('failed — HTTP ' + r.status));
+  } catch (e) {
+    setIntegrationStatus(companyId, 'send failed: ' + (e && e.message ? e.message : 'connection error'));
+  }
+}
 
 function bootstrapAdmin() {
   const users = loadUsers();
@@ -121,6 +175,48 @@ function loadProject(id) { return readJSON(projectFile(id), null); }
 function saveProject(p) { writeJSON(projectFile(p.id), p); }
 
 const sanitizeUser = u => ({ id: u.id, username: u.username, name: u.name, role: u.role, companyId: u.companyId ?? null });
+
+// ---------- قاعدة بيانات الأسعار والعروض (لكل شركة) ----------
+function pricedbFile(companyId) { return path.join(PRICEDB_DIR, companyId + '.json'); }
+function loadPricedb(companyId) {
+  return readJSON(pricedbFile(companyId), { version: 0, seq: 1000, offers: [], items: [] });
+}
+function savePricedb(companyId, db) { writeJSON(pricedbFile(companyId), db); }
+
+// ربط ملفات العروض الأصلية (PDF) بالعروض عند التعبئة الأولية
+const SEED_ATTACHMENTS = {
+  'ASF26071502': [
+    { src: 'moddah-financial.pdf', name: 'العرض المالي - تجاري سكني (المودة).pdf' },
+    { src: 'moddah-technical.pdf', name: 'العرض الفني - تجاري سكني (المودة).pdf' }
+  ],
+  '1103-52': [{ src: 'nakheel-offer.pdf', name: 'العرض المالي والفني - ذات النخيل.pdf' }],
+  '1103-57': [{ src: 'qalbnajd-offer.pdf', name: 'العرض المالي - قلب نجد.pdf' }]
+};
+
+// تعبئة أولية: تحميل عروض عزوم من ملف البذور إلى شركة عند طلبها
+function seedPricedb(companyId) {
+  const seedFile = path.join(__dirname, 'seed-pricedb.json');
+  const seed = readJSON(seedFile, null);
+  if (!seed) return { error: 'seed_file_missing' };
+  const seedFilesDir = path.join(__dirname, 'seed-files');
+  const destDir = path.join(UPLOADS_DIR, 'pricedb', String(companyId));
+  fs.mkdirSync(destDir, { recursive: true });
+  const offers = (seed.offers || []).map(o => {
+    const atts = (SEED_ATTACHMENTS[o.ref] || []).map(a => {
+      const srcPath = path.join(seedFilesDir, a.src);
+      if (!fs.existsSync(srcPath)) return null;
+      const ext = path.extname(a.src);
+      const file = crypto.randomBytes(14).toString('hex') + ext;
+      try { fs.copyFileSync(srcPath, path.join(destDir, file)); }
+      catch (e) { return null; }
+      return { url: '/uploads/pricedb/' + companyId + '/' + file, name: a.name };
+    }).filter(Boolean);
+    return { ...o, attachments: atts };
+  });
+  const db = { version: 1, seq: seed.seq || 1000, offers, items: seed.items || [] };
+  savePricedb(companyId, db);
+  return db;
+}
 
 // ---------- التطبيق ----------
 const app = express();
@@ -271,9 +367,62 @@ app.put('/api/projects/:id', auth, (req, res) => {
   const managerUserId = canAssign ? (data.managerUserId ?? null) : stored.managerUserId;
   const companyId = isAdmin(req.user) && data.companyId && loadCompanies().some(c => c.id === Number(data.companyId))
     ? Number(data.companyId) : stored.companyId;
+
+  // دورة اعتماد المستخلصات: مدير المشروع يرفع فقط — لا يعتمد ولا يصدر فواتير ولا يسجل دفعات
+  // ولا يحذف مستخلصاً معتمداً/صادراً (يُفرض هنا حتى لو تجاوز الواجهة)
+  if (req.user.role === 'pm') {
+    const storedMus = stored.mustakhlasat || [];
+    const incomingMus = Array.isArray(data.mustakhlasat) ? data.mustakhlasat : [];
+    const inIds = new Set(incomingMus.map(m => m.id));
+    for (const s of storedMus) {
+      if (!inIds.has(s.id) && !['submitted','rejected'].includes(s.status || 'submitted')) {
+        return res.status(403).json({ error: 'pm_cannot_delete_approved_mustakhlas' });
+      }
+    }
+    const stMap = new Map(storedMus.map(m => [m.id, m]));
+    incomingMus.forEach(m => {
+      const s = stMap.get(m.id);
+      if (s) {
+        // الحقول الاعتمادية والمالية تبقى كما اعتمدها المراجع
+        m.status = s.status; m.approvedBy = s.approvedBy; m.approvedAt = s.approvedAt;
+        m.rejectReason = s.rejectReason; m.invoiceNo = s.invoiceNo; m.invoiceDate = s.invoiceDate; m.invoiceBy = s.invoiceBy;
+        m.payments = s.payments || [];
+      } else {
+        // مستخلص جديد من مدير المشروع = مرفوع للمراجعة دائماً
+        m.status = 'submitted';
+        delete m.approvedBy; delete m.approvedAt; delete m.invoiceNo; delete m.invoiceDate; delete m.invoiceBy;
+        m.payments = [];
+      }
+    });
+  }
+
+  // اعتماد كميات الاستشاري: أي زيادة في الكمية المعتمدة يجب أن تُقابلها استلامات (approvals) بمرفق موقّع
+  const storedItems = new Map((stored.boqItems || []).map(i => [i.id, i]));
+  for (const it of (data.boqItems || [])) {
+    const prev = storedItems.get(it.id);
+    // ترحيل: البنود القديمة بدون approvedQty تُعامل كمعتمدة بمقدار المنفذ سابقاً (لا تتطلب استلاماً)
+    const prevApproved = prev ? (prev.approvedQty !== undefined ? prev.approvedQty : (prev.executedQty || 0)) : 0;
+    const newApproved = it.approvedQty || 0;
+    if (newApproved > prevApproved + 0.001) {
+      const approvalsSum = (it.approvals || []).reduce((s, a) => s + (Number(a.qty) || 0), 0);
+      const allHaveAR = (it.approvals || []).every(a => a.ar && a.ar.url);
+      if (approvalsSum + 0.01 < newApproved || !allHaveAR) {
+        return res.status(400).json({ error: 'consultant_approval_required', itemId: it.id });
+      }
+    }
+  }
+
   const p = { ...data, managerUserId, companyId, id, version: stored.version + 1 };
   saveProject(p);
   res.json({ version: p.version });
+
+  // تكامل خارجي: عند إنشاء مستخلص جديد، أرسله إلى Bassir ERP (لا يوقف الحفظ)
+  try {
+    const oldIds = new Set((stored.mustakhlasat || []).map(x => x.id));
+    (p.mustakhlasat || []).forEach(mus => {
+      if (!oldIds.has(mus.id)) setImmediate(() => pushMustakhlasToBassir(companyId, p, mus));
+    });
+  } catch (e) { /* لا يؤثر على الحفظ */ }
 });
 
 app.delete('/api/projects/:id', auth, (req, res) => {
@@ -354,6 +503,67 @@ app.delete('/api/users/:id', auth, (req, res) => {
   res.json({ ok: true });
 });
 
+// ---------- قاعدة بيانات الأسعار والعروض ----------
+// نطاق: كل شركة لها قاعدتها. الأدمن يحدد الشركة عبر ?companyId، وغيره شركته.
+function pricedbCompanyOf(req) {
+  if (isAdmin(req.user)) {
+    const q = Number(req.query.companyId || req.body && req.body.companyId);
+    return q || (loadCompanies()[0] ? loadCompanies()[0].id : null);
+  }
+  return req.user.companyId || null;
+}
+const canEditPricedb = u => ['admin', 'client', 'pmo'].includes(u.role);
+
+app.get('/api/pricedb', auth, (req, res) => {
+  const companyId = pricedbCompanyOf(req);
+  if (!companyId) return res.json({ companyId: null, version: 0, seq: 1000, offers: [], items: [], canEdit: false });
+  res.json({ ...loadPricedb(companyId), companyId, canEdit: canEditPricedb(req.user) });
+});
+
+app.put('/api/pricedb', auth, (req, res) => {
+  if (!canEditPricedb(req.user)) return res.status(403).json({ error: 'pmo_or_above_required' });
+  const companyId = pricedbCompanyOf(req);
+  if (!companyId) return res.status(400).json({ error: 'no_company_selected' });
+  const { baseVersion, data } = req.body || {};
+  if (!data) return res.status(400).json({ error: 'data_incomplete' });
+  const stored = loadPricedb(companyId);
+  if (Number(baseVersion) !== stored.version) return res.status(409).json({ error: 'conflict', version: stored.version });
+  const db = { version: stored.version + 1, seq: data.seq || stored.seq, offers: data.offers || [], items: data.items || [] };
+  savePricedb(companyId, db);
+  res.json({ version: db.version });
+});
+
+app.post('/api/pricedb/seed', auth, (req, res) => {
+  if (!canEditPricedb(req.user)) return res.status(403).json({ error: 'pmo_or_above_required' });
+  const companyId = pricedbCompanyOf(req);
+  if (!companyId) return res.status(400).json({ error: 'no_company_selected' });
+  const existing = loadPricedb(companyId);
+  if ((existing.offers || []).length || (existing.items || []).length) {
+    if (!req.body || !req.body.force) return res.status(400).json({ error: 'pricedb_not_empty' });
+  }
+  const db = seedPricedb(companyId);
+  if (db.error) return res.status(500).json(db);
+  res.json({ ...db, companyId, canEdit: true });
+});
+
+// رفع ملفات العروض (PDF/صور) لقاعدة الأسعار — تخزن تحت uploads/pricedb/<companyId>
+app.post('/api/pricedb/upload', auth, (req, res) => {
+  if (!canEditPricedb(req.user)) return res.status(403).json({ error: 'pmo_or_above_required' });
+  const companyId = pricedbCompanyOf(req);
+  if (!companyId) return res.status(400).json({ error: 'no_company_selected' });
+  const dataUrl = req.body && req.body.dataUrl;
+  const m = /^data:(image\/(?:jpeg|png|webp)|application\/pdf);base64,([A-Za-z0-9+/=]+)$/.exec(String(dataUrl || '').slice(0, 16 * 1024 * 1024));
+  if (!m) return res.status(400).json({ error: 'unsupported_file_format' });
+  const buf = Buffer.from(m[2], 'base64');
+  if (buf.length > 10 * 1024 * 1024) return res.status(400).json({ error: 'file_too_large' });
+  const ext = m[1] === 'application/pdf' ? 'pdf' : (m[1] === 'image/jpeg' ? 'jpg' : m[1].split('/')[1]);
+  const file = crypto.randomBytes(14).toString('hex') + '.' + ext;
+  const dir = path.join(UPLOADS_DIR, 'pricedb', String(companyId));
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, file), buf);
+  res.json({ url: '/uploads/pricedb/' + companyId + '/' + file });
+});
+
 // ---------- صور الموقع ----------
 // الرفع: JSON بصيغة dataURL (الواجهة تضغط الصورة قبل الإرسال)
 // أسماء الملفات عشوائية غير قابلة للتخمين، وتُخدم من /uploads
@@ -363,11 +573,11 @@ app.post('/api/projects/:id/photos', auth, (req, res) => {
   if (!stored) return res.status(404).json({ error: 'project_not_found' });
   if (!canAccessProject(req.user, stored)) return res.status(403).json({ error: 'no_project_access' });
   const dataUrl = req.body && req.body.dataUrl;
-  const m = /^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/=]+)$/.exec(String(dataUrl || '').slice(0, 12 * 1024 * 1024));
+  const m = /^data:(image\/(?:jpeg|png|webp)|application\/pdf);base64,([A-Za-z0-9+/=]+)$/.exec(String(dataUrl || '').slice(0, 16 * 1024 * 1024));
   if (!m) return res.status(400).json({ error: 'unsupported_image_format' });
   const buf = Buffer.from(m[2], 'base64');
-  if (buf.length > 8 * 1024 * 1024) return res.status(400).json({ error: 'image_too_large' });
-  const ext = m[1] === 'jpeg' ? 'jpg' : m[1];
+  if (buf.length > 10 * 1024 * 1024) return res.status(400).json({ error: 'image_too_large' });
+  const ext = m[1] === 'application/pdf' ? 'pdf' : (m[1] === 'image/jpeg' ? 'jpg' : m[1].split('/')[1]);
   const file = crypto.randomBytes(14).toString('hex') + '.' + ext;
   const dir = path.join(UPLOADS_DIR, String(id));
   fs.mkdirSync(dir, { recursive: true });
@@ -381,7 +591,7 @@ app.delete('/api/projects/:id/photos/:file', auth, (req, res) => {
   if (!stored) return res.status(404).json({ error: 'project_not_found' });
   if (!canAccessProject(req.user, stored)) return res.status(403).json({ error: 'no_access' });
   const file = String(req.params.file);
-  if (!/^[a-f0-9]{28}\.(jpg|png|webp)$/.test(file)) return res.status(400).json({ error: 'invalid_filename' });
+  if (!/^[a-f0-9]{28}\.(jpg|png|webp|pdf)$/.test(file)) return res.status(400).json({ error: 'invalid_filename' });
   const fp = path.join(UPLOADS_DIR, String(id), file);
   if (fs.existsSync(fp)) fs.unlinkSync(fp);
   res.json({ ok: true });
@@ -389,10 +599,61 @@ app.delete('/api/projects/:id/photos/:file', auth, (req, res) => {
 
 app.use('/uploads', express.static(UPLOADS_DIR, { maxAge: '30d', immutable: true }));
 
+// ---------- تكامل Bassir ERP ----------
+function integrationCompanyOf(req) {
+  if (isAdmin(req.user)) return Number(req.query.companyId || (req.body && req.body.companyId)) || (loadCompanies()[0] ? loadCompanies()[0].id : null);
+  return req.user.companyId || null;
+}
+app.get('/api/integration', auth, (req, res) => {
+  if (!['admin', 'client', 'pmo'].includes(req.user.role)) return res.status(403).json({ error: 'pmo_or_above_required' });
+  const companyId = integrationCompanyOf(req);
+  if (!companyId) return res.json({ companyId: null, bassir: redactIntegration({}) });
+  res.json({ companyId, bassir: redactIntegration(companyIntegration(companyId)), canEdit: canAdminCompany(req.user, companyId) });
+});
+app.put('/api/integration', auth, (req, res) => {
+  const companyId = integrationCompanyOf(req);
+  if (!companyId) return res.status(400).json({ error: 'no_company_selected' });
+  if (!canAdminCompany(req.user, companyId)) return res.status(403).json({ error: 'integration_edit_denied' });
+  const body = (req.body && req.body.bassir) || {};
+  const all = loadIntegrations();
+  if (!all[companyId]) all[companyId] = { bassir: {} };
+  const cur = all[companyId].bassir || {};
+  cur.enabled = !!body.enabled;
+  if (body.url !== undefined) cur.url = String(body.url || '').trim();
+  if (body.authHeader !== undefined) cur.authHeader = String(body.authHeader || 'Authorization').trim() || 'Authorization';
+  if (body.authPrefix !== undefined) cur.authPrefix = String(body.authPrefix || '');
+  // تحديث المفتاح فقط إذا أُرسل نص جديد (فارغ = إبقاء القديم)
+  if (typeof body.apiKey === 'string' && body.apiKey.length) cur.apiKey = body.apiKey;
+  if (body.clearKey) cur.apiKey = '';
+  all[companyId].bassir = cur;
+  saveIntegrations(all);
+  res.json({ ok: true, bassir: redactIntegration(cur) });
+});
+// إرسال طلب تجريبي للتأكد من الاتصال
+app.post('/api/integration/test', auth, async (req, res) => {
+  const companyId = integrationCompanyOf(req);
+  if (!companyId || !canAdminCompany(req.user, companyId)) return res.status(403).json({ error: 'integration_edit_denied' });
+  const cfg = companyIntegration(companyId);
+  if (!cfg.url) return res.status(400).json({ error: 'integration_url_required' });
+  try {
+    const headers = { 'Content-Type': 'application/json' };
+    if (cfg.apiKey) headers[cfg.authHeader || 'Authorization'] = (cfg.authPrefix !== undefined ? cfg.authPrefix : 'Bearer ') + cfg.apiKey;
+    const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 12000);
+    const r = await fetch(cfg.url, { method: 'POST', headers, body: JSON.stringify({ event: 'ping', source: 'azoom-project-tracking', sentAt: new Date().toISOString() }), signal: ctrl.signal });
+    clearTimeout(t);
+    setIntegrationStatus(companyId, (r.ok ? 'test successful' : 'test failed — HTTP ' + r.status) + ' @ ' + new Date().toLocaleString('en-GB'));
+    res.json({ ok: r.ok, status: r.status });
+  } catch (e) {
+    setIntegrationStatus(companyId, 'test error: ' + (e && e.message ? e.message : 'connection failed'));
+    res.status(502).json({ error: 'integration_test_failed', detail: e && e.message ? e.message : '' });
+  }
+});
+
 // ---------- نسخ احتياطي واستعادة ----------
 app.get('/api/backup', auth, adminOnly, (req, res) => {
   res.setHeader('Content-Disposition', 'attachment; filename="azoom-backup-' + new Date().toISOString().slice(0, 10) + '.json"');
-  res.json({ exportedAt: new Date().toISOString(), projects: listProjects(), users: loadUsers().map(sanitizeUser), companies: loadCompanies() });
+  const pricedbs = loadCompanies().map(c => ({ companyId: c.id, db: loadPricedb(c.id) }));
+  res.json({ exportedAt: new Date().toISOString(), projects: listProjects(), users: loadUsers().map(sanitizeUser), companies: loadCompanies(), pricedbs });
 });
 
 app.post('/api/restore', auth, adminOnly, (req, res) => {

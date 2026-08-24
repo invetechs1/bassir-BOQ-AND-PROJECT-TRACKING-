@@ -7,6 +7,8 @@ RUN npm ci --omit=dev
 
 COPY server.js ./
 COPY public ./public
+COPY seed-pricedb.json ./
+COPY seed-files ./seed-files
 
 # البيانات (المشاريع، المستخدمون، الصور) تُحفظ هنا - اربطها بـ volume خارجي
 RUN mkdir -p /app/data

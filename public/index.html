@@ -314,7 +314,7 @@
   <div class="nav-tab" data-tab="invoice" onclick="switchTab('invoice')">💰 المستخلصات <span class="tab-count" id="tc-invoice">0</span></div>
   <div class="nav-tab" data-tab="blocked" onclick="switchTab('blocked')">🚫 العوائق <span class="tab-count" id="tc-blocked">0</span></div>
   <div class="nav-tab" data-tab="villas" onclick="switchTab('villas')">🏠 <span id="villas-tab-label">الوحدات</span> <span class="tab-count" id="tc-villas">0</span></div>
-  <div class="nav-tab" data-tab="prod" onclick="switchTab('prod')">👷 الإنتاجية <span class="tab-count" id="tc-prod">0</span></div>
+  <div class="nav-tab" data-tab="prod" onclick="switchTab('prod')">👷 الإنتاجية <span class="tab-count" id="tc-prod">0</span><span class="tab-count" id="tc-prod-req" style="display:none;background:var(--red);color:#fff">0</span></div>
   <div class="nav-tab" data-tab="pricedb" onclick="switchTab('pricedb')">💲 قاعدة الأسعار <span class="tab-count" id="tc-pricedb">0</span></div>
 </div>
 
@@ -517,6 +517,7 @@
 
   <!-- ===================== PRODUCTIVITY ===================== -->
   <div class="tab-panel" id="tab-prod">
+    <div id="edit-requests-box"></div>
     <div class="two-col">
       <div>
         <div class="card blue-b">
@@ -920,6 +921,22 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="log-edit-modal">
+  <div class="modal">
+    <div class="modal-title"><span>✏️ تعديل يومية إنتاجية</span><span class="modal-close" onclick="closeModal('log-edit-modal')">✕</span></div>
+    <div id="le-info" class="alert info" style="font-size:12px"></div>
+    <div class="f-grid">
+      <div class="f-field"><label>الكمية المنفذة *</label><input type="number" id="le-qty" min="0" step="0.01"></div>
+      <div class="f-field full"><label>ملاحظة</label><input type="text" id="le-note"></div>
+      <div class="f-field full" id="le-reason-wrap"><label>سبب التعديل (يُعرض للمعتمِدين) *</label><input type="text" id="le-reason" placeholder="مثال: خطأ في إدخال الكمية"></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button class="btn btn-green" id="le-save-btn" onclick="saveLogEdit()">💾 حفظ التعديل</button>
+      <button class="btn btn-ghost" onclick="closeModal('log-edit-modal')">إلغاء</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="boq-import-modal">
   <div class="modal wide">
     <div class="modal-title"><span>📥 استيراد جدول كميات من Excel</span><span class="modal-close" onclick="closeModal('boq-import-modal')">✕</span></div>
@@ -1125,6 +1142,9 @@ function currentUser(){
 const isAdmin = () => state.me.role === 'admin';
 const isManagerial = () => ['admin','client'].includes(state.me.role); // من يدير المشاريع والمستخدمين
 const isOwner = isManagerial; // (توافقية مع الكود القديم)
+// رقابة تعديل الإنتاجية: مدير المشروع (pm) تعديلاته/حذفه للإنتاجية والكميات المنفذة تحتاج موافقة العميل ومدير المشاريع معاً
+const editsGated = () => state.me.role === 'pm';
+const canApproveEdits = () => ['admin','client','pmo'].includes(state.me.role);
 const accessibleProjects = () => state.projects; // الخادم يعيد المشاريع المصرح بها فقط
 const userName = id => { const u = state.users.find(x => x.id === id); return u ? u.name : null; };
 const companyName = id => { const c = (state.companies||[]).find(x => x.id === id); return c ? c.name : null; };
@@ -1214,6 +1234,7 @@ function migrateProject(p){
   p.info.unitsTitle = p.info.unitsTitle || 'الفلل';
   p.seq = p.seq || 1000;
   p.blockerLog = p.blockerLog || []; p.workLogs = p.workLogs || [];
+  p.editRequests = p.editRequests || []; // طلبات تعديل الإنتاجية بانتظار موافقة الإدارة
   p.villas = p.villas || []; p.villaProgress = p.villaProgress || {}; p.boqItems = p.boqItems || [];
   p.mustakhlasat = p.mustakhlasat || [];
   p.mustakhlasat.forEach(m => { m.payments = m.payments || []; m.attachments = m.attachments || []; });
@@ -1585,7 +1606,7 @@ async function saveProject(){
         const src = state.projects.find(x => x.id === srcId);
         if (src) boqItems = src.boqItems.map(it => ({...it, predecessors:[...(it.predecessors||[])], blocker:null, executedQty:0, claimedQty:0}));
       }
-      const data = {managerUserId, companyId, info, seq:1000, boqItems, villas:[], villaProgress:{}, mustakhlasat:[], workLogs:[], blockerLog:[]};
+      const data = {managerUserId, companyId, info, seq:1000, boqItems, villas:[], villaProgress:{}, mustakhlasat:[], workLogs:[], blockerLog:[], editRequests:[]};
       const r = await API.req('POST', '/api/projects', {data});
       state.projects.push({...data, id:r.id, version:r.version});
       state.currentProjectId = r.id;
@@ -1817,6 +1838,8 @@ function updateTabCounts(){
   $('tc-blocked').textContent = proj().boqItems.filter(i => ['blocked','waiting'].includes(statusOf(i))).length;
   $('tc-villas').textContent = proj().villas.length;
   $('tc-prod').textContent = proj().workLogs.length;
+  const preq = pendingEditRequests().length, prb = $('tc-prod-req');
+  if (prb) { prb.textContent = preq; prb.style.display = (preq && canApproveEdits()) ? '' : 'none'; }
 }
 
 function switchTab(id){
@@ -2172,7 +2195,15 @@ const pdbCanApproveQty = () => ['admin','client','pmo','pm'].includes(state.me.r
 function setItemQty(id, val){
   const it = getItem(id);
   if (!it) return;
-  it.executedQty = Math.round(clamp(val, 0, it.totalQty) * 100) / 100;
+  const newVal = Math.round(clamp(val, 0, it.totalQty) * 100) / 100;
+  // مدير المشروع: تعديل الكمية المنفذة يتطلب موافقة الإدارة (لا يُطبَّق مباشرة)
+  if (editsGated() && Math.abs(newVal - (it.executedQty||0)) > 0.001) {
+    submitEditRequest({ type:'qty_edit', itemId:id, fromQty:(it.executedQty||0), newQty:newVal,
+      label:'تعديل الكمية المنفذة للبند ' + id + ' من ' + fmtQ(it.executedQty||0) + ' إلى ' + fmtQ(newVal) + ' ' + (it.unit||'') });
+    renderAll(); // إرجاع الحقل لقيمته الأصلية
+    return;
+  }
+  it.executedQty = newVal;
   // المعتمد لا يتجاوز المنفذ (لو خفّض المنفذ تحت المعتمد يُقلّص المعتمد)
   if ((it.approvedQty||0) > it.executedQty) it.approvedQty = it.executedQty;
   if (it.executedQty < it.claimedQty) {
@@ -2439,11 +2470,22 @@ function saveItem(){
   };
   if (editingItemId) {
     const it = getItem(editingItemId);
+    // مدير المشروع: تعديل الكمية المنفذة من نموذج البند يتطلب موافقة الإدارة — لا يُطبَّق مباشرة
+    let qtyReq = null;
+    if (editsGated() && Math.abs((data.executedQty||0) - (it.executedQty||0)) > 0.001) {
+      qtyReq = { type:'qty_edit', itemId:it.id, fromQty:(it.executedQty||0), newQty:data.executedQty,
+        label:'تعديل الكمية المنفذة للبند ' + it.id + ' من ' + fmtQ(it.executedQty||0) + ' إلى ' + fmtQ(data.executedQty) + ' ' + (it.unit||'') };
+      data.executedQty = it.executedQty; // إبقاء القيمة الأصلية حتى الموافقة
+    }
     data.claimedQty = it.claimedQty;
     data.approvedQty = Math.min(it.approvedQty||0, data.executedQty);
     data.approvals = it.approvals || [];
     Object.assign(it, data);
+    closeModal('item-modal');
+    if (qtyReq) submitEditRequest(qtyReq); else { save(); renderAll(); }
+    return;
   } else {
+    if (editsGated()) data.executedQty = 0; // البنود الجديدة من مدير المشروع تبدأ بكمية منفذة صفر
     data.claimedQty = 0;
     data.approvedQty = 0; // الكميات الجديدة تبدأ بانتظار اعتماد الاستشاري
     data.approvals = [];
@@ -3286,6 +3328,7 @@ function syncFromVillas(){
 //  PRODUCTIVITY
 // ============================================================
 function renderProd(){
+  renderEditRequests();
   if (!$('wl-date').value) $('wl-date').value = todayStr();
   $('crew-list').innerHTML = [...new Set(proj().workLogs.map(l => l.crew))].map(c => '<option value="' + esc(c) + '">').join('');
   // البند: حقل بحث ذكي بدل القائمة الطويلة — إعادة الضبط لو تغيّر المشروع أو حُذف البند المختار
@@ -3309,7 +3352,8 @@ function renderProd(){
         : '<span style="color:var(--text3);font-size:11px">—</span>') + '</td>' +
       '<td>' + (l.applied ? '<span class="pill green" style="font-size:10px">نعم</span>' : '<span class="pill gray" style="font-size:10px">لا</span>') + '</td>' +
       '<td style="font-size:11px;color:var(--text3)">' + esc(l.by || '—') + '</td>' +
-      '<td><button class="mini-btn red" onclick="deleteWorkLog(' + l.id + ')">🗑</button></td>' +
+      '<td style="white-space:nowrap"><button class="mini-btn" onclick="openLogEdit(' + l.id + ')" data-tip="' + (editsGated()?'طلب تعديل (يحتاج موافقة الإدارة)':'تعديل') + '">✏️</button> ' +
+      '<button class="mini-btn red" onclick="deleteWorkLog(' + l.id + ')" data-tip="' + (editsGated()?'طلب حذف (يحتاج موافقة الإدارة)':'حذف') + '">🗑</button></td>' +
       '</tr>';
   }).join('') || '<tr><td colspan="11"><div class="empty-state"><p>لا توجد يوميات مسجلة</p></div></td></tr>';
 
@@ -3512,8 +3556,23 @@ async function addWorkLog(){
 function deleteWorkLog(id){
   const l = proj().workLogs.find(x => x.id === id);
   if (!l) return;
+  // مدير المشروع: الحذف يتطلب موافقة الإدارة
+  if (editsGated()) {
+    const it = getItem(l.itemId);
+    submitEditRequest({ type:'log_delete', logId:id,
+      label:'حذف يومية ' + esc(l.date) + ' · ' + esc(l.crew) + ' · ' + fmtQ(l.qty) + ' ' + (it?it.unit:'') + ' (بند ' + esc(l.itemId) + ')' });
+    return;
+  }
   if (!confirm('حذف اليومية؟' + (l.applied ? ' سيتم خصم الكمية من نسبة إنجاز البند.' : '') + ((l.photos||[]).length ? ' وستحذف صورها.' : ''))) return;
-  (l.photos||[]).forEach(ph => {
+  applyLogDelete(id, true);
+  save(); renderAll();
+}
+
+// تنفيذ حذف اليومية فعلياً (يُستدعى مباشرة من الإدارة أو بعد اعتماد الطلب)
+function applyLogDelete(id, deletePhotos){
+  const l = proj().workLogs.find(x => x.id === id);
+  if (!l) return;
+  if (deletePhotos) (l.photos||[]).forEach(ph => {
     const file = String(ph.url).split('/').pop();
     API.req('DELETE', '/api/projects/' + proj().id + '/photos/' + file).catch(() => {});
   });
@@ -3529,7 +3588,151 @@ function deleteWorkLog(id){
     }
   }
   proj().workLogs = proj().workLogs.filter(x => x.id !== id);
+}
+
+// ---- تعديل اليومية (كمية/ملاحظة) ----
+let editingLogId = null;
+function openLogEdit(id){
+  const l = proj().workLogs.find(x => x.id === id);
+  if (!l) return;
+  editingLogId = id;
+  const it = getItem(l.itemId);
+  $('le-info').innerHTML = '<strong>' + esc(l.date) + ' · ' + esc(l.crew) + '</strong> — بند ' + esc(l.itemId) + ' ' + esc(it?it.desc.substring(0,30):'');
+  $('le-qty').value = l.qty;
+  $('le-note').value = l.note || '';
+  $('le-reason-wrap').style.display = editsGated() ? '' : 'none';
+  $('le-reason').value = '';
+  $('le-save-btn').textContent = editsGated() ? '📨 إرسال طلب التعديل للإدارة' : '💾 حفظ التعديل';
+  $('log-edit-modal').classList.add('open');
+}
+function saveLogEdit(){
+  const l = proj().workLogs.find(x => x.id === editingLogId);
+  if (!l) return;
+  const newQty = Number($('le-qty').value);
+  if (!newQty || newQty <= 0) { alert('اكتب كمية صحيحة'); return; }
+  const newNote = $('le-note').value.trim();
+  if (editsGated()) {
+    const reason = $('le-reason').value.trim();
+    if (!reason) { alert('اكتب سبب التعديل ليطّلع عليه المعتمِدون'); return; }
+    const it = getItem(l.itemId);
+    submitEditRequest({ type:'log_edit', logId:editingLogId, newQty, newNote, reason,
+      label:'تعديل يومية ' + esc(l.date) + ' · بند ' + esc(l.itemId) + ': الكمية من ' + fmtQ(l.qty) + ' إلى ' + fmtQ(newQty) + ' ' + (it?it.unit:'') });
+    closeModal('log-edit-modal'); return;
+  }
+  applyLogEdit(editingLogId, newQty, newNote);
+  closeModal('log-edit-modal'); save(); renderAll();
+}
+// تنفيذ تعديل اليومية فعلياً (يعيد أثر الكمية القديمة ثم يطبّق الجديدة كما في الإضافة)
+function applyLogEdit(id, newQty, newNote){
+  const l = proj().workLogs.find(x => x.id === id);
+  if (!l) return;
+  const it = getItem(l.itemId);
+  if (l.applied && it) {
+    // إرجاع الأثر القديم
+    it.executedQty = Math.max(0, Math.round((it.executedQty - (l.appliedQty||0)) * 100) / 100);
+    if (l.villaNo && it.qtyPerVilla > 0 && proj().villaProgress[l.itemId]) {
+      const cur = villaPct(l.itemId, l.villaNo);
+      proj().villaProgress[l.itemId][l.villaNo] = clamp(cur - l.qty / it.qtyPerVilla * 100, 0, 100);
+    }
+    // تطبيق الكمية الجديدة
+    const applied = Math.min(newQty, Math.max(0, it.totalQty - it.executedQty));
+    it.executedQty = Math.round((it.executedQty + applied) * 100) / 100;
+    l.appliedQty = applied;
+    if (l.villaNo && it.qtyPerVilla > 0) {
+      if (!proj().villaProgress[l.itemId]) proj().villaProgress[l.itemId] = {};
+      const cur = villaPct(l.itemId, l.villaNo);
+      proj().villaProgress[l.itemId][l.villaNo] = clamp(cur + newQty / it.qtyPerVilla * 100, 0, 100);
+    }
+  }
+  l.qty = newQty;
+  if (newNote !== undefined) l.note = newNote;
+}
+
+// ============================================================
+//  طلبات تعديل الإنتاجية (رقابة على مدير المشروع)
+// ============================================================
+// يُنشئ مدير المشروع طلباً؛ لا يُطبَّق إلا بموافقة العميل ومدير المشاريع معاً
+function submitEditRequest(payload){
+  const p = proj();
+  p.editRequests = p.editRequests || [];
+  p.editRequests.push(Object.assign({
+    id: nextSeq(), status:'pending',
+    by: currentUser().name, byId: state.me.id, createdAt: new Date().toISOString(),
+    clientApproved:false, clientBy:'', pmoApproved:false, pmoBy:''
+  }, payload));
   save(); renderAll();
+  alert('📨 تم إرسال طلب التعديل إلى الإدارة (العميل ومدير المشاريع). لن يُطبَّق التغيير إلا بعد موافقتهما.');
+}
+
+const pendingEditRequests = () => (proj().editRequests||[]).filter(r => r.status === 'pending');
+
+function approveEditRequest(id){
+  if (!canApproveEdits()) { alert('اعتماد التعديلات صلاحية العميل ومدير المشاريع'); return; }
+  const r = (proj().editRequests||[]).find(x => x.id === id);
+  if (!r || r.status !== 'pending') return;
+  const role = state.me.role, me = currentUser().name;
+  if (role === 'admin') { r.clientApproved = true; r.clientBy = me + ' (أدمن)'; r.pmoApproved = true; r.pmoBy = me + ' (أدمن)'; }
+  else if (role === 'client') { r.clientApproved = true; r.clientBy = me; }
+  else if (role === 'pmo') { r.pmoApproved = true; r.pmoBy = me; }
+  if (r.clientApproved && r.pmoApproved) {
+    // تطبيق التغيير المعتمَد
+    if (r.type === 'log_delete') applyLogDelete(r.logId, true);
+    else if (r.type === 'log_edit') applyLogEdit(r.logId, r.newQty, r.newNote);
+    else if (r.type === 'qty_edit') {
+      const it = getItem(r.itemId);
+      if (it) {
+        it.executedQty = Math.round(clamp(r.newQty, 0, it.totalQty) * 100) / 100;
+        if ((it.approvedQty||0) > it.executedQty) it.approvedQty = it.executedQty;
+      }
+    }
+    r.status = 'applied'; r.appliedAt = new Date().toISOString();
+  }
+  save(); renderAll();
+}
+
+function rejectEditRequest(id){
+  if (!canApproveEdits()) { alert('رفض التعديلات صلاحية العميل ومدير المشاريع'); return; }
+  const r = (proj().editRequests||[]).find(x => x.id === id);
+  if (!r || r.status !== 'pending') return;
+  const reason = prompt('سبب رفض طلب التعديل (اختياري):') || '';
+  r.status = 'rejected'; r.rejectedBy = currentUser().name; r.rejectReason = reason; r.rejectedAt = new Date().toISOString();
+  save(); renderAll();
+}
+
+// صندوق طلبات تعديل الإنتاجية (للعميل ومدير المشاريع + عرض حالة لمدير المشروع)
+function renderEditRequests(){
+  const box = $('edit-requests-box'); if (!box) return;
+  const pend = pendingEditRequests();
+  const badge = $('tc-prod-req');
+  if (badge) { badge.textContent = pend.length; badge.style.display = (pend.length && canApproveEdits()) ? '' : 'none'; }
+  if (canApproveEdits()) {
+    if (!pend.length) { box.innerHTML = ''; return; }
+    box.innerHTML = '<div class="card orange-b" style="margin-bottom:14px"><div class="sc-header"><div class="sc-icon" style="background:var(--orange-dim,rgba(240,136,62,0.15))">🔔</div>' +
+      '<div><div style="font-weight:700">طلبات تعديل الإنتاجية بانتظار موافقتك (' + pend.length + ')</div>' +
+      '<div style="font-size:11px;color:var(--text2)">لن يُطبَّق أي تعديل من مدير المشروع إلا بموافقة العميل ومدير المشاريع معاً</div></div></div>' +
+      '<div style="margin-top:10px;display:flex;flex-direction:column;gap:8px">' +
+      pend.map(r => {
+        const cOk = r.clientApproved ? '<span style="color:var(--green)">✅ العميل</span>' : '<span style="color:var(--text3)">⏳ العميل</span>';
+        const mOk = r.pmoApproved ? '<span style="color:var(--green)">✅ مدير المشاريع</span>' : '<span style="color:var(--text3)">⏳ مدير المشاريع</span>';
+        const already = (state.me.role === 'client' && r.clientApproved) || (state.me.role === 'pmo' && r.pmoApproved);
+        return '<div class="sc-item" style="align-items:flex-start;flex-direction:column;gap:6px;border:1px solid var(--border);border-radius:8px;padding:10px">' +
+          '<div style="font-size:13px">' + esc(r.label||r.type) + '</div>' +
+          (r.reason ? '<div style="font-size:12px;color:var(--text2)">السبب: ' + esc(r.reason) + '</div>' : '') +
+          '<div style="font-size:11px;color:var(--text3)">مقدّم الطلب: ' + esc(r.by||'—') + ' · ' + esc((r.createdAt||'').slice(0,16).replace('T',' ')) + ' · ' + cOk + ' · ' + mOk + '</div>' +
+          '<div style="display:flex;gap:6px">' +
+          (already ? '<span class="pill green" style="font-size:11px">وافقت — بانتظار الطرف الآخر</span>'
+                   : '<button class="mini-btn green" onclick="approveEditRequest(' + r.id + ')">✅ موافقة</button>') +
+          '<button class="mini-btn red" onclick="rejectEditRequest(' + r.id + ')">✖ رفض</button>' +
+          '</div></div>';
+      }).join('') + '</div></div>';
+  } else if (editsGated()) {
+    // مدير المشروع يرى حالة طلباته
+    const mine = (proj().editRequests||[]).filter(r => r.byId === state.me.id).slice(-8).reverse();
+    const pendMine = mine.filter(r => r.status === 'pending');
+    if (!pendMine.length) { box.innerHTML = ''; return; }
+    box.innerHTML = '<div class="alert info" style="font-size:12px"><strong>طلبات تعديل بانتظار موافقة الإدارة (' + pendMine.length + ')</strong><br>' +
+      pendMine.map(r => '• ' + esc(r.label||r.type) + ' — ' + (r.clientApproved?'✅':'⏳') + ' العميل · ' + (r.pmoApproved?'✅':'⏳') + ' مدير المشاريع').join('<br>') + '</div>';
+  } else { box.innerHTML = ''; }
 }
 
 // ============================================================

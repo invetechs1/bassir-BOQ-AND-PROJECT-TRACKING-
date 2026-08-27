@@ -412,6 +412,54 @@ app.put('/api/projects/:id', auth, (req, res) => {
     }
   }
 
+  // رقابة تعديل الإنتاجية: مدير المشروع (pm) لا يعدّل/يحذف يومية قائمة ولا يغيّر الكمية المنفذة إلا عبر طلب مُعتمَد
+  if (req.user.role === 'pm') {
+    const storedLogs = new Map((stored.workLogs || []).map(l => [l.id, l]));
+    const incomingLogs = Array.isArray(data.workLogs) ? data.workLogs : [];
+    const incomingLogIds = new Set(incomingLogs.map(l => l.id));
+    // لا حذف ليوميات قائمة
+    for (const sid of storedLogs.keys()) {
+      if (!incomingLogIds.has(sid)) return res.status(403).json({ error: 'حذف يومية الإنتاجية يتطلب موافقة العميل ومدير المشاريع' });
+    }
+    // لا تعديل ليومية قائمة؛ وجمع الكميات المطبّقة من اليوميات الجديدة
+    const addByItem = {};
+    for (const l of incomingLogs) {
+      const s = storedLogs.get(l.id);
+      if (s) {
+        if ((s.qty || 0) !== (l.qty || 0) || (s.appliedQty || 0) !== (l.appliedQty || 0) ||
+            !!s.applied !== !!l.applied || s.itemId !== l.itemId || s.date !== l.date) {
+          return res.status(403).json({ error: 'تعديل يومية الإنتاجية يتطلب موافقة العميل ومدير المشاريع' });
+        }
+      } else if (l.applied) {
+        addByItem[l.itemId] = (addByItem[l.itemId] || 0) + (Number(l.appliedQty) || 0);
+      }
+    }
+    // الكمية المنفذة لكل بند: لا تتغير إلا بمقدار اليوميات الجديدة المطبّقة؛ البنود الجديدة تبدأ بصفر
+    for (const it of (data.boqItems || [])) {
+      const s = storedItems.get(it.id);
+      if (!s) {
+        if ((Number(it.executedQty) || 0) > 0.01) return res.status(403).json({ error: 'البند الجديد يبدأ بكمية منفذة صفر (البند ' + it.id + ')' });
+        continue;
+      }
+      const allowed = (Number(s.executedQty) || 0) + (addByItem[it.id] || 0);
+      if (Math.abs((Number(it.executedQty) || 0) - allowed) > 0.02) {
+        return res.status(403).json({ error: 'تعديل الكمية المنفذة يتطلب موافقة العميل ومدير المشاريع (البند ' + it.id + ')' });
+      }
+    }
+    // طلبات التعديل: يُضيف مدير المشروع طلبات جديدة فقط (بحالة pending وبدون اعتمادات) ولا يعدّل القائمة
+    const storedReqs = new Map((stored.editRequests || []).map(r => [r.id, r]));
+    for (const r of (Array.isArray(data.editRequests) ? data.editRequests : [])) {
+      const s = storedReqs.get(r.id);
+      if (s) {
+        if (s.status !== r.status || !!s.clientApproved !== !!r.clientApproved || !!s.pmoApproved !== !!r.pmoApproved) {
+          return res.status(403).json({ error: 'مدير المشروع لا يعتمد طلبات التعديل — الاعتماد للعميل ومدير المشاريع' });
+        }
+      } else if (r.status !== 'pending' || r.clientApproved || r.pmoApproved) {
+        return res.status(403).json({ error: 'طلب التعديل الجديد يبدأ بانتظار الموافقة' });
+      }
+    }
+  }
+
   const p = { ...data, managerUserId, companyId, id, version: stored.version + 1 };
   saveProject(p);
   res.json({ version: p.version });

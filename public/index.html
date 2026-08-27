@@ -633,7 +633,8 @@
       <div class="f-field"><label>الوحدة</label><input type="text" id="im-unit" placeholder="م²"></div>
       <div class="f-field"><label>الكمية لكل وحدة (اختياري)</label><input type="number" id="im-qtyv" min="0" step="0.01"></div>
       <div class="f-field"><label>الكمية الكلية *</label><input type="number" id="im-qty" min="0" step="0.01"></div>
-      <div class="f-field"><label>سعر الوحدة (ر.س) *</label><input type="number" id="im-rate" min="0" step="0.01"></div>
+      <div class="f-field"><label>سعر الوحدة (ر.س) *</label><input type="number" id="im-rate" min="0" step="0.01" oninput="imRateHint()">
+        <span style="font-size:11px;color:var(--amber)">⚠️ غير شامل ضريبة القيمة المضافة — تُضاف تلقائياً في المستخلص</span></div>
       <div class="f-field"><label>الكمية المنفذة</label><input type="number" id="im-exec" min="0" step="0.01"></div>
       <div class="f-field"><label>نطاق العمل</label>
         <select id="im-scope">
@@ -642,6 +643,10 @@
           <option value="client_supply">تركيب فقط - توريد من العميل</option>
         </select>
       </div>
+      <div class="f-field full"><label>بند رئيسي (تقسيم البند إلى بنود فرعية)</label>
+        <select id="im-parent" onchange="imRateHint()"><option value="">— بند مستقل (بدون تجميع)</option></select>
+        <span id="im-parent-hint" style="font-size:11px;color:var(--text2)"></span>
+        <span style="font-size:11px;color:var(--text3);display:block">مثال: بند «هدم وترحيل» بسعر 30 — أنشئ تحته «هدم» بـ20 و«ترحيل» بـ10. القيمة تُحسب من الفروع فقط لتفادي الازدواج.</span></div>
       <div class="f-field full"><label>يعتمد على البنود (لا يمكن البدء قبل اكتمالها)</label><div class="pred-list" id="im-preds"></div></div>
       <div class="f-field full">
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
@@ -1333,6 +1338,20 @@ setInterval(async () => {
 //  DERIVED / COMPUTED
 // ============================================================
 const getItem = id => proj().boqItems.find(i => i.id === id);
+// ---- تقسيم البند إلى بنود فرعية (مستوى واحد) ----
+const childrenOf = id => proj().boqItems.filter(i => i.parentId === id);
+const isParent = it => !!it && proj().boqItems.some(i => i.parentId === it.id);   // بند رئيسي = له بنود فرعية
+const isChild = it => !!it && !!it.parentId && !!getItem(it.parentId);            // بند فرعي
+const parentOf = it => (it && it.parentId) ? getItem(it.parentId) : null;
+// تجميع أرقام البند الرئيسي من فروعه (لتفادي الازدواج في الحساب)
+function groupAgg(parent){
+  const kids = childrenOf(parent.id);
+  const a = kids.reduce((s,k)=>s+amt(k),0);
+  const wpct = f => a>0 ? kids.reduce((s,k)=>s + f(k)*amt(k),0)/a : 0;
+  return { count:kids.length, amt:a, rateSum:kids.reduce((s,k)=>s+(k.unitRate||0),0),
+    execPct:wpct(itemPct), approvedPct:wpct(approvedPct), claimedPct:wpct(claimedPct),
+    net:kids.reduce((s,k)=>s+netClaimable(k),0), pending:kids.reduce((s,k)=>s+pendingApprovalValue(k),0) };
+}
 const amt = it => (it.totalQty||0) * (it.unitRate||0);
 const approvedOf = it => Math.min(it.executedQty||0, it.approvedQty!==undefined ? it.approvedQty : (it.executedQty||0));
 const itemPct = it => it.totalQty > 0 ? clamp(it.executedQty / it.totalQty, 0, 1) : 0;      // نسبة المنفذ ميدانياً
@@ -1397,7 +1416,9 @@ function rootCauseOf(it){ const c = chainOf(it); return c.length ? c[c.length-1]
 function totalsFor(p){
   const t = {contract:0, azoomScope:0, executed:0, approved:0, pendingApproval:0, claimed:0, net:0, locked:0, othersVal:0, musNet:0, collected:0, blockedCount:0, pendingApprovalCount:0};
   const getP = id => p.boqItems.find(i => i.id === id);
+  const isParentIn = it => p.boqItems.some(c => c.parentId === it.id);
   p.boqItems.forEach(it => {
+    if (isParentIn(it)) return; // البند الرئيسي مجرد تجميع — القيمة محسوبة في فروعه
     const a = amt(it);
     t.contract += a;
     if (it.scope === 'others') { t.othersVal += a; return; }
@@ -2041,50 +2062,88 @@ function setFilter(f){ currentFilter = f; renderItemFilters(); renderItemsTable(
 
 function renderItemsTable(){
   const search = ($('search-items').value || '').toLowerCase();
-  let list = proj().boqItems.filter(it => {
+  const matches = it => {
     if (search && !(it.desc.toLowerCase().includes(search) || it.id.toLowerCase().includes(search) || (it.divAr||'').includes(search))) return false;
     if (currentFilter === 'all') return true;
     if (currentFilter === 'claimable') return netClaimable(it) > 1;
     if (currentFilter === 'pending_approval') return pendingApprovalQty(it) > 0.001;
     return statusOf(it) === currentFilter;
+  };
+  // ترتيب هرمي: كل بند رئيسي يتبعه بنوده الفرعية
+  const all = proj().boqItems;
+  const topLevel = all.filter(it => !isChild(it));
+  const rows = []; // {it, kind:'header'|'child'|'normal'}
+  let shownLeaves = 0;
+  topLevel.forEach(t => {
+    if (isParent(t)) {
+      const kids = childrenOf(t.id);
+      const visKids = matches(t) ? kids : kids.filter(matches);
+      if (matches(t) || visKids.length) {
+        rows.push({it:t, kind:'header'});
+        visKids.forEach(k => { rows.push({it:k, kind:'child'}); shownLeaves++; });
+      }
+    } else if (matches(t)) {
+      rows.push({it:t, kind:'normal'}); shownLeaves++;
+    }
   });
 
   let sumAmt = 0, sumNet = 0;
-  $('items-tbody').innerHTML = list.map(it => {
-    const st = statusOf(it);
-    const net = netClaimable(it);
-    sumAmt += amt(it); sumNet += net;
+  $('items-tbody').innerHTML = rows.map(({it, kind}) => {
+    if (kind === 'header') {
+      const g = groupAgg(it);
+      sumAmt += g.amt; sumNet += g.net;
+      const stColor = g.execPct>=DONE?'green':g.execPct>0?'amber':'red';
+      return '<tr style="background:var(--panel2,rgba(127,127,127,0.06))">' +
+        '<td><span class="item-no">▸ ' + esc(it.id) + '</span><br><span style="font-size:10px;color:var(--text3)">' + esc(it.div) + '</span></td>' +
+        '<td><div class="desc-text" style="font-weight:700" data-tip="بند رئيسي مقسّم إلى ' + g.count + ' بند فرعي">📁 ' + esc(it.desc) + ' <span class="pill blue" style="font-size:9px">' + g.count + ' فرعي</span></div><span style="font-size:10px;color:var(--text3)">' + esc(it.divAr||'') + '</span></td>' +
+        '<td><span style="color:var(--text3)">—</span></td>' +
+        '<td class="amount muted">—</td>' +
+        '<td class="amount muted" data-tip="مجموع أسعار البنود الفرعية">' + fmtN(g.rateSum) + '</td>' +
+        '<td class="amount">' + fmtN(g.amt) + '</td>' +
+        '<td><span style="display:inline-flex;align-items:center;gap:5px"><span style="font-family:var(--mono);font-size:10px;color:var(--text2)">' + (g.execPct*100).toFixed(1) + '%</span><span class="prog-bar" style="width:56px"><span class="prog-fill ' + stColor + '" style="width:' + (g.execPct*100) + '%;display:block"></span></span></span></td>' +
+        '<td>' + (g.pending>1 ? '<span style="font-size:11px;color:var(--orange)">🕵 بانتظار ' + fmtN(g.pending) + '</span>' : '<span style="color:var(--text3)">—</span>') + '</td>' +
+        '<td class="amount" style="color:var(--teal)">' + (g.claimedPct*100).toFixed(0) + '%</td>' +
+        '<td class="amount ' + (g.net>1?'claimable':'muted') + '">' + (g.net>1?fmtN(g.net):'—') + '</td>' +
+        '<td><span class="pill blue" style="font-size:10px">بند رئيسي</span></td>' +
+        '<td>—</td>' +
+        '<td style="white-space:nowrap"><button class="mini-btn" onclick="openItemModal(\'' + esc(it.id) + '\')">✏️ تعديل</button> ' +
+        '<button class="mini-btn" onclick="addSubItem(\'' + esc(it.id) + '\')">➕ بند فرعي</button></td>' +
+        '</tr>';
+    }
+    const it2 = it, st = statusOf(it2), net = netClaimable(it2);
+    sumAmt += amt(it2); sumNet += net;
+    const indent = kind === 'child';
     let depHtml = '—';
-    if (it.blocker && it.blocker.active) depHtml = '<span class="blocker-box" data-tip="' + esc(it.blocker.note||'') + '">⛔ ' + esc(it.blocker.reason) + '</span>';
-    else if ((it.predecessors||[]).length) {
-      const preds = it.predecessors.map(pid => { const p = getItem(pid); return p ? esc(pid) + ' (' + (itemPct(p)*100).toFixed(0) + '%)' : esc(pid); }).join('، ');
+    if (it2.blocker && it2.blocker.active) depHtml = '<span class="blocker-box" data-tip="' + esc(it2.blocker.note||'') + '">⛔ ' + esc(it2.blocker.reason) + '</span>';
+    else if ((it2.predecessors||[]).length) {
+      const preds = it2.predecessors.map(pid => { const p = getItem(pid); return p ? esc(pid) + ' (' + (itemPct(p)*100).toFixed(0) + '%)' : esc(pid); }).join('، ');
       depHtml = '<span class="prereq-box" data-tip="لا يمكن البدء قبل اكتمال هذه البنود">⏭ ' + preds + '</span>';
     }
-    return '<tr>' +
-      '<td><span class="item-no">' + esc(it.id) + '</span><br><span style="font-size:10px;color:var(--text3)">' + esc(it.div) + '</span></td>' +
-      '<td><div class="desc-text" data-tip="' + esc(it.desc) + '">' + esc(it.desc) + '</div><span style="font-size:10px;color:var(--text3)">' + esc(it.divAr||'') + '</span></td>' +
-      '<td><span class="pill gray" style="font-size:10px">' + esc(it.unit) + '</span></td>' +
-      '<td class="amount muted">' + fmtQ(it.totalQty) + '</td>' +
-      '<td class="amount muted">' + fmtN(it.unitRate) + '</td>' +
-      '<td class="amount">' + fmtN(amt(it)) + '</td>' +
-      '<td>' + (it.scope==='others' ? '<span style="color:var(--text3)">—</span>' :
+    return '<tr' + (indent ? ' style="background:var(--panel2,rgba(127,127,127,0.02))"' : '') + '>' +
+      '<td' + (indent?' style="padding-inline-start:18px"':'') + '><span class="item-no">' + (indent?'<span style="color:var(--text3)">↳ </span>':'') + esc(it2.id) + '</span><br><span style="font-size:10px;color:var(--text3)">' + esc(it2.div) + '</span></td>' +
+      '<td><div class="desc-text" data-tip="' + esc(it2.desc) + '">' + esc(it2.desc) + '</div><span style="font-size:10px;color:var(--text3)">' + esc(it2.divAr||'') + '</span></td>' +
+      '<td><span class="pill gray" style="font-size:10px">' + esc(it2.unit) + '</span></td>' +
+      '<td class="amount muted">' + fmtQ(it2.totalQty) + '</td>' +
+      '<td class="amount muted">' + fmtN(it2.unitRate) + '</td>' +
+      '<td class="amount">' + fmtN(amt(it2)) + '</td>' +
+      '<td>' + (it2.scope==='others' ? '<span style="color:var(--text3)">—</span>' :
         '<span style="display:inline-flex;flex-direction:column;gap:3px;align-items:flex-start">' +
-        '<input type="number" class="qty-input" min="0" max="' + it.totalQty + '" step="any" value="' + (Math.round((it.executedQty||0)*100)/100) + '" onchange="setItemQty(\'' + esc(it.id) + '\', this.value)" data-tip="أدخل الكمية المنفذة (من أصل ' + fmtQ(it.totalQty) + ' ' + esc(it.unit) + ') — العميل يحاسب بالكميات">' +
-        '<span style="display:inline-flex;align-items:center;gap:5px"><span style="font-family:var(--mono);font-size:10px;color:var(--text2)">' + (itemPct(it)*100).toFixed(1) + '%</span><span class="prog-bar" style="width:56px"><span class="prog-fill ' + (itemPct(it)>=DONE?'green':itemPct(it)>0?'amber':'red') + '" style="width:' + (itemPct(it)*100) + '%;display:block"></span></span></span>' +
+        '<input type="number" class="qty-input" min="0" max="' + it2.totalQty + '" step="any" value="' + (Math.round((it2.executedQty||0)*100)/100) + '" onchange="setItemQty(\'' + esc(it2.id) + '\', this.value)" data-tip="أدخل الكمية المنفذة (من أصل ' + fmtQ(it2.totalQty) + ' ' + esc(it2.unit) + ') — العميل يحاسب بالكميات">' +
+        '<span style="display:inline-flex;align-items:center;gap:5px"><span style="font-family:var(--mono);font-size:10px;color:var(--text2)">' + (itemPct(it2)*100).toFixed(1) + '%</span><span class="prog-bar" style="width:56px"><span class="prog-fill ' + (itemPct(it2)>=DONE?'green':itemPct(it2)>0?'amber':'red') + '" style="width:' + (itemPct(it2)*100) + '%;display:block"></span></span></span>' +
         '</span>') + '</td>' +
-      // اعتماد الاستشاري: معتمد + بانتظار الاعتماد + زر الاعتماد مع استلام موقّع
-      '<td>' + approvalCell(it) + '</td>' +
-      '<td class="amount" style="color:var(--teal)">' + (claimedPct(it)*100).toFixed(0) + '%</td>' +
+      '<td>' + approvalCell(it2) + '</td>' +
+      '<td class="amount" style="color:var(--teal)">' + (claimedPct(it2)*100).toFixed(0) + '%</td>' +
       '<td class="amount ' + (net>1?'claimable':'muted') + '">' + (net>1?fmtN(net):'—') + '</td>' +
       '<td>' + statusPill(st) + '</td>' +
       '<td>' + depHtml + '</td>' +
-      '<td style="white-space:nowrap"><button class="mini-btn" onclick="openItemModal(\'' + esc(it.id) + '\')">✏️ تعديل</button>' +
-      (it.scope !== 'others' && (availQty(it) > 0.01 || pendingApprovalQty(it) > 0.01)
-        ? ' <button class="mini-btn green" onclick="itemToMustakhlas(\'' + esc(it.id) + '\')">📤 مستخلص</button>' : '') + '</td>' +
+      '<td style="white-space:nowrap"><button class="mini-btn" onclick="openItemModal(\'' + esc(it2.id) + '\')">✏️ تعديل</button>' +
+      (!indent ? ' <button class="mini-btn" onclick="addSubItem(\'' + esc(it2.id) + '\')">➕ بند فرعي</button>' : '') +
+      (it2.scope !== 'others' && (availQty(it2) > 0.01 || pendingApprovalQty(it2) > 0.01)
+        ? ' <button class="mini-btn green" onclick="itemToMustakhlas(\'' + esc(it2.id) + '\')">📤 مستخلص</button>' : '') + '</td>' +
       '</tr>';
   }).join('') || '<tr><td colspan="13"><div class="empty-state"><p>لا توجد بنود مطابقة</p></div></td></tr>';
 
-  $('items-tfoot').innerHTML = '<tr class="summary-row"><td colspan="5" style="text-align:right;color:var(--text2)">الإجمالي (' + list.length + ' بند)</td>' +
+  $('items-tfoot').innerHTML = '<tr class="summary-row"><td colspan="5" style="text-align:right;color:var(--text2)">الإجمالي (' + shownLeaves + ' بند)</td>' +
     '<td class="amount" style="color:var(--amber)">' + fmtN(sumAmt) + '</td><td colspan="3"></td>' +
     '<td class="amount claimable">' + fmtN(sumNet) + '</td><td colspan="3"></td></tr>';
 }
@@ -2295,18 +2354,30 @@ function deleteApproval(id, approvalId){
 //  ITEM MODAL (add / edit)
 // ============================================================
 let editingItemId = null;
-function openItemModal(id){
+function addSubItem(parentId){ openItemModal(null, {parentId}); }
+
+function openItemModal(id, opts){
+  opts = opts || {};
   editingItemId = id;
   const it = id ? getItem(id) : null;
-  $('item-modal-title').textContent = it ? 'تعديل بند ' + it.id : 'إضافة بند جديد';
+  const presetParent = it ? (it.parentId || '') : (opts.parentId || '');
+  const parItem = presetParent ? getItem(presetParent) : null;
+  $('item-modal-title').textContent = it ? 'تعديل بند ' + it.id : (parItem ? 'إضافة بند فرعي تحت ' + parItem.id : 'إضافة بند جديد');
   $('im-delete-btn').style.display = it ? '' : 'none';
-  $('im-id').value = it ? it.id : ''; $('im-id').disabled = !!it;
-  $('im-div').value = it ? it.div : 'DIV 9';
-  $('im-divAr').value = it ? (it.divAr||'') : '';
+  // قائمة البنود الرئيسية المؤهلة: أي بند ليس فرعياً بنفسه وليس هو البند الحالي وليس من فروع البند الحالي
+  const kidIds = it ? new Set(childrenOf(it.id).map(k=>k.id)) : new Set();
+  const parentOpts = proj().boqItems.filter(c => (!it || c.id !== it.id) && !isChild(c) && !kidIds.has(c.id));
+  $('im-parent').innerHTML = '<option value="">— بند مستقل (بدون تجميع)</option>' +
+    parentOpts.map(c => '<option value="' + esc(c.id) + '"' + (c.id===presetParent?' selected':'') + '>' + esc(c.id) + ' — ' + esc(c.desc.substring(0,40)) + '</option>').join('');
+  // اقتراح رقم للبند الفرعي الجديد
+  const suggestId = (!it && parItem) ? parItem.id + '.' + (childrenOf(parItem.id).length + 1) : '';
+  $('im-id').value = it ? it.id : suggestId; $('im-id').disabled = !!it;
+  $('im-div').value = it ? it.div : (parItem ? parItem.div : 'DIV 9');
+  $('im-divAr').value = it ? (it.divAr||'') : (parItem ? (parItem.divAr||'') : '');
   $('im-desc').value = it ? it.desc : '';
-  $('im-unit').value = it ? it.unit : 'م²';
-  $('im-qtyv').value = it ? it.qtyPerVilla : '';
-  $('im-qty').value = it ? it.totalQty : '';
+  $('im-unit').value = it ? it.unit : (parItem ? parItem.unit : 'م²');
+  $('im-qtyv').value = it ? it.qtyPerVilla : (parItem ? parItem.qtyPerVilla : '');
+  $('im-qty').value = it ? it.totalQty : (parItem ? parItem.totalQty : '');
   $('im-rate').value = it ? it.unitRate : '';
   $('im-exec').value = it ? it.executedQty : 0;
   $('im-scope').value = it ? it.scope : 'azoom';
@@ -2322,7 +2393,24 @@ function openItemModal(id){
   $('im-preds').innerHTML = proj().boqItems.filter(i => !it || i.id !== it.id).map(i =>
     '<label><input type="checkbox" value="' + esc(i.id) + '"' + (preds.includes(i.id)?' checked':'') + '> <span class="item-no">' + esc(i.id) + '</span> ' + esc(i.desc.substring(0,50)) + '</label>'
   ).join('');
+  imRateHint();
   $('item-modal').classList.add('open');
+}
+
+// تنويه مقارنة أسعار الفروع مع البند الرئيسي (إرشادي فقط)
+function imRateHint(){
+  const hint = $('im-parent-hint'); if (!hint) return;
+  const parId = $('im-parent').value;
+  if (!parId) { hint.textContent = ''; return; }
+  const par = getItem(parId); if (!par) { hint.textContent = ''; return; }
+  const myRate = Number($('im-rate').value) || 0;
+  const others = childrenOf(parId).filter(k => k.id !== editingItemId).reduce((s,k) => s + (k.unitRate||0), 0);
+  const sum = others + myRate;
+  const diff = Math.round((sum - (par.unitRate||0)) * 100) / 100;
+  const cmp = Math.abs(diff) < 0.01
+    ? '<span style="color:var(--green)">✓ مطابق لسعر البند الرئيسي</span>'
+    : (diff > 0 ? '<span style="color:var(--amber)">أعلى بـ ' + fmtN(diff) + '</span>' : '<span style="color:var(--amber)">أقل بـ ' + fmtN(-diff) + '</span>');
+  hint.innerHTML = 'مجموع أسعار الفروع = <strong>' + fmtN(sum) + '</strong> مقابل سعر البند الرئيسي <strong>' + fmtN(par.unitRate||0) + '</strong> — ' + cmp;
 }
 
 function saveItem(){
@@ -2331,13 +2419,21 @@ function saveItem(){
   if (!editingItemId && getItem(id)) { alert('رقم البند موجود مسبقاً'); return; }
   const preds = [...$('im-preds').querySelectorAll('input:checked')].map(c => c.value);
   if (preds.includes(id)) { alert('البند لا يمكن أن يعتمد على نفسه'); return; }
+  // البند الرئيسي (للتقسيم إلى بنود فرعية) — مستوى واحد فقط
+  let parentId = $('im-parent').value || null;
+  if (parentId) {
+    if (parentId === id) { alert('البند لا يمكن أن يكون فرعاً من نفسه'); return; }
+    const par = getItem(parentId);
+    if (par && par.parentId) { alert('لا يمكن التداخل أكثر من مستوى واحد — اختر بنداً رئيسياً ليس فرعياً بنفسه'); return; }
+    if (editingItemId && childrenOf(editingItemId).length) { alert('هذا البند رئيسي وله بنود فرعية — لا يمكن جعله فرعاً لبند آخر'); return; }
+  }
   const blkActive = $('im-blk').checked;
   const data = {
     id, div:$('im-div').value.trim()||'—', divAr:$('im-divAr').value.trim(), desc:$('im-desc').value.trim(),
     unit:$('im-unit').value.trim()||'—', qtyPerVilla:Number($('im-qtyv').value)||0,
     totalQty:Number($('im-qty').value)||0, unitRate:Number($('im-rate').value)||0,
     executedQty:clamp($('im-exec').value, 0, Number($('im-qty').value)||0),
-    scope:$('im-scope').value, predecessors:preds,
+    scope:$('im-scope').value, predecessors:preds, parentId,
     blocker: blkActive ? {active:true, reason:$('im-blk-reason').value.trim()||'عائق غير محدد', type:$('im-blk-type').value, note:$('im-blk-note').value.trim(), since:$('im-blk-since').value || todayStr(), expected:$('im-blk-expected').value || ''} : null,
     notes:$('im-notes').value.trim()
   };
@@ -2359,9 +2455,13 @@ function saveItem(){
 function deleteItem(){
   if (!editingItemId) return;
   const it = getItem(editingItemId);
+  const kids = childrenOf(editingItemId);
+  if (kids.length && !confirm('هذا بند رئيسي وله ' + kids.length + ' بند فرعي. سيصبح كل فرعٍ بنداً مستقلاً. متابعة؟')) return;
   if (it.claimedQty > 0 && !confirm('هذا البند مرفوع في مستخلصات سابقة. متأكد من حذفه؟')) return;
   if (!confirm('حذف البند ' + editingItemId + ' نهائياً؟')) return;
   proj().boqItems = proj().boqItems.filter(i => i.id !== editingItemId);
+  // فك ارتباط الفروع لتصبح بنوداً مستقلة
+  proj().boqItems.forEach(i => { if (i.parentId === editingItemId) i.parentId = null; });
   proj().boqItems.forEach(i => { i.predecessors = (i.predecessors||[]).filter(p => p !== editingItemId); });
   delete proj().villaProgress[editingItemId];
   closeModal('item-modal'); save(); renderAll();
@@ -2372,7 +2472,7 @@ function deleteItem(){
 // ============================================================
 let mbSel = {}; // itemId -> qty
 
-function claimableItems(){ return proj().boqItems.filter(i => i.scope !== 'others' && availQty(i) > 0.01); }
+function claimableItems(){ return proj().boqItems.filter(i => i.scope !== 'others' && !isParent(i) && availQty(i) > 0.01); }
 
 function renderBuilder(){
   if (!$('mb-date').value) $('mb-date').value = todayStr();
@@ -2446,6 +2546,7 @@ function renderMbTotals(){
   const c = mbCompute();
   $('mb-count').textContent = c.lines.length + ' بند';
   $('mb-totals').innerHTML =
+    '<div style="font-size:11px;color:var(--text2);margin-bottom:6px">💡 القيمة محسوبة بسعر الوحدة فقط (غير شامل الضريبة) — تُضاف ضريبة القيمة المضافة أدناه في المطالبة</div>' +
     '<div class="sc-item"><span class="sc-item-name">قيمة الأعمال الحالية</span><span class="sc-item-val" style="color:var(--green-bright)">' + money(c.gross) + '</span></div>' +
     '<div class="sc-item"><span class="sc-item-name">+ ضريبة ' + c.vatRate + '%</span><span class="sc-item-val">' + money(c.vat) + '</span></div>' +
     '<div class="sc-item"><span class="sc-item-name">− محتجز ضمان ' + c.retRate + '%</span><span class="sc-item-val" style="color:var(--red)">' + money(c.retention) + '</span></div>' +
@@ -3100,7 +3201,7 @@ function villaPct(itemId, villaNo){
 function renderVillaGrid(){
   let list = proj().villas;
   if (currentVillaFilter !== 'all') list = list.filter(v => v.sheet === currentVillaFilter);
-  const activeItems = proj().boqItems.filter(i => i.scope !== 'others');
+  const activeItems = proj().boqItems.filter(i => i.scope !== 'others' && !isParent(i));
   $('villa-grid').innerHTML = list.map(v => {
     let wSum = 0, wTot = 0, done = 0, prog = 0, blockedC = 0;
     activeItems.forEach(it => {
@@ -3128,7 +3229,7 @@ function showVillaDetail(no){
   $('villa-grid').style.display = 'none';
   $('villa-detail').style.display = 'block';
   $('villa-detail-title').textContent = 'تفاصيل ' + UL() + ' ' + no + ' - ' + v.sheet;
-  $('villa-detail-tbody').innerHTML = proj().boqItems.filter(i => i.scope !== 'others').map(it => {
+  $('villa-detail-tbody').innerHTML = proj().boqItems.filter(i => i.scope !== 'others' && !isParent(i)).map(it => {
     const p = villaPct(it.id, no);
     return '<tr>' +
       '<td><span class="item-no">' + esc(it.id) + '</span></td>' +
@@ -3334,14 +3435,18 @@ function wlItemFilter(typing){
   const q = ($('wl-item-search').value || '').toLowerCase().trim();
   // لو غيّر النص بعد اختيار بند، أفرغ الاختيار المخزّن
   if (typing) $('wl-item').value = '';
-  const items = proj().boqItems.filter(i => i.scope !== 'others');
+  const items = proj().boqItems.filter(i => i.scope !== 'others' && !isParent(i)); // الإنتاجية تُسجّل على البنود الفرعية لا الرئيسية
   const norm = s => String(s||'').toLowerCase();
   let list = q ? items.filter(i => norm(i.id).includes(q) || norm(i.desc).includes(q) || norm(i.divAr).includes(q) || norm(i.div).includes(q)) : items;
   wlItemActive = -1;
   const box = $('wl-item-list');
-  box.innerHTML = list.slice(0, 60).map((i, idx) =>
-    '<div class="combo-opt" data-idx="' + idx + '" data-id="' + esc(i.id) + '" onmousedown="wlItemPick(\'' + esc(i.id).replace(/'/g,"\\'") + '\')">' +
-    '<span class="co-code">' + esc(i.id) + '</span> ' + esc(i.desc) + ' <span class="co-unit">(' + esc(i.unit) + ')</span></div>').join('')
+  box.innerHTML = list.slice(0, 60).map((i, idx) => {
+    const par = parentOf(i);
+    return '<div class="combo-opt" data-idx="' + idx + '" data-id="' + esc(i.id) + '" onmousedown="wlItemPick(\'' + esc(i.id).replace(/'/g,"\\'") + '\')">' +
+      (par ? '<span style="color:var(--text3)">↳ </span>' : '') +
+      '<span class="co-code">' + esc(i.id) + '</span> ' + esc(i.desc) + ' <span class="co-unit">(' + esc(i.unit) + ')</span>' +
+      (par ? ' <span style="font-size:10px;color:var(--text3)">— ضمن: ' + esc(par.desc.substring(0,30)) + '</span>' : '') + '</div>';
+  }).join('')
     || '<div class="combo-opt" style="color:var(--text3)">لا يوجد بند مطابق</div>';
   if (list.length > 60) box.innerHTML += '<div class="combo-opt" style="color:var(--text3);font-size:11px">... ' + (list.length-60) + ' بند إضافي — أكمل البحث لتضييق النتائج</div>';
   box.style.display = 'block';

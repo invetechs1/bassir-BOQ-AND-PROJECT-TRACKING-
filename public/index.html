@@ -542,15 +542,14 @@
               <div class="photo-strip" id="wl-photo-strip"></div>
             </div>
             <div class="f-field full">
-              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--text2)">
-                <input type="checkbox" id="wl-apply" checked style="width:auto"> <span data-i18n="إضافة الكمية تلقائياً إلى نسبة إنجاز البند (والوحدة إذا محددة)">إضافة الكمية تلقائياً إلى نسبة إنجاز البند (والوحدة إذا محددة)</span>
-              </label>
+              <div class="alert info" style="font-size:12px;margin:0">✅ <span data-i18n="الكمية تُضاف تلقائياً إلى نسبة إنجاز البند (والوحدة إذا محددة) وتظهر للاستشاري ضمن «بانتظار الاعتماد».">الكمية تُضاف تلقائياً إلى نسبة إنجاز البند (والوحدة إذا محددة) وتظهر للاستشاري ضمن «بانتظار الاعتماد».</span></div>
             </div>
           </div>
           <button class="btn btn-blue" style="margin-top:10px" onclick="addWorkLog()" data-i18n="+ إضافة اليومية">+ إضافة اليومية</button>
         </div>
 
         <div class="section-header">
+          <div id="edit-requests-box"></div>
           <div class="section-title"><span class="dot" style="background:var(--blue)"></span> <span data-i18n="سجل اليوميات">سجل اليوميات</span></div>
           <button class="mini-btn" onclick="exportLogsCSV()">⬇ Excel</button>
         </div>
@@ -1140,7 +1139,14 @@ const ERR_CODES = {
   seed_file_missing: {ar:'ملف البيانات الأولية غير موجود', en:'The seed data file is missing'},
   integration_edit_denied: {ar:'تعديل التكامل صلاحية أدمن النظام أو عميل الشركة', en:'Editing the integration is restricted to the system admin or the company\'s client'},
   integration_url_required: {ar:'لم يتم إدخال رابط API', en:'No API URL was entered'},
-  integration_test_failed: {ar:'تعذر الاتصال بالتكامل', en:'Could not connect to the integration'}
+  integration_test_failed: {ar:'تعذر الاتصال بالتكامل', en:'Could not connect to the integration'},
+  pm_item_delete_needs_owner: {ar:'حذف بند من جدول الكميات يتطلب موافقة مالك الشركة', en:'Deleting a BoQ item requires the company owner\'s approval'},
+  pm_log_delete_needs_owner: {ar:'حذف يومية الإنتاجية يتطلب موافقة مالك الشركة', en:'Deleting a work log requires the company owner\'s approval'},
+  pm_log_edit_needs_owner: {ar:'تعديل يومية الإنتاجية يتطلب موافقة مالك الشركة', en:'Editing a work log requires the company owner\'s approval'},
+  pm_qty_edit_needs_owner: {ar:'تعديل الكمية المنفذة يتطلب موافقة مالك الشركة', en:'Editing the executed quantity requires the company owner\'s approval'},
+  pm_new_item_qty_zero: {ar:'البند الجديد يبدأ بكمية منفذة صفر', en:'A new item starts with zero executed quantity'},
+  pm_cannot_approve_requests: {ar:'مدير المشروع لا يعتمد طلبات التعديل — الاعتماد لمالك الشركة', en:'A project manager cannot approve edit requests — approval belongs to the company owner'},
+  edit_request_must_start_pending: {ar:'طلب التعديل الجديد يبدأ بانتظار الموافقة', en:'A new edit request must start as pending'}
 };
 function ERR_MSG(code, extra){
   const m = ERR_CODES[code];
@@ -1313,6 +1319,10 @@ function currentUser(){
 const isAdmin = () => state.me.role === 'admin';
 const isManagerial = () => ['admin','client'].includes(state.me.role); // من يدير المشاريع والمستخدمين
 const isOwner = isManagerial; // (توافقية مع الكود القديم)
+// رقابة تعديل الإنتاجية: مدير المشروع (pm) تعديلاته/حذفه لليوميات والكميات والبنود
+// تحتاج موافقة مالك الشركة (العميل) وحده — أو أدمن النظام
+const editsGated = () => state.me.role === 'pm';
+const canApproveEdits = () => ['admin','client'].includes(state.me.role);
 const accessibleProjects = () => state.projects; // الخادم يعيد المشاريع المصرح بها فقط
 const userName = id => { const u = state.users.find(x => x.id === id); return u ? u.name : null; };
 const companyName = id => { const c = (state.companies||[]).find(x => x.id === id); return c ? c.name : null; };
@@ -1644,7 +1654,7 @@ function totals(){ return totalsFor(proj()); }
 function renderAll(){
   renderHeader(); renderProjects(); renderKPIs(); renderCharts(); renderAlerts(); renderClaimSummary();
   renderItemFilters(); renderItemsTable(); renderPlan(); renderBuilder(); renderHistory();
-  renderBlocked(); renderVillaFilters(); renderVillaGrid(); renderProd(); updateTabCounts();
+  renderBlocked(); renderVillaFilters(); renderVillaGrid(); renderProd(); renderEditRequests(); updateTabCounts();
 }
 
 function renderHeader(){
@@ -2485,7 +2495,9 @@ function renderItemsTable(){
       '<td>' + depHtml + '</td>' +
       '<td style="white-space:nowrap"><button class="mini-btn" onclick="openItemModal(\'' + esc(it.id) + '\')">✏️ ' + T('تعديل') + '</button>' +
       (it.scope !== 'others' && (availQty(it) > 0.01 || pendingApprovalQty(it) > 0.01)
-        ? ' <button class="mini-btn green" onclick="itemToMustakhlas(\'' + esc(it.id) + '\')">📤 ' + T('مستخلص') + '</button>' : '') + '</td>' +
+        ? ' <button class="mini-btn green" onclick="itemToMustakhlas(\'' + esc(it.id) + '\')">📤 ' + T('مستخلص') + '</button>' : '') +
+      (it.scope !== 'others' && it.totalQty > 0 && (it.executedQty||0) < it.totalQty - 0.001
+        ? ' <button class="mini-btn" style="border-color:rgba(240,136,62,0.5);color:var(--orange)" onclick="markItemDone(\'' + esc(it.id) + '\')" data-tip="' + T('تسجيل البند كمنجز 100% — يُسجَّل الباقي يوميةً باسمك ويتحول البند لانتظار اعتماد الاستشاري') + '">✔ ' + T('منجز') + '</button>' : '') + '</td>' +
       '</tr>';
   }).join('') || '<tr><td colspan="13"><div class="empty-state"><p>' + T('لا توجد بنود مطابقة') + '</p></div></td></tr>';
 
@@ -2524,7 +2536,15 @@ const pdbCanApproveQty = () => ['admin','client','pmo','pm'].includes(state.me.r
 function setItemQty(id, val){
   const it = getItem(id);
   if (!it) return;
-  it.executedQty = Math.round(clamp(val, 0, it.totalQty) * 100) / 100;
+  const newVal = Math.round(clamp(val, 0, it.totalQty) * 100) / 100;
+  // مدير المشروع: تعديل الكمية المنفذة يتطلب موافقة مالك الشركة (لا يُطبَّق مباشرة)
+  if (editsGated() && Math.abs(newVal - (it.executedQty||0)) > 0.001) {
+    submitEditRequest({ type:'qty_edit', itemId:id, fromQty:(it.executedQty||0), newQty:newVal,
+      label: T('تعديل الكمية المنفذة للبند') + ' ' + id + ': ' + fmtQ(it.executedQty||0) + ' ← ' + fmtQ(newVal) + ' ' + (it.unit||'') });
+    renderAll();
+    return;
+  }
+  it.executedQty = newVal;
   // المعتمد لا يتجاوز المنفذ (لو خفّض المنفذ تحت المعتمد يُقلّص المعتمد)
   if ((it.approvedQty||0) > it.executedQty) it.approvedQty = it.executedQty;
   if (it.executedQty < it.claimedQty) {
@@ -2826,11 +2846,22 @@ function saveItem(){
   };
   if (editingItemId) {
     const it = getItem(editingItemId);
+    // مدير المشروع: تغيير الكمية المنفذة من النموذج يتحول لطلب موافقة
+    let qtyReq = null;
+    if (editsGated() && Math.abs((data.executedQty||0) - (it.executedQty||0)) > 0.001) {
+      qtyReq = { type:'qty_edit', itemId:it.id, fromQty:(it.executedQty||0), newQty:data.executedQty,
+        label: T('تعديل الكمية المنفذة للبند') + ' ' + it.id + ': ' + fmtQ(it.executedQty||0) + ' ← ' + fmtQ(data.executedQty) + ' ' + (it.unit||'') };
+      data.executedQty = it.executedQty; // إبقاء القيمة حتى موافقة مالك الشركة
+    }
     data.claimedQty = it.claimedQty;
     data.approvedQty = Math.min(it.approvedQty||0, data.executedQty);
     data.approvals = it.approvals || [];
     Object.assign(it, data);
+    closeModal('item-modal');
+    if (qtyReq) submitEditRequest(qtyReq); else { save(); renderAll(); }
+    return;
   } else {
+    if (editsGated()) data.executedQty = 0; // البنود الجديدة من مدير المشروع تبدأ بكمية منفذة صفر
     data.claimedQty = 0;
     data.approvedQty = 0; // الكميات الجديدة تبدأ بانتظار اعتماد الاستشاري
     data.approvals = [];
@@ -2842,12 +2873,44 @@ function saveItem(){
 function deleteItem(){
   if (!editingItemId) return;
   const it = getItem(editingItemId);
+  // مدير المشروع: حذف البند يتطلب موافقة مالك الشركة — لا حذف مباشر
+  if (editsGated()) {
+    closeModal('item-modal');
+    submitEditRequest({ type:'item_delete', itemId: editingItemId,
+      label: T('حذف البند') + ' ' + esc(editingItemId) + ' — ' + esc((it.desc||'').substring(0,60)) });
+    return;
+  }
   if (it.claimedQty > 0 && !confirm(T('هذا البند مرفوع في مستخلصات سابقة. متأكد من حذفه؟'))) return;
   if (!confirm(T('حذف البند') + ' ' + editingItemId + T(' نهائياً؟'))) return;
-  proj().boqItems = proj().boqItems.filter(i => i.id !== editingItemId);
-  proj().boqItems.forEach(i => { i.predecessors = (i.predecessors||[]).filter(p => p !== editingItemId); });
-  delete proj().villaProgress[editingItemId];
+  applyItemDelete(editingItemId);
   closeModal('item-modal'); save(); renderAll();
+}
+
+// تنفيذ حذف البند فعلياً (مباشرة من الإدارة أو بعد اعتماد مالك الشركة للطلب)
+function applyItemDelete(itemId){
+  proj().boqItems = proj().boqItems.filter(i => i.id !== itemId);
+  proj().boqItems.forEach(i => { i.predecessors = (i.predecessors||[]).filter(p => p !== itemId); });
+  delete proj().villaProgress[itemId];
+  proj().workLogs = (proj().workLogs||[]).filter(l => l.itemId !== itemId);
+}
+
+// «منجز»: المهندس يعلن اكتمال البند — الباقي يُسجَّل يوميةً موثقة باسمه،
+// فيصل المنفذ 100% ويتحول البند تلقائياً إلى «بانتظار اعتماد الاستشاري»
+function markItemDone(id){
+  const it = getItem(id);
+  if (!it || it.totalQty <= 0) return;
+  const remaining = Math.round(Math.max(0, it.totalQty - (it.executedQty||0)) * 100) / 100;
+  if (remaining < 0.001) { alert(T('البند منفذ 100% أصلاً.')); return; }
+  if (!confirm(T('تسجيل البند كمنجز 100%؟') + '\n' + T('سيُسجَّل الباقي') + ' (' + fmtQ(remaining) + ' ' + it.unit + ') ' + T('يوميةً باسمك، ويتحول البند إلى بانتظار اعتماد الاستشاري.'))) return;
+  it.executedQty = it.totalQty;
+  proj().workLogs.push({
+    id: nextSeq(), date: todayStr(), crew: T('إعلان إنجاز البند'),
+    itemId: id, villaNo: '', qty: remaining, workers: 0,
+    note: T('تسجيل البند كمنجز 100% (الكمية المتبقية)'), applied: true, appliedQty: remaining,
+    by: currentUser().name, photos: []
+  });
+  save(); renderAll();
+  alert(T('✔ البند الآن منفذ 100% وبانتظار اعتماد الاستشاري (اعتماد + استلام موقّع).'));
 }
 Object.assign(I18N_EN, {
   'تعديل بند':'Edit item',
@@ -3950,7 +4013,7 @@ function renderProd(){
         : '<span style="color:var(--text3);font-size:11px">—</span>') + '</td>' +
       '<td>' + (l.applied ? '<span class="pill green" style="font-size:10px">' + T('نعم') + '</span>' : '<span class="pill gray" style="font-size:10px">' + T('لا') + '</span>') + '</td>' +
       '<td style="font-size:11px;color:var(--text3)">' + esc(l.by || '—') + '</td>' +
-      '<td><button class="mini-btn red" onclick="deleteWorkLog(' + l.id + ')">🗑</button></td>' +
+      '<td><button class="mini-btn red" onclick="deleteWorkLog(' + l.id + ')" data-tip="' + (editsGated() ? T('طلب حذف (يحتاج موافقة مالك الشركة)') : T('حذف')) + '">🗑</button></td>' +
       '</tr>';
   }).join('') || '<tr><td colspan="11"><div class="empty-state"><p>' + T('لا توجد يوميات مسجلة') + '</p></div></td></tr>';
 
@@ -4150,7 +4213,7 @@ async function addWorkLog(){
     catch(e) { alert(T('تعذر رفع الصور:') + ' ' + e.message); return; }
   }
   const villaNo = $('wl-villa').value;
-  const apply = $('wl-apply').checked;
+  const apply = true; // الكمية تنعكس تلقائياً على نسبة إنجاز البند — بلا خيار تعطيل
   let appliedQty = 0;
   if (apply) {
     appliedQty = Math.min(qty, Math.max(0, it.totalQty - it.executedQty));
@@ -4175,8 +4238,23 @@ async function addWorkLog(){
 function deleteWorkLog(id){
   const l = proj().workLogs.find(x => x.id === id);
   if (!l) return;
+  // مدير المشروع: الحذف يتطلب موافقة مالك الشركة — لا حذف مباشر
+  if (editsGated()) {
+    const it = getItem(l.itemId);
+    submitEditRequest({ type:'log_delete', logId:id,
+      label: T('حذف يومية') + ' ' + esc(l.date) + ' · ' + esc(l.crew) + ' · ' + fmtQ(l.qty) + ' ' + (it?it.unit:'') + ' (' + T('بند') + ' ' + esc(l.itemId) + ')' });
+    return;
+  }
   if (!confirm(T('حذف اليومية؟') + (l.applied ? ' ' + T('سيتم خصم الكمية من نسبة إنجاز البند.') : '') + ((l.photos||[]).length ? ' ' + T('وستحذف صورها.') : ''))) return;
-  (l.photos||[]).forEach(ph => {
+  applyLogDelete(id, true);
+  save(); renderAll();
+}
+
+// تنفيذ حذف اليومية فعلياً (مباشرة من الإدارة أو بعد اعتماد مالك الشركة للطلب)
+function applyLogDelete(id, deletePhotos){
+  const l = proj().workLogs.find(x => x.id === id);
+  if (!l) return;
+  if (deletePhotos) (l.photos||[]).forEach(ph => {
     const file = String(ph.url).split('/').pop();
     API.req('DELETE', '/api/projects/' + proj().id + '/photos/' + file).catch(() => {});
   });
@@ -4192,8 +4270,100 @@ function deleteWorkLog(id){
     }
   }
   proj().workLogs = proj().workLogs.filter(x => x.id !== id);
+}
+
+// ============================================================
+//  طلبات تعديل الإنتاجية (رقابة على مدير المشروع)
+// ============================================================
+// يُنشئ مدير المشروع طلباً؛ لا يُطبَّق إلا بموافقة مالك الشركة (العميل) أو أدمن النظام
+function submitEditRequest(payload){
+  const p = proj();
+  p.editRequests = p.editRequests || [];
+  p.editRequests.push(Object.assign({
+    id: nextSeq(), status:'pending',
+    by: currentUser().name, byId: state.me.id, createdAt: new Date().toISOString()
+  }, payload));
+  save(); renderAll();
+  alert(T('📨 تم إرسال الطلب إلى مالك الشركة — لن يُطبَّق أي تغيير أو حذف إلا بعد موافقته.'));
+}
+
+const pendingEditRequests = () => (proj().editRequests||[]).filter(r => r.status === 'pending');
+
+function approveEditRequest(id){
+  if (!canApproveEdits()) { alert(T('اعتماد التعديلات والحذف صلاحية مالك الشركة فقط')); return; }
+  const r = (proj().editRequests||[]).find(x => x.id === id);
+  if (!r || r.status !== 'pending') return;
+  r.approvedBy = currentUser().name + (state.me.role === 'admin' ? ' (' + T('أدمن') + ')' : '');
+  if (r.type === 'log_delete') applyLogDelete(r.logId, true);
+  else if (r.type === 'item_delete') applyItemDelete(r.itemId);
+  else if (r.type === 'qty_edit') {
+    const it = getItem(r.itemId);
+    if (it) {
+      it.executedQty = Math.round(clamp(r.newQty, 0, it.totalQty) * 100) / 100;
+      if ((it.approvedQty||0) > it.executedQty) it.approvedQty = it.executedQty;
+    }
+  }
+  r.status = 'applied'; r.appliedAt = new Date().toISOString();
   save(); renderAll();
 }
+
+function rejectEditRequest(id){
+  if (!canApproveEdits()) { alert(T('رفض التعديلات صلاحية مالك الشركة فقط')); return; }
+  const r = (proj().editRequests||[]).find(x => x.id === id);
+  if (!r || r.status !== 'pending') return;
+  const reason = prompt(T('سبب رفض الطلب (اختياري):')) || '';
+  r.status = 'rejected'; r.rejectedBy = currentUser().name; r.rejectReason = reason; r.rejectedAt = new Date().toISOString();
+  save(); renderAll();
+}
+
+// صندوق طلبات التعديل: مالك الشركة يقبل فيُطبَّق أو يرفض؛ ومدير المشروع يرى حالة طلباته
+function renderEditRequests(){
+  const box = $('edit-requests-box'); if (!box) return;
+  const pend = pendingEditRequests();
+  if (canApproveEdits()) {
+    if (!pend.length) { box.innerHTML = ''; return; }
+    box.innerHTML = '<div class="card" style="margin-bottom:14px;border:1px solid rgba(240,136,62,0.5)">' +
+      '<div style="font-weight:700">🔔 ' + T('طلبات تعديل الإنتاجية بانتظار موافقتك') + ' (' + pend.length + ')</div>' +
+      '<div style="font-size:11px;color:var(--text2);margin-top:2px">' + T('لن يُطبَّق أي تعديل أو حذف من مدير المشروع إلا بموافقتك — الموافقة تُطبِّق فوراً والرفض يُبقي كل شيء كما هو') + '</div>' +
+      '<div style="margin-top:10px;display:flex;flex-direction:column;gap:8px">' +
+      pend.map(r =>
+        '<div style="border:1px solid var(--border);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:6px">' +
+        '<div style="font-size:13px">' + esc(r.label||r.type) + '</div>' +
+        (r.reason ? '<div style="font-size:12px;color:var(--text2)">' + T('السبب') + ': ' + esc(r.reason) + '</div>' : '') +
+        '<div style="font-size:11px;color:var(--text3)">' + T('مقدّم الطلب') + ': ' + esc(r.by||'—') + ' · ' + esc((r.createdAt||'').slice(0,16).replace('T',' ')) + '</div>' +
+        '<div style="display:flex;gap:6px">' +
+        '<button class="mini-btn green" onclick="approveEditRequest(' + r.id + ')">✅ ' + T('موافقة وتطبيق') + '</button>' +
+        '<button class="mini-btn red" onclick="rejectEditRequest(' + r.id + ')">✖ ' + T('رفض') + '</button>' +
+        '</div></div>').join('') + '</div></div>';
+  } else if (editsGated()) {
+    const pendMine = (proj().editRequests||[]).filter(r => r.byId === state.me.id && r.status === 'pending');
+    if (!pendMine.length) { box.innerHTML = ''; return; }
+    box.innerHTML = '<div class="alert info" style="font-size:12px"><strong>' + T('طلبات بانتظار موافقة مالك الشركة') + ' (' + pendMine.length + ')</strong><br>' +
+      pendMine.map(r => '• ' + esc(r.label||r.type)).join('<br>') + '</div>';
+  } else { box.innerHTML = ''; }
+}
+
+Object.assign(I18N_EN, {
+  'حذف يومية':'Delete work log', 'بند':'item',
+  '📨 تم إرسال الطلب إلى مالك الشركة — لن يُطبَّق أي تغيير أو حذف إلا بعد موافقته.':'📨 Request sent to the company owner — no change or deletion is applied until they approve it.',
+  'اعتماد التعديلات والحذف صلاحية مالك الشركة فقط':'Approving edits and deletions is restricted to the company owner',
+  'رفض التعديلات صلاحية مالك الشركة فقط':'Rejecting edits is restricted to the company owner',
+  'سبب رفض الطلب (اختياري):':'Reason for rejection (optional):',
+  'طلبات تعديل الإنتاجية بانتظار موافقتك':'Productivity edit requests awaiting your approval',
+  'لن يُطبَّق أي تعديل أو حذف من مدير المشروع إلا بموافقتك — الموافقة تُطبِّق فوراً والرفض يُبقي كل شيء كما هو':'No edit or deletion from the project manager is applied without your approval — approving applies it immediately, rejecting keeps everything as is',
+  'السبب':'Reason', 'مقدّم الطلب':'Requested by', 'موافقة وتطبيق':'Approve & apply', 'رفض':'Reject',
+  'طلبات بانتظار موافقة مالك الشركة':'Requests awaiting the company owner\'s approval',
+  'الكمية تُضاف تلقائياً إلى نسبة إنجاز البند (والوحدة إذا محددة) وتظهر للاستشاري ضمن «بانتظار الاعتماد».':'The quantity is automatically added to the item\'s completion percentage (and the unit, if specified) and appears to the consultant as "pending approval".',
+  'طلب حذف (يحتاج موافقة مالك الشركة)':'Deletion request (requires the company owner\'s approval)',
+  'تسجيل البند كمنجز 100% — يُسجَّل الباقي يوميةً باسمك ويتحول البند لانتظار اعتماد الاستشاري':'Mark the item 100% done — the remainder is logged in your name and the item moves to pending consultant approval',
+  'منجز':'Done', 'إعلان إنجاز البند':'Item completion declaration',
+  'تسجيل البند كمنجز 100%؟':'Mark this item as 100% done?',
+  'سيُسجَّل الباقي':'The remainder will be logged',
+  'يوميةً باسمك، ويتحول البند إلى بانتظار اعتماد الاستشاري.':'as a work log in your name, and the item moves to pending consultant approval.',
+  'البند منفذ 100% أصلاً.':'The item is already 100% executed.',
+  'تسجيل البند كمنجز 100% (الكمية المتبقية)':'Item marked 100% done (remaining quantity)',
+  '✔ البند الآن منفذ 100% وبانتظار اعتماد الاستشاري (اعتماد + استلام موقّع).':'✔ The item is now 100% executed and pending consultant approval (approval + signed receipt).'
+});
 
 // ============================================================
 //  PRICE DATABASE & OFFERS (قاعدة بيانات الأسعار والعروض)

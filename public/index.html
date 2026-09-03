@@ -2523,12 +2523,12 @@ function renderItemsTable(){
       '<td class="amount ' + (net>1?'claimable':'muted') + '">' + (net>1?fmtN(net):'—') + '</td>' +
       '<td>' + statusPill(st) + '</td>' +
       '<td>' + depHtml + '</td>' +
-      '<td style="white-space:nowrap"><button class="mini-btn" onclick="openItemModal(\'' + esc(it.id) + '\')">✏️ ' + T('تعديل') + '</button>' +
+      '<td style="white-space:nowrap"><button class="mini-btn" onclick="openItemModal(\'' + esc(it.id) + '\')" data-tip="' + T('تعديل') + '">✏️</button>' +
       (it.scope !== 'others' && (availQty(it) > 0.01 || pendingApprovalQty(it) > 0.01)
-        ? ' <button class="mini-btn green" onclick="itemToMustakhlas(\'' + esc(it.id) + '\')">📤 ' + T('مستخلص') + '</button>' : '') +
+        ? ' <button class="mini-btn green" onclick="itemToMustakhlas(\'' + esc(it.id) + '\')" data-tip="' + T('مستخلص') + '">📤</button>' : '') +
       (it.scope !== 'others' && it.totalQty > 0 && (it.executedQty||0) < it.totalQty - 0.001
-        ? ' <button class="mini-btn" style="border-color:rgba(240,136,62,0.5);color:var(--orange)" onclick="markItemDone(\'' + esc(it.id) + '\')" data-tip="' + T('تسجيل البند كمنجز 100% — يُسجَّل الباقي يوميةً باسمك ويتحول البند لانتظار اعتماد الاستشاري') + '">✔ ' + T('منجز') + '</button>' : '') +
-      (canSplitItem(it) ? ' <button class="mini-btn" onclick="openSplitItemModal(\'' + esc(it.id) + '\')" data-tip="' + T('تقسيم البند إلى بندين أو أكثر بنفس الكمية الكلية') + '">✂ ' + T('تقسيم') + '</button>' : '') + '</td>' +
+        ? ' <button class="mini-btn" style="border-color:rgba(240,136,62,0.5);color:var(--orange)" onclick="markItemDone(\'' + esc(it.id) + '\')" data-tip="' + T('تسجيل البند كمنجز 100% — يُسجَّل الباقي يوميةً باسمك ويتحول البند لانتظار اعتماد الاستشاري') + '">✔</button>' : '') +
+      (canSplitItem(it) ? ' <button class="mini-btn" onclick="openSplitItemModal(\'' + esc(it.id) + '\')" data-tip="' + T('تقسيم البند إلى بندين أو أكثر بنفس الكمية الكلية') + '">✂</button>' : '') + '</td>' +
       '</tr>';
   }).join('') || '<tr><td colspan="13"><div class="empty-state"><p>' + T('لا توجد بنود مطابقة') + '</p></div></td></tr>';
 

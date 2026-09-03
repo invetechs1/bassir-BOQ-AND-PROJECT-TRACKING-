@@ -377,7 +377,7 @@
   <!-- ===================== BOQ ITEMS ===================== -->
   <div class="tab-panel" id="tab-items">
     <div class="filter-bar">
-      <input type="text" class="search-box" placeholder="🔍 بحث بالوصف أو رقم البند..." data-i18n-ph="🔍 بحث بالوصف أو رقم البند..." id="search-items" oninput="renderItemsTable()">
+      <input type="text" class="search-box" placeholder="🔍 بحث بالوصف أو رقم البند..." data-i18n-ph="🔍 بحث بالوصف أو رقم البند..." id="search-items" oninput="searchItemsChanged()">
       <span id="items-filters"></span>
       <button class="btn btn-ghost" style="margin-right:auto" onclick="exportItemsCSV()" data-i18n="⬇ Excel">⬇ Excel</button>
       <button class="btn btn-blue" id="btn-ar-audit" onclick="buildApprovalAudit()" data-i18n="🔍 تدقيق استلامات الاستشاري">🔍 تدقيق استلامات الاستشاري</button>
@@ -2476,11 +2476,18 @@ Object.assign(I18N_EN, {
   '⚪ خارج النطاق':'⚪ Out of scope'
 });
 function setFilter(f){ currentFilter = f; renderItemFilters(); renderItemsTable(); }
+// كتابة نص بحث تُبطل الفلتر الحالي بصرياً أيضاً (البحث يشمل كل الحالات) حتى لا يبدو الفلتر المميّز مضلّلاً
+function searchItemsChanged(){
+  if ($('search-items').value.trim() && currentFilter !== 'all') { currentFilter = 'all'; renderItemFilters(); }
+  renderItemsTable();
+}
 
 function renderItemsTable(){
   const search = ($('search-items').value || '').toLowerCase();
+  // البحث يبحث في كل البنود بغض النظر عن الفلتر المفعّل — وإلا تختفي بنود موجودة فعلاً لمجرد أن الفلتر الحالي لا يشملها
   let list = proj().boqItems.filter(it => {
-    if (search && !(it.desc.toLowerCase().includes(search) || it.id.toLowerCase().includes(search) || (it.divAr||'').includes(search))) return false;
+    const matchesSearch = it.desc.toLowerCase().includes(search) || it.id.toLowerCase().includes(search) || (it.divAr||'').includes(search);
+    if (search) return matchesSearch;
     if (currentFilter === 'all') return true;
     if (currentFilter === 'claimable') return netClaimable(it) > 1;
     if (currentFilter === 'pending_approval') return pendingApprovalQty(it) > 0.001;

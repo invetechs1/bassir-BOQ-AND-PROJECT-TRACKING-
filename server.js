@@ -430,7 +430,8 @@ app.put('/api/projects/:id', auth, (req, res) => {
       const st = storedLogs.get(l.id);
       if (st) {
         if ((st.qty || 0) !== (l.qty || 0) || (st.appliedQty || 0) !== (l.appliedQty || 0) ||
-            !!st.applied !== !!l.applied || st.itemId !== l.itemId || st.date !== l.date) {
+            !!st.applied !== !!l.applied || st.itemId !== l.itemId || st.date !== l.date ||
+            (st.executor || 'own') !== (l.executor || 'own')) {
           return res.status(403).json({ error: 'pm_log_edit_needs_owner' });
         }
       } else if (l.applied) {

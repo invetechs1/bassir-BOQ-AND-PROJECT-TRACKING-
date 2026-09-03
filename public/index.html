@@ -670,6 +670,27 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="split-item-modal">
+  <div class="modal">
+    <div class="modal-title"><span data-i18n="✂ تقسيم البند إلى بنود فرعية">✂ تقسيم البند إلى بنود فرعية</span><span class="modal-close" onclick="closeModal('split-item-modal')">✕</span></div>
+    <div id="split-item-info" class="alert info" style="font-size:12px"></div>
+    <div class="f-field" style="margin-top:10px;max-width:160px">
+      <label data-i18n="عدد الأجزاء">عدد الأجزاء</label>
+      <select id="split-count" onchange="renderSplitRows()">
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+      </select>
+    </div>
+    <div id="split-rows" style="display:flex;flex-direction:column;gap:10px;margin-top:12px"></div>
+    <div id="split-remaining" style="font-size:12px;margin-top:10px;font-weight:700"></div>
+    <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
+      <button class="btn btn-green" id="split-confirm-btn" onclick="confirmSplitItem()" data-i18n="✂ تقسيم البند">✂ تقسيم البند</button>
+      <button class="btn btn-ghost" onclick="closeModal('split-item-modal')" data-i18n="إلغاء">إلغاء</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="settings-modal">
   <div class="modal">
     <div class="modal-title"><span data-i18n="⚙ إعدادات المشروع الحالي">⚙ إعدادات المشروع الحالي</span><span class="modal-close" onclick="closeModal('settings-modal')">✕</span></div>
@@ -2499,7 +2520,8 @@ function renderItemsTable(){
       (it.scope !== 'others' && (availQty(it) > 0.01 || pendingApprovalQty(it) > 0.01)
         ? ' <button class="mini-btn green" onclick="itemToMustakhlas(\'' + esc(it.id) + '\')">📤 ' + T('مستخلص') + '</button>' : '') +
       (it.scope !== 'others' && it.totalQty > 0 && (it.executedQty||0) < it.totalQty - 0.001
-        ? ' <button class="mini-btn" style="border-color:rgba(240,136,62,0.5);color:var(--orange)" onclick="markItemDone(\'' + esc(it.id) + '\')" data-tip="' + T('تسجيل البند كمنجز 100% — يُسجَّل الباقي يوميةً باسمك ويتحول البند لانتظار اعتماد الاستشاري') + '">✔ ' + T('منجز') + '</button>' : '') + '</td>' +
+        ? ' <button class="mini-btn" style="border-color:rgba(240,136,62,0.5);color:var(--orange)" onclick="markItemDone(\'' + esc(it.id) + '\')" data-tip="' + T('تسجيل البند كمنجز 100% — يُسجَّل الباقي يوميةً باسمك ويتحول البند لانتظار اعتماد الاستشاري') + '">✔ ' + T('منجز') + '</button>' : '') +
+      (canSplitItem(it) ? ' <button class="mini-btn" onclick="openSplitItemModal(\'' + esc(it.id) + '\')" data-tip="' + T('تقسيم البند إلى بندين أو أكثر بنفس الكمية الكلية') + '">✂ ' + T('تقسيم') + '</button>' : '') + '</td>' +
       '</tr>';
   }).join('') || '<tr><td colspan="13"><div class="empty-state"><p>' + T('لا توجد بنود مطابقة') + '</p></div></td></tr>';
 
@@ -2909,6 +2931,146 @@ function applyItemDelete(itemId){
   delete proj().villaProgress[itemId];
   proj().workLogs = (proj().workLogs||[]).filter(l => l.itemId !== itemId);
 }
+
+// ============================================================
+//  تقسيم البند إلى بنود فرعية (2-4) بنفس الكمية الكلية والقيمة
+// ============================================================
+// مسموح فقط للبند "النظيف": بدون تنفيذ أو اعتماد أو رفع سابق — لتفادي
+// تعقيد إعادة توزيع الاستلامات والمستخلصات التاريخية على البنود الفرعية
+function canSplitItem(it){
+  return it.scope !== 'others' && (it.executedQty||0) < 0.001 && (it.approvedQty||0) < 0.001 &&
+    (it.claimedQty||0) < 0.001 && !(it.approvals||[]).length;
+}
+
+let splitItemId = null;
+function openSplitItemModal(id){
+  const it = getItem(id);
+  if (!it) return;
+  if (!canSplitItem(it)) { alert(T('لا يمكن تقسيم بند له تنفيذ أو اعتماد أو رفع سابق — قسّمه قبل بدء العمل عليه.')); return; }
+  splitItemId = id;
+  $('split-item-info').innerHTML = '<strong>' + esc(it.id) + '</strong> — ' + esc(it.desc) + '<br>' +
+    T('الكمية الكلية:') + ' ' + fmtQ(it.totalQty) + ' ' + esc(it.unit) + ' · ' + T('سعر الوحدة:') + ' ' + fmtN(it.unitRate);
+  $('split-count').value = '2';
+  renderSplitRows();
+  $('split-item-modal').classList.add('open');
+}
+
+// يبني صفوف الإدخال حسب عدد الأجزاء، بتوزيع افتراضي متساوٍ (والباقي من التقريب يذهب للجزء الأخير حتى يكون المجموع مطابقاً تماماً)
+function renderSplitRows(){
+  const it = getItem(splitItemId);
+  if (!it) return;
+  const n = Number($('split-count').value) || 2;
+  const base = Math.floor((it.totalQty / n) * 100) / 100;
+  const rows = [];
+  let used = 0;
+  for (let i = 0; i < n; i++) {
+    const qty = i < n - 1 ? base : Math.round((it.totalQty - used) * 100) / 100;
+    used = Math.round((used + qty) * 100) / 100;
+    rows.push({ id: it.id + '-' + String.fromCharCode(65 + i), desc: it.desc + ' (' + (i+1) + '/' + n + ')', qty });
+  }
+  $('split-rows').innerHTML = rows.map((r, i) =>
+    '<div class="f-grid" style="grid-template-columns:1fr 2fr 1fr;gap:8px;align-items:end;border:1px solid var(--border);border-radius:8px;padding:8px">' +
+    '<div class="f-field"><label>' + T('رقم البند') + ' ' + (i+1) + '</label><input type="text" id="split-id-' + i + '" value="' + esc(r.id) + '"></div>' +
+    '<div class="f-field"><label>' + T('الوصف') + '</label><input type="text" id="split-desc-' + i + '" value="' + esc(r.desc) + '"></div>' +
+    '<div class="f-field"><label>' + T('الكمية') + '</label><input type="number" id="split-qty-' + i + '" min="0" step="0.01" value="' + r.qty + '" oninput="splitRowsRecalc()"></div>' +
+    '</div>'
+  ).join('');
+  splitRowsRecalc();
+}
+
+function splitRowsRecalc(){
+  const it = getItem(splitItemId);
+  if (!it) return;
+  const n = Number($('split-count').value) || 2;
+  let sum = 0;
+  for (let i = 0; i < n; i++) sum += Number($('split-qty-' + i).value) || 0;
+  sum = Math.round(sum * 100) / 100;
+  const remaining = Math.round((it.totalQty - sum) * 100) / 100;
+  const box = $('split-remaining');
+  if (Math.abs(remaining) < 0.01) {
+    box.style.color = 'var(--green-bright)';
+    box.textContent = '✅ ' + T('المجموع مطابق للكمية الكلية') + ' (' + fmtQ(it.totalQty) + ' ' + it.unit + ')';
+    $('split-confirm-btn').disabled = false;
+  } else {
+    box.style.color = 'var(--red)';
+    box.textContent = (remaining > 0 ? '⚠️ ' + T('متبقٍ') : '⚠️ ' + T('زيادة')) + ' ' + fmtQ(Math.abs(remaining)) + ' ' + it.unit +
+      ' — ' + T('يجب أن يساوي مجموع الأجزاء الكمية الكلية للبند الأصلي.');
+    $('split-confirm-btn').disabled = true;
+  }
+}
+
+function confirmSplitItem(){
+  const it = getItem(splitItemId);
+  if (!it || !canSplitItem(it)) { closeModal('split-item-modal'); return; }
+  const n = Number($('split-count').value) || 2;
+  const children = [];
+  const seenIds = new Set();
+  for (let i = 0; i < n; i++) {
+    const id = $('split-id-' + i).value.trim();
+    const desc = $('split-desc-' + i).value.trim();
+    const qty = Number($('split-qty-' + i).value) || 0;
+    if (!id || !desc) { alert(T('أكمل رقم ووصف كل جزء')); return; }
+    if (qty <= 0) { alert(T('كمية كل جزء يجب أن تكون أكبر من صفر')); return; }
+    if (seenIds.has(id) || (getItem(id) && id !== it.id)) { alert(T('رقم البند') + ' "' + id + '" ' + T('مكرر أو مستخدم في بند آخر')); return; }
+    seenIds.add(id);
+    children.push({ id, desc, totalQty: Math.round(qty*100)/100 });
+  }
+  const sum = Math.round(children.reduce((s,c) => s + c.totalQty, 0) * 100) / 100;
+  if (Math.abs(sum - it.totalQty) > 0.01) { alert(T('مجموع كميات الأجزاء يجب أن يساوي الكمية الكلية للبند الأصلي بالضبط')); return; }
+
+  closeModal('split-item-modal');
+  // مدير المشروع: تقسيم البند يتطلب موافقة مالك الشركة (مثل حذف البند تماماً)
+  if (editsGated()) {
+    submitEditRequest({ type:'item_split', parentId: it.id, children,
+      label: T('تقسيم البند') + ' ' + esc(it.id) + ' — ' + esc(it.desc) + ' ' + T('إلى') + ' ' + n + ' ' + T('أجزاء') + ': ' + children.map(c=>esc(c.id)).join('، ') });
+  } else {
+    applyItemSplit(it.id, children);
+    save(); renderAll();
+    alert('✅ ' + T('تم تقسيم البند إلى') + ' ' + n + ' ' + T('أجزاء.'));
+  }
+}
+
+// تنفيذ التقسيم فعلياً (مباشرة من الإدارة أو بعد اعتماد مالك الشركة للطلب):
+// يحذف البند الأصلي وينشئ بنوداً فرعية جديدة ترث خصائصه (القسم، الوحدة، سعر الوحدة، النطاق، العائق، البنود التابعة)
+function applyItemSplit(parentId, children){
+  const parent = getItem(parentId);
+  if (!parent) return;
+  const inherited = { div: parent.div, divAr: parent.divAr, unit: parent.unit, unitRate: parent.unitRate,
+    scope: parent.scope, predecessors: [...(parent.predecessors||[])],
+    blocker: parent.blocker ? Object.assign({}, parent.blocker) : null, notes: parent.notes || '' };
+  applyItemDelete(parentId);
+  children.forEach(c => {
+    proj().boqItems.push(Object.assign({
+      id: c.id, desc: c.desc, totalQty: c.totalQty, qtyPerVilla: 0,
+      executedQty: 0, approvedQty: 0, approvals: [], claimedQty: 0,
+      splitFrom: parentId, splitAt: new Date().toISOString()
+    }, inherited));
+  });
+}
+Object.assign(I18N_EN, {
+  '✂ تقسيم البند إلى بنود فرعية':'✂ Split item into sub-items',
+  'عدد الأجزاء':'Number of parts',
+  '✂ تقسيم البند':'✂ Split item',
+  'تقسيم البند إلى بندين أو أكثر بنفس الكمية الكلية':'Split this item into two or more parts with the same total quantity',
+  'تقسيم':'Split',
+  'لا يمكن تقسيم بند له تنفيذ أو اعتماد أو رفع سابق — قسّمه قبل بدء العمل عليه.':'An item with existing execution, approval, or claims cannot be split — split it before any work is logged against it.',
+  'الكمية الكلية:':'Total quantity:',
+  'سعر الوحدة:':'Unit price:',
+  'المجموع مطابق للكمية الكلية':'The total matches the item\'s total quantity',
+  'متبقٍ':'Remaining',
+  'زيادة':'Excess',
+  'يجب أن يساوي مجموع الأجزاء الكمية الكلية للبند الأصلي.':'The parts must add up exactly to the original item\'s total quantity.',
+  'أكمل رقم ووصف كل جزء':'Fill in the number and description for every part',
+  'كمية كل جزء يجب أن تكون أكبر من صفر':'Each part\'s quantity must be greater than zero',
+  'مكرر أو مستخدم في بند آخر':'is duplicated or already used by another item',
+  'مجموع كميات الأجزاء يجب أن يساوي الكمية الكلية للبند الأصلي بالضبط':'The parts\' quantities must add up exactly to the original item\'s total quantity',
+  'تقسيم البند':'Split item',
+  'إلى':'into',
+  'أجزاء':'parts',
+  'تم تقسيم البند إلى':'The item was split into',
+  'أجزاء.':'parts.',
+  'تعذّر تطبيق التقسيم: البند الأصلي لم يعد بحالته وقت تقديم الطلب (رُفع عليه تنفيذ أو اعتماد). راجع الطلب مع مدير المشروع.':'Could not apply the split: the original item is no longer in the state it was when the request was submitted (execution or approval was logged against it). Discuss the request with the project manager.'
+});
 
 // «منجز»: المهندس يعلن اكتمال البند — الباقي يُسجَّل يوميةً موثقة باسمه،
 // فيصل المنفذ 100% ويتحول البند تلقائياً إلى «بانتظار اعتماد الاستشاري»
@@ -4343,6 +4505,15 @@ function approveEditRequest(id){
       it.executedQty = Math.min(it.executedQty||0, it.totalQty);
       if ((it.approvedQty||0) > it.executedQty) it.approvedQty = it.executedQty;
     }
+  }
+  else if (r.type === 'item_split') {
+    const it = getItem(r.parentId);
+    // إعادة تحقق عند الاعتماد: قد يكون البند تغيّر منذ تقديم الطلب (تنفيذ/اعتماد/رفع جديد)
+    if (!it || !canSplitItem(it)) {
+      alert(T('تعذّر تطبيق التقسيم: البند الأصلي لم يعد بحالته وقت تقديم الطلب (رُفع عليه تنفيذ أو اعتماد). راجع الطلب مع مدير المشروع.'));
+      return;
+    }
+    applyItemSplit(r.parentId, r.children);
   }
   r.status = 'applied'; r.appliedAt = new Date().toISOString();
   save(); renderAll();

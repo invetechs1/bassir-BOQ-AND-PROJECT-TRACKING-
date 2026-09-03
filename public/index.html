@@ -635,6 +635,7 @@
       <div class="f-field"><label data-i18n="الكمية الكلية *">الكمية الكلية *</label><input type="number" id="im-qty" min="0" step="0.01"></div>
       <div class="f-field"><label data-i18n="سعر الوحدة (ر.س) *">سعر الوحدة (ر.س) *</label><input type="number" id="im-rate" min="0" step="0.01"></div>
       <div class="f-field"><label data-i18n="الكمية المنفذة">الكمية المنفذة</label><input type="number" id="im-exec" min="0" step="0.01"></div>
+      <div class="f-field full" id="im-group-note" style="display:none"><div class="alert info" style="font-size:12px;margin:0">ℹ️ <span data-i18n="هذا بند مقسَّم — الكمية والسعر والمنفذ تُحسب تلقائياً من مجموع أجزائه ولا تُعدَّل هنا مباشرة. عدّل كل جزء من صفه الخاص في الجدول.">هذا بند مقسَّم — الكمية والسعر والمنفذ تُحسب تلقائياً من مجموع أجزائه ولا تُعدَّل هنا مباشرة. عدّل كل جزء من صفه الخاص في الجدول.</span></div></div>
       <div class="f-field"><label data-i18n="نطاق العمل">نطاق العمل</label>
         <select id="im-scope">
           <option value="azoom" data-i18n="ضمن نطاق أعمالنا">ضمن نطاق أعمالنا</option>
@@ -1167,6 +1168,7 @@ const ERR_CODES = {
   pm_qty_edit_needs_owner: {ar:'تعديل الكمية المنفذة يتطلب موافقة مالك الشركة', en:'Editing the executed quantity requires the company owner\'s approval'},
   pm_rate_edit_needs_owner: {ar:'تعديل سعر الوحدة يتطلب موافقة مالك الشركة', en:'Editing the unit price requires the company owner\'s approval'},
   pm_totalqty_edit_needs_owner: {ar:'تعديل الكمية الكلية للبند يتطلب موافقة مالك الشركة', en:'Editing the item\'s total quantity requires the company owner\'s approval'},
+  pm_item_split_needs_owner: {ar:'تقسيم البند إلى بنود فرعية يتطلب موافقة مالك الشركة', en:'Splitting an item into sub-items requires the company owner\'s approval'},
   pm_new_item_qty_zero: {ar:'البند الجديد يبدأ بكمية منفذة صفر', en:'A new item starts with zero executed quantity'},
   pm_cannot_approve_requests: {ar:'مدير المشروع لا يعتمد طلبات التعديل — الاعتماد لمالك الشركة', en:'A project manager cannot approve edit requests — approval belongs to the company owner'},
   edit_request_must_start_pending: {ar:'طلب التعديل الجديد يبدأ بانتظار الموافقة', en:'A new edit request must start as pending'}
@@ -1573,17 +1575,27 @@ setInterval(async () => {
 //  DERIVED / COMPUTED
 // ============================================================
 const getItem = id => proj().boqItems.find(i => i.id === id);
-const amt = it => (it.totalQty||0) * (it.unitRate||0);
-const approvedOf = it => Math.min(it.executedQty||0, it.approvedQty!==undefined ? it.approvedQty : (it.executedQty||0));
-const itemPct = it => it.totalQty > 0 ? clamp(it.executedQty / it.totalQty, 0, 1) : 0;      // نسبة المنفذ ميدانياً
-const approvedPct = it => it.totalQty > 0 ? clamp(approvedOf(it) / it.totalQty, 0, 1) : 0;    // نسبة المعتمد من الاستشاري
-const claimedPct = it => it.totalQty > 0 ? clamp(it.claimedQty / it.totalQty, 0, 1) : 0;
-const pendingApprovalQty = it => it.scope === 'others' ? 0 : Math.max(0, (it.executedQty||0) - approvedOf(it)); // منفذ بانتظار اعتماد الاستشاري
-const pendingApprovalValue = it => pendingApprovalQty(it) * (it.unitRate||0);
+// تقسيم البند: البند "الأب" الذي له بنود فرعية (parentId يشير إليه) تصبح كل قيمه المحسوبة
+// (الكمية/القيمة/النسب/المتاح للمطالبة) مجموعاً تلقائياً من البنود الفرعية، لا من حقوله المجمَّدة وقت التقسيم
+const childrenOf = id => proj().boqItems.filter(c => c.parentId === id);
+const isGroupParent = id => childrenOf(id).length > 0;
+const groupTotalQty = it => { const k = childrenOf(it.id); return k.length ? k.reduce((s,x)=>s+(x.totalQty||0),0) : (it.totalQty||0); };
+const groupExecutedQty = it => { const k = childrenOf(it.id); return k.length ? k.reduce((s,x)=>s+(x.executedQty||0),0) : (it.executedQty||0); };
+const groupClaimedQty = it => { const k = childrenOf(it.id); return k.length ? k.reduce((s,x)=>s+(x.claimedQty||0),0) : (it.claimedQty||0); };
+const amt = it => { const k = childrenOf(it.id); return k.length ? k.reduce((s,x)=>s+amt(x),0) : (it.totalQty||0) * (it.unitRate||0); };
+const approvedOf = it => { const k = childrenOf(it.id); return k.length ? k.reduce((s,x)=>s+approvedOf(x),0) : Math.min(it.executedQty||0, it.approvedQty!==undefined ? it.approvedQty : (it.executedQty||0)); };
+const itemPct = it => { const tot = groupTotalQty(it); return tot > 0 ? clamp(groupExecutedQty(it) / tot, 0, 1) : 0; };      // نسبة المنفذ ميدانياً
+const approvedPct = it => { const tot = groupTotalQty(it); return tot > 0 ? clamp(approvedOf(it) / tot, 0, 1) : 0; };    // نسبة المعتمد من الاستشاري
+const claimedPct = it => { const tot = groupTotalQty(it); return tot > 0 ? clamp(groupClaimedQty(it) / tot, 0, 1) : 0; };
+const pendingApprovalQty = it => { if (it.scope === 'others') return 0; const k = childrenOf(it.id); return k.length ? k.reduce((s,x)=>s+pendingApprovalQty(x),0) : Math.max(0, (it.executedQty||0) - approvedOf(it)); }; // منفذ بانتظار اعتماد الاستشاري
+const pendingApprovalValue = it => { const k = childrenOf(it.id); return k.length ? k.reduce((s,x)=>s+pendingApprovalValue(x),0) : pendingApprovalQty(it) * (it.unitRate||0); };
 // المتاح للمستخلص = المعتمد من الاستشاري ناقص المرفوع سابقاً (وليس المنفذ)
-const availQty = it => Math.max(0, approvedOf(it) - (it.claimedQty||0));
-const netClaimable = it => it.scope === 'others' ? 0 : availQty(it) * it.unitRate;
-const remainingValue = it => it.scope === 'others' ? 0 : (1 - itemPct(it)) * amt(it);
+const availQty = it => { const k = childrenOf(it.id); return k.length ? k.reduce((s,x)=>s+availQty(x),0) : Math.max(0, approvedOf(it) - (it.claimedQty||0)); };
+const netClaimable = it => { if (it.scope === 'others') return 0; const k = childrenOf(it.id); return k.length ? k.reduce((s,x)=>s+netClaimable(x),0) : availQty(it) * it.unitRate; };
+const remainingValue = it => { if (it.scope === 'others') return 0; const k = childrenOf(it.id); return k.length ? k.reduce((s,x)=>s+remainingValue(x),0) : (1 - itemPct(it)) * amt(it); };
+// قائمة "قابلة للتصرف": تستبعد بنود المجموعات الأب (رقمها التجميعي مكرر من أبنائها) —
+// تُستخدم في كل مكان يُبنى منه قرار/إجراء فعلي (مطالبة، إنتاجية، تقارير) حتى لا يظهر البند الأب كعنصر مستقل بجانب أبنائه
+const actionableItems = () => proj().boqItems.filter(i => !isGroupParent(i.id));
 const DONE = 0.995;
 
 const STATUS_META = {
@@ -1644,27 +1656,39 @@ function chainOf(it){
 }
 function rootCauseOf(it){ const c = chainOf(it); return c.length ? c[c.length-1] : null; }
 
+// ملاحظة: totalsFor تُستدعى أحياناً لمشروع غير المشروع الحالي المعروض (شبكة المشاريع) — لذا
+// تُستخدم هنا نسخة محلية من دوال التجميع (نطاقها p تحديداً) بدل الدوال العامة (التي تفترض proj() الحالي)
 function totalsFor(p){
   const t = {contract:0, azoomScope:0, executed:0, approved:0, pendingApproval:0, claimed:0, net:0, locked:0, othersVal:0, musNet:0, collected:0, blockedCount:0, pendingApprovalCount:0};
   const getP = id => p.boqItems.find(i => i.id === id);
-  p.boqItems.forEach(it => {
-    const a = amt(it);
+  const kidsOf = id => p.boqItems.filter(i => i.parentId === id);
+  const lApprovedOf = it => { const k = kidsOf(it.id); return k.length ? k.reduce((s,x)=>s+lApprovedOf(x),0) : Math.min(it.executedQty||0, it.approvedQty!==undefined?it.approvedQty:(it.executedQty||0)); };
+  const lGroupTotalQty = it => { const k = kidsOf(it.id); return k.length ? k.reduce((s,x)=>s+(x.totalQty||0),0) : (it.totalQty||0); };
+  const lGroupExecQty = it => { const k = kidsOf(it.id); return k.length ? k.reduce((s,x)=>s+(x.executedQty||0),0) : (it.executedQty||0); };
+  const lItemPct = it => { const tot = lGroupTotalQty(it); return tot>0 ? clamp(lGroupExecQty(it)/tot,0,1) : 0; };
+  p.boqItems.filter(it => !kidsOf(it.id).length).forEach(it => {
+    const a = (it.totalQty||0) * (it.unitRate||0);
     t.contract += a;
     if (it.scope === 'others') { t.othersVal += a; return; }
     t.azoomScope += a;
-    t.executed += itemPct(it) * a;
-    t.approved += approvedPct(it) * a;
-    t.pendingApproval += pendingApprovalValue(it);
-    if (pendingApprovalQty(it) > 0.001) t.pendingApprovalCount++;
-    t.claimed += claimedPct(it) * a;
-    t.net += netClaimable(it); // المعتمد من الاستشاري ناقص المرفوع
-    if (it.blocker && it.blocker.active && itemPct(it) < DONE) t.blockedCount++;
-    let locked = it.blocker && it.blocker.active && itemPct(it) < DONE;
-    if (!locked && itemPct(it) === 0) {
+    const pct = lItemPct(it), apprOf = lApprovedOf(it);
+    const apprPct = it.totalQty>0 ? clamp(apprOf/it.totalQty,0,1) : 0;
+    const claimPct = it.totalQty>0 ? clamp((it.claimedQty||0)/it.totalQty,0,1) : 0;
+    const pendQty = it.scope==='others' ? 0 : Math.max(0,(it.executedQty||0)-apprOf);
+    const availQ = Math.max(0, apprOf-(it.claimedQty||0));
+    t.executed += pct * a;
+    t.approved += apprPct * a;
+    t.pendingApproval += pendQty * (it.unitRate||0);
+    if (pendQty > 0.001) t.pendingApprovalCount++;
+    t.claimed += claimPct * a;
+    t.net += it.scope==='others' ? 0 : availQ * it.unitRate;
+    if (it.blocker && it.blocker.active && pct < DONE) t.blockedCount++;
+    let locked = it.blocker && it.blocker.active && pct < DONE;
+    if (!locked && pct === 0) {
       if (it.scope === 'client_supply') locked = true;
-      else locked = (it.predecessors||[]).map(getP).filter(Boolean).some(x => itemPct(x) < DONE);
+      else locked = (it.predecessors||[]).map(getP).filter(Boolean).some(x => lItemPct(x) < DONE);
     }
-    if (locked) t.locked += (1 - itemPct(it)) * a;
+    if (locked) t.locked += (1 - pct) * a;
   });
   p.mustakhlasat.forEach(m => { t.musNet += m.net; t.collected += paidAmount(m); });
   return t;
@@ -2145,10 +2169,10 @@ Object.assign(I18N_EN, {
 
 function updateTabCounts(){
   $('tc-projects').textContent = accessibleProjects().length;
-  $('tc-items').textContent = proj().boqItems.length;
-  $('tc-plan').textContent = proj().boqItems.filter(i => netClaimable(i) > 1).length;
+  $('tc-items').textContent = actionableItems().length;
+  $('tc-plan').textContent = actionableItems().filter(i => netClaimable(i) > 1).length;
   $('tc-invoice').textContent = proj().mustakhlasat.length;
-  $('tc-blocked').textContent = proj().boqItems.filter(i => ['blocked','waiting'].includes(statusOf(i))).length;
+  $('tc-blocked').textContent = actionableItems().filter(i => ['blocked','waiting'].includes(statusOf(i))).length;
   $('tc-villas').textContent = proj().villas.length;
   $('tc-prod').textContent = proj().workLogs.length;
 }
@@ -2179,7 +2203,7 @@ function renderKPIs(){
     {label:'قيمة نطاق أعمالنا', value:money(t.azoomScope), color:'amber', sub:T('من إجمالي البنود') + ' ' + money(t.contract)},
     {label:'قيمة الأعمال المنفذة', value:money(t.executed), color:'blue', sub:T('نسبة الإنجاز') + ' ' + progressPct.toFixed(1) + '%'},
     {label:'🕵 بانتظار اعتماد الاستشاري', value:money(t.pendingApproval), color:'orange', sub:t.pendingApprovalCount + ' ' + T('بند - منفذ يحتاج اعتماد + استلام')},
-    {label:'✅ جاهز للرفع الآن (صافي)', value:money(t.net), color:'green', sub:proj().boqItems.filter(i=>netClaimable(i)>1).length + ' ' + T('بند - المعتمد ناقص المرفوع')},
+    {label:'✅ جاهز للرفع الآن (صافي)', value:money(t.net), color:'green', sub:actionableItems().filter(i=>netClaimable(i)>1).length + ' ' + T('بند - المعتمد ناقص المرفوع')},
     {label:'مرفوع بمستخلصات سابقة', value:money(t.claimed), color:'teal', sub:proj().mustakhlasat.length + ' ' + T('مستخلص')},
     {label:'محجوب بعوائق وتسلسل', value:money(t.locked), color:'red', sub:T('قيمة الأعمال غير الممكنة حالياً')},
     {label:'💵 محصل نقداً', value:money(t.collected), color:'teal', sub:T('متبقي تحصيله') + ' ' + money(Math.max(0, t.musNet - t.collected)) + ' ' + T('من المستخلصات')},
@@ -2213,7 +2237,7 @@ Object.assign(I18N_EN, {
 function renderCharts(){
   // by division: executed vs total (azoom scope)
   const divs = {};
-  proj().boqItems.forEach(it => {
+  actionableItems().forEach(it => {
     if (it.scope === 'others') return;
     if (!divs[it.div]) divs[it.div] = {name:it.divAr, total:0, exec:0, net:0};
     divs[it.div].total += amt(it);
@@ -2231,7 +2255,7 @@ function renderCharts(){
 
   // by status
   const stG = {};
-  proj().boqItems.forEach(it => {
+  actionableItems().forEach(it => {
     const st = statusOf(it);
     if (!stG[st]) stG[st] = 0;
     stG[st] += amt(it);
@@ -2249,7 +2273,7 @@ function renderCharts(){
 
 function renderAlerts(){
   const t = totals();
-  const blockedItems = proj().boqItems.filter(i => statusOf(i) === 'blocked');
+  const blockedItems = actionableItems().filter(i => statusOf(i) === 'blocked');
   const reasons = [...new Set(blockedItems.map(i => i.blocker.reason))];
   let html = '';
   // تنبيه المراجع: مستخلصات بانتظار الاعتماد
@@ -2264,7 +2288,7 @@ function renderAlerts(){
   if (t.pendingApprovalCount) html += '<div class="alert warning">🕵 <div><strong>' + t.pendingApprovalCount + ' ' + T('بند بانتظار اعتماد الاستشاري') + '</strong> (' + money(t.pendingApproval) + ') — ' + T('منفذ ميدانياً ولا يمكن رفعه بمستخلص قبل اعتماد الاستشاري وإرفاق الاستلام الموقّع.') + ' <a href="#" onclick="switchTab(\'items\');setFilter(\'pending_approval\');return false" style="color:var(--amber);font-weight:700">' + T('اعرض البنود ←') + '</a></div></div>';
   if (t.net > 1) html += '<div class="alert success">✅ <div>' + T('عندك') + ' <strong>' + money(t.net) + '</strong> ' + T('معتمدة وجاهزة للرفع الآن — روح لتبويب المستخلصات.') + '</div></div>';
   if (blockedItems.length) html += '<div class="alert danger">⛔ <div><strong>' + blockedItems.length + ' ' + T('بند') + '</strong> ' + T('موقوف بعوائق خارجية') + ' (' + reasons.map(esc).join('، ') + ') — ' + T('راجع تبويب العوائق للأثر المالي.') + '</div></div>';
-  const stale = proj().boqItems.filter(i => statusOf(i) === 'available');
+  const stale = actionableItems().filter(i => statusOf(i) === 'available');
   if (stale.length) html += '<div class="alert warning">▶ <div><strong>' + stale.length + ' ' + T('بند') + '</strong> ' + T('متاح تبدأ فيه الحين بدون أي عائق — بقيمة') + ' ' + money(stale.reduce((s,i)=>s+remainingValue(i),0)) + '.</div></div>';
   $('alerts-area').innerHTML = html;
 }
@@ -2324,11 +2348,11 @@ function itemLogRates(){
 //  ACTION PLAN
 // ============================================================
 function renderPlan(){
-  const claimable = proj().boqItems.filter(i => netClaimable(i) > 1).sort((a,b) => netClaimable(b) - netClaimable(a));
-  const workNow = proj().boqItems.filter(i => ['partial','available'].includes(statusOf(i))).sort((a,b) => remainingValue(b) - remainingValue(a));
+  const claimable = actionableItems().filter(i => netClaimable(i) > 1).sort((a,b) => netClaimable(b) - netClaimable(a));
+  const workNow = actionableItems().filter(i => ['partial','available'].includes(statusOf(i))).sort((a,b) => remainingValue(b) - remainingValue(a));
 
   // external blockers grouped with downstream impact
-  const blockedItems = proj().boqItems.filter(i => statusOf(i) === 'blocked');
+  const blockedItems = actionableItems().filter(i => statusOf(i) === 'blocked');
   const groups = {};
   blockedItems.forEach(i => {
     const key = i.blocker.reason || 'غير محدد';
@@ -2344,7 +2368,7 @@ function renderPlan(){
   }).sort((a,b) => b.total - a.total);
 
   // sequence: waiting items grouped by root cause (root not blocked externally)
-  const waiting = proj().boqItems.filter(i => statusOf(i) === 'waiting');
+  const waiting = actionableItems().filter(i => statusOf(i) === 'waiting');
   const seqGroups = {};
   waiting.forEach(w => {
     const root = rootCauseOf(w);
@@ -2482,57 +2506,112 @@ function searchItemsChanged(){
   renderItemsTable();
 }
 
+// مجموعات مفتوحة (موسّعة) في جدول البنود — حالة عرض فقط للجلسة الحالية، لا تُحفظ
+const expandedGroups = new Set();
+function toggleGroup(id){ if (expandedGroups.has(id)) expandedGroups.delete(id); else expandedGroups.add(id); renderItemsTable(); }
+
+function itemMatchesSearchOrFilter(it, search){
+  const matchesSearch = it.desc.toLowerCase().includes(search) || it.id.toLowerCase().includes(search) || (it.divAr||'').includes(search);
+  if (search) return matchesSearch;
+  if (currentFilter === 'all') return true;
+  if (currentFilter === 'claimable') return netClaimable(it) > 1;
+  if (currentFilter === 'pending_approval') return pendingApprovalQty(it) > 0.001;
+  return statusOf(it) === currentFilter;
+}
+
+// صف بند عادي (مستقل أو بند فرعي داخل مجموعة) — نفس القالب لكلا الحالتين
+function itemRowHtml(it, indented){
+  const st = statusOf(it);
+  const net = netClaimable(it);
+  let depHtml = '—';
+  if (it.blocker && it.blocker.active) depHtml = '<span class="blocker-box" data-tip="' + esc(it.blocker.note||'') + '">⛔ ' + esc(it.blocker.reason) + '</span>';
+  else if ((it.predecessors||[]).length) {
+    const preds = it.predecessors.map(pid => { const p = getItem(pid); return p ? esc(pid) + ' (' + (itemPct(p)*100).toFixed(0) + '%)' : esc(pid); }).join('، ');
+    depHtml = '<span class="prereq-box" data-tip="' + T('لا يمكن البدء قبل اكتمال هذه البنود') + '">⏭ ' + preds + '</span>';
+  }
+  return '<tr' + (indented ? ' style="background:var(--bg1,transparent)"' : '') + '>' +
+    '<td><span class="item-no"' + (indented ? ' style="margin-inline-start:22px"' : '') + '>' + (indented ? '└ ' : '') + esc(it.id) + '</span><br><span style="font-size:10px;color:var(--text3)' + (indented?';margin-inline-start:22px':'') + '">' + esc(it.div) + '</span></td>' +
+    '<td><div class="desc-text" data-tip="' + esc(it.desc) + '">' + esc(it.desc) + '</div><span style="font-size:10px;color:var(--text3)">' + esc(it.divAr||'') + '</span></td>' +
+    '<td><span class="pill gray" style="font-size:10px">' + esc(it.unit) + '</span></td>' +
+    '<td class="amount muted">' + fmtQ(it.totalQty) + '</td>' +
+    '<td class="amount muted">' + fmtN(it.unitRate) + '</td>' +
+    '<td class="amount">' + fmtN(amt(it)) + '</td>' +
+    '<td>' + (it.scope==='others' ? '<span style="color:var(--text3)">—</span>' :
+      '<span style="display:inline-flex;flex-direction:column;gap:3px;align-items:flex-start">' +
+      '<input type="number" class="qty-input" min="0" max="' + it.totalQty + '" step="any" value="' + (Math.round((it.executedQty||0)*100)/100) + '" onchange="setItemQty(\'' + esc(it.id) + '\', this.value)" data-tip="' + T('أدخل الكمية المنفذة (من أصل') + ' ' + fmtQ(it.totalQty) + ' ' + esc(it.unit) + ') ' + T('— العميل يحاسب بالكميات') + '">' +
+      '<span style="display:inline-flex;align-items:center;gap:5px"><span style="font-family:var(--mono);font-size:10px;color:var(--text2)">' + (itemPct(it)*100).toFixed(1) + '%</span><span class="prog-bar" style="width:56px"><span class="prog-fill ' + (itemPct(it)>=DONE?'green':itemPct(it)>0?'amber':'red') + '" style="width:' + (itemPct(it)*100) + '%;display:block"></span></span></span>' +
+      '</span>') + '</td>' +
+    // اعتماد الاستشاري: معتمد + بانتظار الاعتماد + زر الاعتماد مع استلام موقّع
+    '<td>' + approvalCell(it) + '</td>' +
+    '<td class="amount" style="color:var(--teal)">' + (claimedPct(it)*100).toFixed(0) + '%</td>' +
+    '<td class="amount ' + (net>1?'claimable':'muted') + '">' + (net>1?fmtN(net):'—') + '</td>' +
+    '<td>' + statusPill(st) + '</td>' +
+    '<td>' + depHtml + '</td>' +
+    '<td style="white-space:nowrap"><button class="mini-btn" onclick="openItemModal(\'' + esc(it.id) + '\')" data-tip="' + T('تعديل') + '">✏️</button>' +
+    (it.scope !== 'others' && (availQty(it) > 0.01 || pendingApprovalQty(it) > 0.01)
+      ? ' <button class="mini-btn green" onclick="itemToMustakhlas(\'' + esc(it.id) + '\')" data-tip="' + T('مستخلص') + '">📤</button>' : '') +
+    (it.scope !== 'others' && it.totalQty > 0 && (it.executedQty||0) < it.totalQty - 0.001
+      ? ' <button class="mini-btn" style="border-color:rgba(240,136,62,0.5);color:var(--orange)" onclick="markItemDone(\'' + esc(it.id) + '\')" data-tip="' + T('تسجيل البند كمنجز 100% — يُسجَّل الباقي يوميةً باسمك ويتحول البند لانتظار اعتماد الاستشاري') + '">✔</button>' : '') +
+    (canSplitItem(it) ? ' <button class="mini-btn" onclick="openSplitItemModal(\'' + esc(it.id) + '\')" data-tip="' + T('تقسيم البند إلى بندين أو أكثر بنفس الكمية الكلية') + '">✂</button>' : '') + '</td>' +
+    '</tr>';
+}
+
+// صف رأس مجموعة (بند قُسِّم إلى أجزاء): يعرض إجماليات محسوبة تلقائياً من الأجزاء، بدون إجراءات تنفيذ/اعتماد/مطالبة مباشرة عليه
+function groupHeaderRowHtml(parent, kidsCount, expanded){
+  const st = statusOf(parent);
+  const net = netClaimable(parent);
+  const pend = pendingApprovalQty(parent), appr = approvedOf(parent);
+  let depHtml = '—';
+  if (parent.blocker && parent.blocker.active) depHtml = '<span class="blocker-box" data-tip="' + esc(parent.blocker.note||'') + '">⛔ ' + esc(parent.blocker.reason) + '</span>';
+  else if ((parent.predecessors||[]).length) {
+    const preds = parent.predecessors.map(pid => { const p = getItem(pid); return p ? esc(pid) + ' (' + (itemPct(p)*100).toFixed(0) + '%)' : esc(pid); }).join('، ');
+    depHtml = '<span class="prereq-box" data-tip="' + T('لا يمكن البدء قبل اكتمال هذه البنود') + '">⏭ ' + preds + '</span>';
+  }
+  return '<tr style="background:var(--bg3)">' +
+    '<td><button class="mini-btn" onclick="toggleGroup(\'' + esc(parent.id) + '\')" style="margin-inline-end:4px">' + (expanded?'▾':'▸') + '</button>' +
+      '<span class="item-no">' + esc(parent.id) + '</span> <span class="pill blue" style="font-size:9px">' + kidsCount + ' ' + T('أجزاء') + '</span><br><span style="font-size:10px;color:var(--text3)">' + esc(parent.div) + '</span></td>' +
+    '<td><div class="desc-text" data-tip="' + esc(parent.desc) + '">' + esc(parent.desc) + '</div><span style="font-size:10px;color:var(--text3)">' + esc(parent.divAr||'') + '</span></td>' +
+    '<td><span class="pill gray" style="font-size:10px">' + esc(parent.unit) + '</span></td>' +
+    '<td class="amount muted">' + fmtQ(groupTotalQty(parent)) + '</td>' +
+    '<td class="amount muted">—</td>' +
+    '<td class="amount">' + fmtN(amt(parent)) + '</td>' +
+    '<td>' + (parent.scope==='others' ? '<span style="color:var(--text3)">—</span>' :
+      '<span style="display:inline-flex;align-items:center;gap:5px"><span style="font-family:var(--mono);font-size:10px;color:var(--text2)">' + (itemPct(parent)*100).toFixed(1) + '%</span><span class="prog-bar" style="width:56px"><span class="prog-fill ' + (itemPct(parent)>=DONE?'green':itemPct(parent)>0?'amber':'red') + '" style="width:' + (itemPct(parent)*100) + '%;display:block"></span></span></span>') + '</td>' +
+    '<td style="font-size:10px;color:var(--text2)">' + (appr>0.001 ? '✅ ' + fmtQ(appr) + ' ' : '') + (pend>0.001 ? '🕵 ' + fmtQ(pend) : '') + (appr<0.001 && pend<0.001 ? '—' : '') + '</td>' +
+    '<td class="amount" style="color:var(--teal)">' + (claimedPct(parent)*100).toFixed(0) + '%</td>' +
+    '<td class="amount ' + (net>1?'claimable':'muted') + '">' + (net>1?fmtN(net):'—') + '</td>' +
+    '<td>' + statusPill(st) + '</td>' +
+    '<td>' + depHtml + '</td>' +
+    '<td style="white-space:nowrap"><button class="mini-btn" onclick="openItemModal(\'' + esc(parent.id) + '\')" data-tip="' + T('تعديل') + '">✏️</button></td>' +
+    '</tr>';
+}
+
 function renderItemsTable(){
   const search = ($('search-items').value || '').toLowerCase();
-  // البحث يبحث في كل البنود بغض النظر عن الفلتر المفعّل — وإلا تختفي بنود موجودة فعلاً لمجرد أن الفلتر الحالي لا يشملها
-  let list = proj().boqItems.filter(it => {
-    const matchesSearch = it.desc.toLowerCase().includes(search) || it.id.toLowerCase().includes(search) || (it.divAr||'').includes(search);
-    if (search) return matchesSearch;
-    if (currentFilter === 'all') return true;
-    if (currentFilter === 'claimable') return netClaimable(it) > 1;
-    if (currentFilter === 'pending_approval') return pendingApprovalQty(it) > 0.001;
-    return statusOf(it) === currentFilter;
+  const filtering = !!search || currentFilter !== 'all';
+  const rowsHtml = [];
+  let sumAmt = 0, sumNet = 0, rowCount = 0;
+
+  proj().boqItems.filter(it => !it.parentId).forEach(parent => {
+    const kids = childrenOf(parent.id);
+    if (kids.length) {
+      const matchingKids = kids.filter(k => itemMatchesSearchOrFilter(k, search));
+      // تظهر المجموعة إذا لم يوجد فلتر/بحث نشط، أو إذا طابق أحد أبنائها البحث/الفلتر
+      if (filtering && !matchingKids.length) return;
+      sumAmt += amt(parent); sumNet += netClaimable(parent); rowCount++;
+      const expanded = expandedGroups.has(parent.id) || filtering;
+      rowsHtml.push(groupHeaderRowHtml(parent, kids.length, expanded));
+      if (expanded) (filtering ? matchingKids : kids).forEach(k => rowsHtml.push(itemRowHtml(k, true)));
+    } else {
+      if (!itemMatchesSearchOrFilter(parent, search)) return;
+      sumAmt += amt(parent); sumNet += netClaimable(parent); rowCount++;
+      rowsHtml.push(itemRowHtml(parent, false));
+    }
   });
 
-  let sumAmt = 0, sumNet = 0;
-  $('items-tbody').innerHTML = list.map(it => {
-    const st = statusOf(it);
-    const net = netClaimable(it);
-    sumAmt += amt(it); sumNet += net;
-    let depHtml = '—';
-    if (it.blocker && it.blocker.active) depHtml = '<span class="blocker-box" data-tip="' + esc(it.blocker.note||'') + '">⛔ ' + esc(it.blocker.reason) + '</span>';
-    else if ((it.predecessors||[]).length) {
-      const preds = it.predecessors.map(pid => { const p = getItem(pid); return p ? esc(pid) + ' (' + (itemPct(p)*100).toFixed(0) + '%)' : esc(pid); }).join('، ');
-      depHtml = '<span class="prereq-box" data-tip="' + T('لا يمكن البدء قبل اكتمال هذه البنود') + '">⏭ ' + preds + '</span>';
-    }
-    return '<tr>' +
-      '<td><span class="item-no">' + esc(it.id) + '</span><br><span style="font-size:10px;color:var(--text3)">' + esc(it.div) + '</span></td>' +
-      '<td><div class="desc-text" data-tip="' + esc(it.desc) + '">' + esc(it.desc) + '</div><span style="font-size:10px;color:var(--text3)">' + esc(it.divAr||'') + '</span></td>' +
-      '<td><span class="pill gray" style="font-size:10px">' + esc(it.unit) + '</span></td>' +
-      '<td class="amount muted">' + fmtQ(it.totalQty) + '</td>' +
-      '<td class="amount muted">' + fmtN(it.unitRate) + '</td>' +
-      '<td class="amount">' + fmtN(amt(it)) + '</td>' +
-      '<td>' + (it.scope==='others' ? '<span style="color:var(--text3)">—</span>' :
-        '<span style="display:inline-flex;flex-direction:column;gap:3px;align-items:flex-start">' +
-        '<input type="number" class="qty-input" min="0" max="' + it.totalQty + '" step="any" value="' + (Math.round((it.executedQty||0)*100)/100) + '" onchange="setItemQty(\'' + esc(it.id) + '\', this.value)" data-tip="' + T('أدخل الكمية المنفذة (من أصل') + ' ' + fmtQ(it.totalQty) + ' ' + esc(it.unit) + ') ' + T('— العميل يحاسب بالكميات') + '">' +
-        '<span style="display:inline-flex;align-items:center;gap:5px"><span style="font-family:var(--mono);font-size:10px;color:var(--text2)">' + (itemPct(it)*100).toFixed(1) + '%</span><span class="prog-bar" style="width:56px"><span class="prog-fill ' + (itemPct(it)>=DONE?'green':itemPct(it)>0?'amber':'red') + '" style="width:' + (itemPct(it)*100) + '%;display:block"></span></span></span>' +
-        '</span>') + '</td>' +
-      // اعتماد الاستشاري: معتمد + بانتظار الاعتماد + زر الاعتماد مع استلام موقّع
-      '<td>' + approvalCell(it) + '</td>' +
-      '<td class="amount" style="color:var(--teal)">' + (claimedPct(it)*100).toFixed(0) + '%</td>' +
-      '<td class="amount ' + (net>1?'claimable':'muted') + '">' + (net>1?fmtN(net):'—') + '</td>' +
-      '<td>' + statusPill(st) + '</td>' +
-      '<td>' + depHtml + '</td>' +
-      '<td style="white-space:nowrap"><button class="mini-btn" onclick="openItemModal(\'' + esc(it.id) + '\')" data-tip="' + T('تعديل') + '">✏️</button>' +
-      (it.scope !== 'others' && (availQty(it) > 0.01 || pendingApprovalQty(it) > 0.01)
-        ? ' <button class="mini-btn green" onclick="itemToMustakhlas(\'' + esc(it.id) + '\')" data-tip="' + T('مستخلص') + '">📤</button>' : '') +
-      (it.scope !== 'others' && it.totalQty > 0 && (it.executedQty||0) < it.totalQty - 0.001
-        ? ' <button class="mini-btn" style="border-color:rgba(240,136,62,0.5);color:var(--orange)" onclick="markItemDone(\'' + esc(it.id) + '\')" data-tip="' + T('تسجيل البند كمنجز 100% — يُسجَّل الباقي يوميةً باسمك ويتحول البند لانتظار اعتماد الاستشاري') + '">✔</button>' : '') +
-      (canSplitItem(it) ? ' <button class="mini-btn" onclick="openSplitItemModal(\'' + esc(it.id) + '\')" data-tip="' + T('تقسيم البند إلى بندين أو أكثر بنفس الكمية الكلية') + '">✂</button>' : '') + '</td>' +
-      '</tr>';
-  }).join('') || '<tr><td colspan="13"><div class="empty-state"><p>' + T('لا توجد بنود مطابقة') + '</p></div></td></tr>';
+  $('items-tbody').innerHTML = rowsHtml.join('') || '<tr><td colspan="13"><div class="empty-state"><p>' + T('لا توجد بنود مطابقة') + '</p></div></td></tr>';
 
-  $('items-tfoot').innerHTML = '<tr class="summary-row"><td colspan="5" style="text-align:start;color:var(--text2)">' + T('الإجمالي') + ' (' + list.length + ' ' + T('بند') + ')</td>' +
+  $('items-tfoot').innerHTML = '<tr class="summary-row"><td colspan="5" style="text-align:start;color:var(--text2)">' + T('الإجمالي') + ' (' + rowCount + ' ' + T('بند') + ')</td>' +
     '<td class="amount" style="color:var(--amber)">' + fmtN(sumAmt) + '</td><td colspan="3"></td>' +
     '<td class="amount claimable">' + fmtN(sumNet) + '</td><td colspan="3"></td></tr>';
 }
@@ -2723,7 +2802,7 @@ function buildApprovalAudit(){
   }).join('');
 
   // بنود منفذة لم تُعتمد بعد (بانتظار استلام الاستشاري)
-  const pendingItems = p.boqItems.filter(i => pendingApprovalQty(i) > 0.001);
+  const pendingItems = actionableItems().filter(i => pendingApprovalQty(i) > 0.001);
   const pendingRows = pendingItems.map(it =>
     '<tr>' + cell('<span style="font-family:var(--mono);color:var(--amber)">' + esc(it.id) + '</span> ' + esc(it.desc.slice(0,45))) +
     cell(fmtQ(it.executedQty), 'text-align:center;font-family:var(--mono);color:var(--blue)') +
@@ -2840,9 +2919,12 @@ function openItemModal(id){
   $('im-desc').value = it ? it.desc : '';
   $('im-unit').value = it ? it.unit : 'م²';
   $('im-qtyv').value = it ? it.qtyPerVilla : '';
-  $('im-qty').value = it ? it.totalQty : '';
+  const isGroup = it && isGroupParent(it.id);
+  $('im-qty').value = it ? (isGroup ? groupTotalQty(it) : it.totalQty) : '';
   $('im-rate').value = it ? it.unitRate : '';
-  $('im-exec').value = it ? it.executedQty : 0;
+  $('im-exec').value = it ? (isGroup ? groupExecutedQty(it) : it.executedQty) : 0;
+  $('im-qty').disabled = $('im-rate').disabled = $('im-exec').disabled = !!isGroup;
+  $('im-group-note').style.display = isGroup ? '' : 'none';
   $('im-scope').value = it ? it.scope : 'azoom';
   $('im-blk').checked = !!(it && it.blocker && it.blocker.active);
   $('im-blk-reason').value = it && it.blocker ? it.blocker.reason : '';
@@ -2877,10 +2959,14 @@ function saveItem(){
   };
   if (editingItemId) {
     const it = getItem(editingItemId);
+    // بند مقسَّم: الكمية/السعر/المنفذ محسوبة تلقائياً من الأجزاء — لا تُطبَّق قيم النموذج المعطَّلة عليها
+    if (isGroupParent(it.id)) {
+      data.totalQty = it.totalQty; data.unitRate = it.unitRate; data.executedQty = it.executedQty; data.qtyPerVilla = it.qtyPerVilla;
+    }
     // مدير المشروع: تغيير الكمية المنفذة أو سعر الوحدة أو الكمية الكلية من النموذج يتحول لطلب موافقة
     // (سعر الوحدة والكمية الكلية يؤثران في قيمة المطالبة تماماً كالكمية المنفذة)
     const pendingReqs = [];
-    if (editsGated()) {
+    if (editsGated() && !isGroupParent(it.id)) {
       if (Math.abs((data.executedQty||0) - (it.executedQty||0)) > 0.001) {
         pendingReqs.push({ type:'qty_edit', itemId:it.id, fromQty:(it.executedQty||0), newQty:data.executedQty,
           label: T('تعديل الكمية المنفذة للبند') + ' ' + it.id + ': ' + fmtQ(it.executedQty||0) + ' ← ' + fmtQ(data.executedQty) + ' ' + (it.unit||'') });
@@ -2918,6 +3004,8 @@ function saveItem(){
 function deleteItem(){
   if (!editingItemId) return;
   const it = getItem(editingItemId);
+  // بند مقسَّم: لا يُحذف مباشرة وله أجزاء — يجب حذف كل جزء أولاً (أو تركها فارغة فيعود بنداً عادياً)
+  if (isGroupParent(editingItemId)) { alert(T('هذا البند مقسَّم إلى أجزاء — احذف كل الأجزاء أولاً من صفوفها الخاصة قبل حذف البند نفسه.')); return; }
   // مدير المشروع: حذف البند يتطلب موافقة مالك الشركة — لا حذف مباشر
   if (editsGated()) {
     closeModal('item-modal');
@@ -2943,9 +3031,11 @@ function applyItemDelete(itemId){
 //  تقسيم البند إلى بنود فرعية (2-4) بنفس الكمية الكلية والقيمة
 // ============================================================
 // مسموح فقط للبند "النظيف": بدون تنفيذ أو اعتماد أو رفع سابق — لتفادي
-// تعقيد إعادة توزيع الاستلامات والمستخلصات التاريخية على البنود الفرعية
+// تعقيد إعادة توزيع الاستلامات والمستخلصات التاريخية على البنود الفرعية.
+// ولا يُقسَّم بند فرعي (له parentId) ولا بند مقسَّم مسبقاً (له بنود فرعية) — مستوى واحد فقط من التقسيم
 function canSplitItem(it){
-  return it.scope !== 'others' && (it.executedQty||0) < 0.001 && (it.approvedQty||0) < 0.001 &&
+  return it.scope !== 'others' && !it.parentId && !isGroupParent(it.id) &&
+    (it.executedQty||0) < 0.001 && (it.approvedQty||0) < 0.001 &&
     (it.claimedQty||0) < 0.001 && !(it.approvals||[]).length;
 }
 
@@ -2956,7 +3046,8 @@ function openSplitItemModal(id){
   if (!canSplitItem(it)) { alert(T('لا يمكن تقسيم بند له تنفيذ أو اعتماد أو رفع سابق — قسّمه قبل بدء العمل عليه.')); return; }
   splitItemId = id;
   $('split-item-info').innerHTML = '<strong>' + esc(it.id) + '</strong> — ' + esc(it.desc) + '<br>' +
-    T('الكمية الكلية:') + ' ' + fmtQ(it.totalQty) + ' ' + esc(it.unit) + ' · ' + T('سعر الوحدة:') + ' ' + fmtN(it.unitRate);
+    T('الكمية الكلية:') + ' ' + fmtQ(it.totalQty) + ' ' + esc(it.unit) + ' · ' + T('سعر الوحدة:') + ' ' + fmtN(it.unitRate) +
+    '<br><span style="font-size:11px;color:var(--text2)">' + T('سيبقى هذا البند في الجدول كمجموعة قابلة للطي تعرض إجمالي أبنائها — وكل جزء يصبح بنداً مستقلاً بالكامل (تنفيذ، اعتماد، مطالبة).') + '</span>';
   $('split-count').value = '2';
   renderSplitRows();
   $('split-item-modal').classList.add('open');
@@ -3032,25 +3123,26 @@ function confirmSplitItem(){
       label: T('تقسيم البند') + ' ' + esc(it.id) + ' — ' + esc(it.desc) + ' ' + T('إلى') + ' ' + n + ' ' + T('أجزاء') + ': ' + children.map(c=>esc(c.id)).join('، ') });
   } else {
     applyItemSplit(it.id, children);
+    expandedGroups.add(it.id);
     save(); renderAll();
     alert('✅ ' + T('تم تقسيم البند إلى') + ' ' + n + ' ' + T('أجزاء.'));
   }
 }
 
 // تنفيذ التقسيم فعلياً (مباشرة من الإدارة أو بعد اعتماد مالك الشركة للطلب):
-// يحذف البند الأصلي وينشئ بنوداً فرعية جديدة ترث خصائصه (القسم، الوحدة، سعر الوحدة، النطاق، العائق، البنود التابعة)
+// البند الأصلي يبقى في الجدول كـ"مجموعة أب" (كل قيمه المعروضة تُحسب تلقائياً من مجموع أبنائه)،
+// وتُنشأ بنود فرعية جديدة ترث خصائصه (القسم، الوحدة، سعر الوحدة، النطاق، العائق، البنود التابعة)
 function applyItemSplit(parentId, children){
   const parent = getItem(parentId);
   if (!parent) return;
   const inherited = { div: parent.div, divAr: parent.divAr, unit: parent.unit, unitRate: parent.unitRate,
     scope: parent.scope, predecessors: [...(parent.predecessors||[])],
     blocker: parent.blocker ? Object.assign({}, parent.blocker) : null, notes: parent.notes || '' };
-  applyItemDelete(parentId);
   children.forEach(c => {
     proj().boqItems.push(Object.assign({
       id: c.id, desc: c.desc, totalQty: c.totalQty, qtyPerVilla: 0,
       executedQty: 0, approvedQty: 0, approvals: [], claimedQty: 0,
-      splitFrom: parentId, splitAt: new Date().toISOString()
+      parentId: parentId, splitAt: new Date().toISOString()
     }, inherited));
   });
 }
@@ -3076,7 +3168,10 @@ Object.assign(I18N_EN, {
   'أجزاء':'parts',
   'تم تقسيم البند إلى':'The item was split into',
   'أجزاء.':'parts.',
-  'تعذّر تطبيق التقسيم: البند الأصلي لم يعد بحالته وقت تقديم الطلب (رُفع عليه تنفيذ أو اعتماد). راجع الطلب مع مدير المشروع.':'Could not apply the split: the original item is no longer in the state it was when the request was submitted (execution or approval was logged against it). Discuss the request with the project manager.'
+  'تعذّر تطبيق التقسيم: البند الأصلي لم يعد بحالته وقت تقديم الطلب (رُفع عليه تنفيذ أو اعتماد). راجع الطلب مع مدير المشروع.':'Could not apply the split: the original item is no longer in the state it was when the request was submitted (execution or approval was logged against it). Discuss the request with the project manager.',
+  'هذا البند مقسَّم إلى أجزاء — احذف كل الأجزاء أولاً من صفوفها الخاصة قبل حذف البند نفسه.':'This item is split into parts — delete every part first from its own row before deleting the item itself.',
+  'سيبقى هذا البند في الجدول كمجموعة قابلة للطي تعرض إجمالي أبنائها — وكل جزء يصبح بنداً مستقلاً بالكامل (تنفيذ، اعتماد، مطالبة).':'This item stays in the table as a collapsible group showing its parts\' combined totals — each part becomes a fully independent item (execution, approval, claiming).',
+  'هذا بند مقسَّم — الكمية والسعر والمنفذ تُحسب تلقائياً من مجموع أجزائه ولا تُعدَّل هنا مباشرة. عدّل كل جزء من صفه الخاص في الجدول.':'This item is split — its quantity, price, and executed amount are calculated automatically from its parts and can\'t be edited here directly. Edit each part from its own row in the table.'
 });
 
 // «منجز»: المهندس يعلن اكتمال البند — الباقي يُسجَّل يوميةً موثقة باسمه،
@@ -3114,7 +3209,7 @@ Object.assign(I18N_EN, {
 // ============================================================
 let mbSel = {}; // itemId -> qty
 
-function claimableItems(){ return proj().boqItems.filter(i => i.scope !== 'others' && availQty(i) > 0.01); }
+function claimableItems(){ return actionableItems().filter(i => i.scope !== 'others' && availQty(i) > 0.01); }
 
 let mbRatesProjectId = null; // آخر مشروع زُامنت له حقول محتجز الضمان / الدفعة المقدمة
 function renderBuilder(){
@@ -3693,7 +3788,7 @@ function docHeader(title, sub){
 
 function genBlockerLetter(){
   const p = proj().info;
-  const blocked = proj().boqItems.filter(i => statusOf(i) === 'blocked');
+  const blocked = actionableItems().filter(i => statusOf(i) === 'blocked');
   if (!blocked.length) { alert(T('لا توجد عوائق نشطة حالياً 🎉')); return; }
   const groups = {};
   blocked.forEach(i => {
@@ -3772,7 +3867,7 @@ function buildProgressReport(){
 
   // per-division summary
   const divs = {};
-  proj().boqItems.forEach(it => {
+  actionableItems().forEach(it => {
     if (it.scope === 'others') return;
     if (!divs[it.div]) divs[it.div] = {name:it.divAr, total:0, exec:0, claimed:0};
     divs[it.div].total += amt(it); divs[it.div].exec += itemPct(it)*amt(it); divs[it.div].claimed += claimedPct(it)*amt(it);
@@ -3783,7 +3878,7 @@ function buildProgressReport(){
     cell(fmtN(d.claimed),'text-align:center;font-family:var(--mono)') + '</tr>').join('');
 
   // blockers
-  const blocked = proj().boqItems.filter(i => statusOf(i) === 'blocked');
+  const blocked = actionableItems().filter(i => statusOf(i) === 'blocked');
   const bGroups = {};
   blocked.forEach(i => {
     const k = i.blocker.reason;
@@ -3796,7 +3891,7 @@ function buildProgressReport(){
     cell(fmtN(g.val),'text-align:center;font-family:var(--mono);color:var(--red)') + '</tr>').join('');
 
   // top claimables
-  const claimables = proj().boqItems.filter(i => netClaimable(i) > 1).sort((a,b) => netClaimable(b)-netClaimable(a)).slice(0,10);
+  const claimables = actionableItems().filter(i => netClaimable(i) > 1).sort((a,b) => netClaimable(b)-netClaimable(a)).slice(0,10);
   const claimRows = claimables.map(i =>
     '<tr>' + cell('<span style="font-family:var(--mono);color:var(--amber)">' + esc(i.id) + '</span> ' + esc(i.desc)) +
     cell((itemPct(i)*100).toFixed(0)+'%','text-align:center;font-family:var(--mono)') +
@@ -3889,7 +3984,7 @@ function dlCSV(name, rows){
 
 function exportItemsCSV(){
   const rows = [['رقم البند','القسم','الوصف','الوحدة','الكمية الكلية','سعر الوحدة','الإجمالي','الكمية المنفذة','المعتمد من الاستشاري','بانتظار الاعتماد','الكمية المرفوعة','صافي المطالبة','الحالة','العائق / يعتمد على'].map(T)];
-  proj().boqItems.forEach(it => {
+  actionableItems().forEach(it => {
     const st = T(STATUS_META[statusOf(it)].label);
     const dep = it.blocker && it.blocker.active ? it.blocker.reason : (it.predecessors||[]).join(' + ');
     rows.push([it.id, it.div + ' ' + (it.divAr||''), it.desc, it.unit, it.totalQty, it.unitRate, amt(it),
@@ -3963,7 +4058,7 @@ Object.assign(I18N_EN, {
 //  BLOCKED TAB
 // ============================================================
 function renderBlocked(){
-  const blocked = proj().boqItems.filter(i => statusOf(i) === 'blocked');
+  const blocked = actionableItems().filter(i => statusOf(i) === 'blocked');
   const groups = {};
   blocked.forEach(i => {
     const key = i.blocker.reason || 'غير محدد';
@@ -3994,7 +4089,7 @@ function renderBlocked(){
   }).join('') || '<div class="empty-state"><div class="icon">🎉</div><p>' + T('لا توجد عوائق خارجية نشطة') + '</p></div>';
 
   // waiting table
-  const waiting = proj().boqItems.filter(i => statusOf(i) === 'waiting');
+  const waiting = actionableItems().filter(i => statusOf(i) === 'waiting');
   let sumW = 0;
   $('waiting-tbody').innerHTML = waiting.map(w => {
     const chain = chainOf(w);
@@ -4076,7 +4171,7 @@ function villaPct(itemId, villaNo){
 function renderVillaGrid(){
   let list = proj().villas;
   if (currentVillaFilter !== 'all') list = list.filter(v => v.sheet === currentVillaFilter);
-  const activeItems = proj().boqItems.filter(i => i.scope !== 'others');
+  const activeItems = actionableItems().filter(i => i.scope !== 'others');
   $('villa-grid').innerHTML = list.map(v => {
     let wSum = 0, wTot = 0, done = 0, prog = 0, blockedC = 0;
     activeItems.forEach(it => {
@@ -4104,7 +4199,7 @@ function showVillaDetail(no){
   $('villa-grid').style.display = 'none';
   $('villa-detail').style.display = 'block';
   $('villa-detail-title').textContent = T('تفاصيل') + ' ' + UL() + ' ' + no + ' - ' + v.sheet;
-  $('villa-detail-tbody').innerHTML = proj().boqItems.filter(i => i.scope !== 'others').map(it => {
+  $('villa-detail-tbody').innerHTML = actionableItems().filter(i => i.scope !== 'others').map(it => {
     const p = villaPct(it.id, no);
     return '<tr>' +
       '<td><span class="item-no">' + esc(it.id) + '</span></td>' +
@@ -4147,7 +4242,7 @@ function deleteVilla(){
 function syncFromVillas(){
   if (!proj().villas.length) { alert(T('لا توجد فلل')); return; }
   if (!confirm(T('سيتم إعادة حساب نسبة إنجاز كل بند من متوسط نسب الوحدات المسجلة') + ' (' + proj().villas.length + ' ' + UL() + '). ' + T('متابعة؟'))) return;
-  proj().boqItems.forEach(it => {
+  actionableItems().forEach(it => {
     if (it.scope === 'others') return;
     const vp = proj().villaProgress[it.id];
     if (!vp || !Object.keys(vp).length) return;
@@ -4350,7 +4445,7 @@ function wlItemFilter(typing){
   const q = ($('wl-item-search').value || '').toLowerCase().trim();
   // لو غيّر النص بعد اختيار بند، أفرغ الاختيار المخزّن
   if (typing) $('wl-item').value = '';
-  const items = proj().boqItems.filter(i => i.scope !== 'others');
+  const items = actionableItems().filter(i => i.scope !== 'others');
   const norm = s => String(s||'').toLowerCase();
   let list = q ? items.filter(i => norm(i.id).includes(q) || norm(i.desc).includes(q) || norm(i.divAr).includes(q) || norm(i.div).includes(q)) : items;
   wlItemActive = -1;
@@ -4521,6 +4616,7 @@ function approveEditRequest(id){
       return;
     }
     applyItemSplit(r.parentId, r.children);
+    expandedGroups.add(r.parentId);
   }
   r.status = 'applied'; r.appliedAt = new Date().toISOString();
   save(); renderAll();

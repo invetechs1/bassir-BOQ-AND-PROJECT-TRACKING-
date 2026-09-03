@@ -444,6 +444,9 @@ app.put('/api/projects/:id', auth, (req, res) => {
       const st = storedItems.get(it.id);
       if (!st) {
         if ((Number(it.executedQty) || 0) > 0.01) return res.status(403).json({ error: 'pm_new_item_qty_zero', itemId: it.id });
+        // تقسيم بند قائم إلى بنود فرعية (parentId يشير لبند موجود) يتطلب موافقة مالك الشركة أيضاً —
+        // لا يُترك بلا رقابة لمجرد أن البند الأصلي لم يعد يُحذف (لم يعد التقسيم يظهر كحذف+إضافة)
+        if (it.parentId && storedItems.has(it.parentId)) return res.status(403).json({ error: 'pm_item_split_needs_owner', itemId: it.parentId });
         continue;
       }
       const allowed = (Number(st.executedQty) || 0) + (addByItem[it.id] || 0);

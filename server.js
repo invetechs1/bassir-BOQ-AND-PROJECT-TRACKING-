@@ -412,6 +412,54 @@ app.put('/api/projects/:id', auth, (req, res) => {
     }
   }
 
+  // رقابة تعديل الإنتاجية: مدير المشروع (pm) لا يحذف بنداً أو يومية قائمة،
+  // ولا يعدّل يومية أو كمية منفذة إلا عبر طلب يعتمده مالك الشركة (يُفرض هنا حتى لو تجاوز الواجهة)
+  if (req.user.role === 'pm') {
+    const incomingItemIds = new Set((data.boqItems || []).map(i => i.id));
+    for (const sid of storedItems.keys()) {
+      if (!incomingItemIds.has(sid)) return res.status(403).json({ error: 'pm_item_delete_needs_owner', itemId: sid });
+    }
+    const storedLogs = new Map((stored.workLogs || []).map(l => [l.id, l]));
+    const incomingLogs = Array.isArray(data.workLogs) ? data.workLogs : [];
+    const incomingLogIds = new Set(incomingLogs.map(l => l.id));
+    for (const sid of storedLogs.keys()) {
+      if (!incomingLogIds.has(sid)) return res.status(403).json({ error: 'pm_log_delete_needs_owner' });
+    }
+    const addByItem = {};
+    for (const l of incomingLogs) {
+      const st = storedLogs.get(l.id);
+      if (st) {
+        if ((st.qty || 0) !== (l.qty || 0) || (st.appliedQty || 0) !== (l.appliedQty || 0) ||
+            !!st.applied !== !!l.applied || st.itemId !== l.itemId || st.date !== l.date) {
+          return res.status(403).json({ error: 'pm_log_edit_needs_owner' });
+        }
+      } else if (l.applied) {
+        addByItem[l.itemId] = (addByItem[l.itemId] || 0) + (Number(l.appliedQty) || 0);
+      }
+    }
+    for (const it of (data.boqItems || [])) {
+      const st = storedItems.get(it.id);
+      if (!st) {
+        if ((Number(it.executedQty) || 0) > 0.01) return res.status(403).json({ error: 'pm_new_item_qty_zero', itemId: it.id });
+        continue;
+      }
+      const allowed = (Number(st.executedQty) || 0) + (addByItem[it.id] || 0);
+      if (Math.abs((Number(it.executedQty) || 0) - allowed) > 0.02) {
+        return res.status(403).json({ error: 'pm_qty_edit_needs_owner', itemId: it.id });
+      }
+    }
+    // طلبات التعديل: مدير المشروع يضيف طلبات جديدة معلقة فقط ولا يعدّل القائمة
+    const storedReqs = new Map((stored.editRequests || []).map(r => [r.id, r]));
+    for (const r of (Array.isArray(data.editRequests) ? data.editRequests : [])) {
+      const st = storedReqs.get(r.id);
+      if (st) {
+        if (st.status !== r.status) return res.status(403).json({ error: 'pm_cannot_approve_requests' });
+      } else if (r.status !== 'pending') {
+        return res.status(403).json({ error: 'edit_request_must_start_pending' });
+      }
+    }
+  }
+
   const p = { ...data, managerUserId, companyId, id, version: stored.version + 1 };
   saveProject(p);
   res.json({ version: p.version });

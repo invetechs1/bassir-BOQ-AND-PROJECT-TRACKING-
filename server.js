@@ -28,6 +28,7 @@ const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const PROJECTS_DIR = path.join(DATA_DIR, 'projects');
 const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');
 const PRICEDB_DIR = path.join(DATA_DIR, 'pricedb');
+const CONTRACTORS_DIR = path.join(DATA_DIR, 'contractors');
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
 const COMPANIES_FILE = path.join(DATA_DIR, 'companies.json');
 const INTEGRATIONS_FILE = path.join(DATA_DIR, 'integrations.json');
@@ -37,6 +38,7 @@ const SECRET_FILE = path.join(DATA_DIR, '.jwt-secret');
 fs.mkdirSync(PROJECTS_DIR, { recursive: true });
 fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 fs.mkdirSync(PRICEDB_DIR, { recursive: true });
+fs.mkdirSync(CONTRACTORS_DIR, { recursive: true });
 
 // ---------- أدوات تخزين ذرية ----------
 function readJSON(file, fallback) {
@@ -182,6 +184,11 @@ function loadPricedb(companyId) {
   return readJSON(pricedbFile(companyId), { version: 0, seq: 1000, offers: [], items: [] });
 }
 function savePricedb(companyId, db) { writeJSON(pricedbFile(companyId), db); }
+
+// ---------- المقاولون من الباطن (لكل شركة) ----------
+function contractorsFile(companyId) { return path.join(CONTRACTORS_DIR, companyId + '.json'); }
+function loadContractors(companyId) { return readJSON(contractorsFile(companyId), { version: 0, seq: 1000, contractors: [] }); }
+function saveContractors(companyId, db) { writeJSON(contractorsFile(companyId), db); }
 
 // ربط ملفات العروض الأصلية (PDF) بالعروض عند التعبئة الأولية
 const SEED_ATTACHMENTS = {
@@ -431,7 +438,7 @@ app.put('/api/projects/:id', auth, (req, res) => {
       if (st) {
         if ((st.qty || 0) !== (l.qty || 0) || (st.appliedQty || 0) !== (l.appliedQty || 0) ||
             !!st.applied !== !!l.applied || st.itemId !== l.itemId || st.date !== l.date ||
-            (st.executor || 'own') !== (l.executor || 'own')) {
+            (st.crew || 'own') !== (l.crew || 'own')) {
           return res.status(403).json({ error: 'pm_log_edit_needs_owner' });
         }
       } else if (l.applied) {
@@ -626,6 +633,28 @@ app.post('/api/pricedb/upload', auth, (req, res) => {
   res.json({ url: '/uploads/pricedb/' + companyId + '/' + file });
 });
 
+// ---------- المقاولون من الباطن ----------
+// نطاق: كل شركة لها قائمتها (مثل قاعدة الأسعار). الجميع يقرأ (لاختيار من نفّذ العمل عند تسجيل الإنتاجية)،
+// والإضافة/التعديل/الحذف لمدير المشاريع فأعلى فقط (نفس صلاحية تعديل قاعدة الأسعار)
+app.get('/api/contractors', auth, (req, res) => {
+  const companyId = pricedbCompanyOf(req);
+  if (!companyId) return res.json({ companyId: null, version: 0, seq: 1000, contractors: [], canEdit: false });
+  res.json({ ...loadContractors(companyId), companyId, canEdit: canEditPricedb(req.user) });
+});
+
+app.put('/api/contractors', auth, (req, res) => {
+  if (!canEditPricedb(req.user)) return res.status(403).json({ error: 'pmo_or_above_required' });
+  const companyId = pricedbCompanyOf(req);
+  if (!companyId) return res.status(400).json({ error: 'no_company_selected' });
+  const { baseVersion, data } = req.body || {};
+  if (!data) return res.status(400).json({ error: 'data_incomplete' });
+  const stored = loadContractors(companyId);
+  if (Number(baseVersion) !== stored.version) return res.status(409).json({ error: 'conflict', version: stored.version });
+  const db = { version: stored.version + 1, seq: data.seq || stored.seq, contractors: data.contractors || [] };
+  saveContractors(companyId, db);
+  res.json({ version: db.version });
+});
+
 // ---------- صور الموقع ----------
 // الرفع: JSON بصيغة dataURL (الواجهة تضغط الصورة قبل الإرسال)
 // أسماء الملفات عشوائية غير قابلة للتخمين، وتُخدم من /uploads
@@ -715,7 +744,8 @@ app.post('/api/integration/test', auth, async (req, res) => {
 app.get('/api/backup', auth, adminOnly, (req, res) => {
   res.setHeader('Content-Disposition', 'attachment; filename="azoom-backup-' + new Date().toISOString().slice(0, 10) + '.json"');
   const pricedbs = loadCompanies().map(c => ({ companyId: c.id, db: loadPricedb(c.id) }));
-  res.json({ exportedAt: new Date().toISOString(), projects: listProjects(), users: loadUsers().map(sanitizeUser), companies: loadCompanies(), pricedbs });
+  const contractorsAll = loadCompanies().map(c => ({ companyId: c.id, db: loadContractors(c.id) }));
+  res.json({ exportedAt: new Date().toISOString(), projects: listProjects(), users: loadUsers().map(sanitizeUser), companies: loadCompanies(), pricedbs, contractors: contractorsAll });
 });
 
 app.post('/api/restore', auth, adminOnly, (req, res) => {

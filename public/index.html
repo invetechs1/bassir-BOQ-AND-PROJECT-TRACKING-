@@ -317,6 +317,7 @@
   <div class="nav-tab" data-tab="villas" onclick="switchTab('villas')">🏠 <span id="villas-tab-label">الوحدات</span> <span class="tab-count" id="tc-villas">0</span></div>
   <div class="nav-tab" data-tab="prod" onclick="switchTab('prod')"><span data-i18n="👷 الإنتاجية">👷 الإنتاجية</span> <span class="tab-count" id="tc-prod">0</span></div>
   <div class="nav-tab" data-tab="pricedb" onclick="switchTab('pricedb')"><span data-i18n="💲 قاعدة الأسعار">💲 قاعدة الأسعار</span> <span class="tab-count" id="tc-pricedb">0</span></div>
+  <div class="nav-tab" data-tab="contractors" onclick="switchTab('contractors')"><span data-i18n="🏗️ المقاولون من الباطن">🏗️ المقاولون من الباطن</span> <span class="tab-count" id="tc-contractors">0</span></div>
 </div>
 
 <div class="main">
@@ -524,8 +525,7 @@
           <div class="card-title" data-i18n="📝 تسجيل يومية عمل">📝 تسجيل يومية عمل</div>
           <div class="f-grid" style="grid-template-columns:repeat(3,1fr)">
             <div class="f-field"><label data-i18n="التاريخ">التاريخ</label><input type="date" id="wl-date"></div>
-            <div class="f-field"><label data-i18n="الفرقة / المسؤول">الفرقة / المسؤول</label><input type="text" id="wl-crew" list="crew-list" placeholder="مثال: فرقة الدهانات أ" data-i18n-ph="مثال: فرقة الدهانات أ"><datalist id="crew-list"></datalist></div>
-            <div class="f-field"><label data-i18n="من نفّذ العمل؟">من نفّذ العمل؟</label><select id="wl-executor" onchange="wlExecutorChanged()"></select></div>
+            <div class="f-field"><label data-i18n="الفرقة / المسؤول">الفرقة / المسؤول</label><select id="wl-crew"></select></div>
             <div class="f-field"><label data-i18n="عدد العمال">عدد العمال</label><input type="number" id="wl-workers" min="1" value="4"></div>
             <div class="f-field"><label data-i18n="البند">البند</label>
               <div class="combo">
@@ -556,7 +556,7 @@
         </div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th data-i18n="التاريخ">التاريخ</th><th data-i18n="الفرقة">الفرقة</th><th data-i18n="من نفّذ العمل؟">من نفّذ العمل؟</th><th data-i18n="البند">البند</th><th id="wl-th-villa">الوحدة</th><th data-i18n="الكمية">الكمية</th><th data-i18n="عمال">عمال</th><th data-i18n="الإنتاجية/عامل">الإنتاجية/عامل</th><th>📷</th><th data-i18n="مضافة للنسبة">مضافة للنسبة</th><th data-i18n="سجلها">سجلها</th><th></th></tr></thead>
+            <thead><tr><th data-i18n="التاريخ">التاريخ</th><th data-i18n="الفرقة / المنفّذ">الفرقة / المنفّذ</th><th data-i18n="البند">البند</th><th id="wl-th-villa">الوحدة</th><th data-i18n="الكمية">الكمية</th><th data-i18n="عمال">عمال</th><th data-i18n="الإنتاجية/عامل">الإنتاجية/عامل</th><th>📷</th><th data-i18n="مضافة للنسبة">مضافة للنسبة</th><th data-i18n="سجلها">سجلها</th><th></th></tr></thead>
             <tbody id="wl-tbody"></tbody>
           </table>
         </div>
@@ -565,10 +565,6 @@
         <div class="card">
           <div class="card-title" data-i18n="📈 إنتاجية آخر 14 يوم (كميات)">📈 إنتاجية آخر 14 يوم (كميات)</div>
           <div class="bar-chart" id="prod-daily-chart"></div>
-        </div>
-        <div class="card">
-          <div class="card-title" data-i18n="🏗️ فريقنا مقابل مقاولي الباطن">🏗️ فريقنا مقابل مقاولي الباطن</div>
-          <div id="executor-summary"></div>
         </div>
         <div class="card">
           <div class="card-title" data-i18n="👷 ملخص الفرق">👷 ملخص الفرق</div>
@@ -621,6 +617,24 @@
         <button class="btn btn-amber" id="pdb-btn-addoffer" onclick="openPdbOfferModal(null)">+ إضافة عرض</button>
       </div>
       <div class="status-cards" id="pdb-offers-grid"></div>
+    </div>
+  </div>
+
+  <!-- ===================== SUBCONTRACTORS ===================== -->
+  <div class="tab-panel" id="tab-contractors">
+    <div id="contractors-loading" class="empty-state"><p>⏳ <span data-i18n="جارٍ تحميل قائمة المقاولين...">جارٍ تحميل قائمة المقاولين...</span></p></div>
+    <div id="contractors-view" style="display:none">
+      <div class="alert info" style="font-size:12px"><span data-i18n="القائمة المعتمدة لمقاولي الباطن — تظهر عند تسجيل يومية إنتاجية لاختيار من نفّذ العمل (فريقنا أو أحد هؤلاء المقاولين).">القائمة المعتمدة لمقاولي الباطن — تظهر عند تسجيل يومية إنتاجية لاختيار من نفّذ العمل (فريقنا أو أحد هؤلاء المقاولين).</span></div>
+      <div class="filter-bar">
+        <span id="contractors-company-badge" style="margin-inline-start:auto;color:var(--text2);font-size:12px"></span>
+        <button class="btn btn-amber" id="contractors-btn-add" onclick="openContractorModal(null)" data-i18n="+ إضافة مقاول من الباطن">+ إضافة مقاول من الباطن</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th data-i18n="الاسم">الاسم</th><th data-i18n="ملاحظات">ملاحظات</th><th></th></tr></thead>
+          <tbody id="contractors-tbody"></tbody>
+        </table>
+      </div>
     </div>
   </div>
 
@@ -848,6 +862,21 @@
       <button class="btn btn-green" onclick="savePdbItem()">💾 حفظ</button>
       <button class="btn btn-red" id="pdi-delete" onclick="deletePdbItem()">🗑 حذف</button>
       <button class="btn btn-ghost" onclick="closeModal('pdb-item-modal')">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="contractor-modal">
+  <div class="modal">
+    <div class="modal-title"><span id="contractor-modal-title" data-i18n="إضافة مقاول من الباطن">إضافة مقاول من الباطن</span><span class="modal-close" onclick="closeModal('contractor-modal')">✕</span></div>
+    <div class="f-grid">
+      <div class="f-field full"><label data-i18n="الاسم *">الاسم *</label><input type="text" id="ctr-name"></div>
+      <div class="f-field full"><label data-i18n="ملاحظات">ملاحظات</label><input type="text" id="ctr-notes" data-i18n-ph="اختياري" placeholder="اختياري"></div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
+      <button class="btn btn-green" onclick="saveContractor()" data-i18n="💾 حفظ">💾 حفظ</button>
+      <button class="btn btn-red" id="ctr-delete" onclick="deleteContractor()" data-i18n="🗑 حذف">🗑 حذف</button>
+      <button class="btn btn-ghost" onclick="closeModal('contractor-modal')" data-i18n="إلغاء">إلغاء</button>
     </div>
   </div>
 </div>
@@ -1487,6 +1516,7 @@ async function refreshState(){
   }
   offlineMode = false;
   priceDBLoaded = false; // إعادة تحميل قاعدة الأسعار حسب سياق المستخدم
+  contractorsLoaded = false; // إعادة تحميل قائمة المقاولين حسب سياق المستخدم
   $('offline-banner').style.display = 'none';
   try { localStorage.setItem('azoom_cache', JSON.stringify({me:d.me, users:d.users, companies:d.companies||[], projects:d.projects})) } catch(e) {}
   renderAll();
@@ -2184,6 +2214,7 @@ function switchTab(id){
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === id));
   $('tab-' + id).classList.add('active');
   if (id === 'pricedb') onOpenPricedb();
+  if (id === 'contractors') onOpenContractors();
 }
 
 function statusPill(st){
@@ -4013,10 +4044,10 @@ function exportItemsCSV(){
 }
 
 function exportLogsCSV(){
-  const rows = [['التاريخ','الفرقة','من نفّذ العمل؟','البند','الوصف','الوحدة/الموقع','الكمية','الوحدة','عدد العمال','الإنتاجية/عامل','سجلها','ملاحظات'].map(T)];
+  const rows = [['التاريخ','الفرقة / المنفّذ','البند','الوصف','الوحدة/الموقع','الكمية','الوحدة','عدد العمال','الإنتاجية/عامل','سجلها','ملاحظات'].map(T)];
   [...proj().workLogs].sort((a,b) => a.date.localeCompare(b.date)).forEach(l => {
     const it = getItem(l.itemId);
-    rows.push([l.date, l.crew, (l.executor && l.executor !== 'own') ? l.executor : T('فريقنا'), l.itemId, it ? it.desc : '', l.villaNo || '', l.qty, it ? it.unit : '',
+    rows.push([l.date, (l.crew && l.crew !== 'own') ? l.crew : T('فريقنا'), l.itemId, it ? it.desc : '', l.villaNo || '', l.qty, it ? it.unit : '',
       l.workers || '', l.workers > 0 ? (l.qty/l.workers).toFixed(1) : '', l.by || '', l.note || '']);
   });
   dlCSV('WorkLogs-' + todayStr() + '.csv', rows);
@@ -4288,38 +4319,25 @@ Object.assign(I18N_EN, {
 // ============================================================
 //  PRODUCTIVITY
 // ============================================================
-// من نفّذ العمل: 'own' = فريقنا، أي قيمة أخرى = اسم مقاول الباطن
-function executorLabel(l){
-  const ex = l.executor || 'own';
-  return ex === 'own' ? '🏠 ' + T('فريقنا') : '🏗️ ' + esc(ex);
+// الفرقة / المنفّذ: 'own' = فريقنا، أي قيمة أخرى = اسم مقاول باطن من القائمة المُدارة
+function crewLabel(l){
+  const c = l.crew || 'own';
+  return c === 'own' ? '🏠 ' + T('فريقنا') : '🏗️ ' + esc(c);
 }
-function renderExecutorSelect(){
-  const sel = $('wl-executor');
+function renderCrewSelect(){
+  const sel = $('wl-crew');
+  if (!sel) return;
   const current = sel.value;
-  const subs = [...new Set(proj().workLogs.map(l => l.executor).filter(e => e && e !== 'own'))].sort();
+  if (!contractorsLoaded) loadContractors().then(() => { if ($('tab-prod').classList.contains('active')) renderCrewSelect(); });
+  const subs = (contractorsDb ? contractorsDb.contractors : []).map(c => c.name).sort();
   sel.innerHTML = '<option value="own">🏠 ' + T('فريقنا (شركتنا)') + '</option>' +
-    (subs.length ? '<optgroup label="' + T('مقاولون من الباطن') + '">' + subs.map(s => '<option value="' + esc(s) + '">🏗️ ' + esc(s) + '</option>').join('') + '</optgroup>' : '') +
-    '<option value="__new__">+ ' + T('إضافة مقاول من الباطن جديد...') + '</option>';
-  sel.value = subs.includes(current) || current === 'own' ? current : 'own';
-}
-function wlExecutorChanged(){
-  const sel = $('wl-executor');
-  if (sel.value !== '__new__') return;
-  const name = prompt(T('اسم مقاول الباطن:'));
-  if (!name || !name.trim()) { sel.value = 'own'; return; }
-  renderExecutorSelect();
-  sel.value = name.trim();
-  // القيمة الجديدة قد لا تكون موجودة كخيار بعد (لا يوميات سابقة بها) — نضيفها يدوياً لتبقى محددة
-  if (![...sel.options].some(o => o.value === name.trim())) {
-    const opt = document.createElement('option'); opt.value = name.trim(); opt.textContent = '🏗️ ' + name.trim();
-    sel.appendChild(opt); sel.value = name.trim();
-  }
+    (subs.length ? '<optgroup label="' + T('مقاولون من الباطن') + '">' + subs.map(s => '<option value="' + esc(s) + '">🏗️ ' + esc(s) + '</option>').join('') + '</optgroup>' : '');
+  sel.value = subs.includes(current) ? current : 'own';
 }
 
 function renderProd(){
   if (!$('wl-date').value) $('wl-date').value = todayStr();
-  $('crew-list').innerHTML = [...new Set(proj().workLogs.map(l => l.crew))].map(c => '<option value="' + esc(c) + '">').join('');
-  renderExecutorSelect();
+  renderCrewSelect();
   // البند: حقل بحث ذكي بدل القائمة الطويلة — إعادة الضبط لو تغيّر المشروع أو حُذف البند المختار
   if ($('wl-item').value && !getItem($('wl-item').value)) { $('wl-item').value = ''; $('wl-item-search').value = ''; }
   $('wl-villa').innerHTML = '<option value="">— ' + T('بدون') + ' ' + UL() + ' ' + T('محددة') + ' —</option>' + proj().villas.map(v => '<option value="' + esc(v.no) + '">' + esc(v.no) + ' (' + esc(v.sheet) + ')</option>').join('');
@@ -4330,8 +4348,7 @@ function renderProd(){
     const perWorker = l.workers > 0 ? l.qty / l.workers : 0;
     return '<tr>' +
       '<td style="font-family:var(--mono);font-size:12px">' + esc(l.date) + '</td>' +
-      '<td>' + esc(l.crew) + '</td>' +
-      '<td style="font-size:11px;white-space:nowrap">' + executorLabel(l) + '</td>' +
+      '<td style="font-size:11px;white-space:nowrap">' + crewLabel(l) + '</td>' +
       '<td><span class="item-no">' + esc(l.itemId) + '</span> <span style="font-size:11px;color:var(--text3)">' + esc(it ? it.desc.substring(0,25) : '') + '</span></td>' +
       '<td>' + (l.villaNo ? '#' + esc(l.villaNo) : '—') + '</td>' +
       '<td class="amount">' + fmtQ(l.qty) + ' ' + esc(it ? it.unit : '') + '</td>' +
@@ -4344,26 +4361,7 @@ function renderProd(){
       '<td style="font-size:11px;color:var(--text3)">' + esc(l.by || '—') + '</td>' +
       '<td><button class="mini-btn red" onclick="deleteWorkLog(' + l.id + ')" data-tip="' + (editsGated() ? T('طلب حذف (يحتاج موافقة مالك الشركة)') : T('حذف')) + '">🗑</button></td>' +
       '</tr>';
-  }).join('') || '<tr><td colspan="12"><div class="empty-state"><p>' + T('لا توجد يوميات مسجلة') + '</p></div></td></tr>';
-
-  // ملخص فريقنا مقابل مقاولي الباطن
-  const execGroups = {};
-  proj().workLogs.forEach(l => {
-    const ex = l.executor || 'own';
-    if (!execGroups[ex]) execGroups[ex] = {qty:0, value:0, n:0};
-    const it = getItem(l.itemId);
-    execGroups[ex].qty += l.qty; execGroups[ex].n++;
-    if (it) execGroups[ex].value += l.qty * it.unitRate;
-  });
-  const totalQtyAll = Object.values(execGroups).reduce((s,g)=>s+g.qty,0);
-  const execEntries = Object.entries(execGroups).sort((a,b) => (a[0]==='own'?-1:b[0]==='own'?1:b[1].qty-a[1].qty));
-  $('executor-summary').innerHTML = execEntries.map(([ex,g]) => {
-    const pct = totalQtyAll > 0 ? (g.qty/totalQtyAll*100) : 0;
-    return '<div class="sc-item" style="align-items:flex-start"><span class="sc-item-name" style="white-space:normal">' +
-      (ex === 'own' ? '🏠 <strong style="color:var(--text)">' + T('فريقنا') + '</strong>' : '🏗️ <strong style="color:var(--text)">' + esc(ex) + '</strong>') + '<br>' +
-      '<span style="font-size:11px">' + g.n + ' ' + T('يومية') + ' · ' + pct.toFixed(0) + '% ' + T('من إجمالي الكميات') + '</span></span>' +
-      '<span class="sc-item-val" style="color:var(--blue)">' + fmtQ(g.qty) + '<br><span style="color:var(--text3)">' + fmtN(g.value) + '</span></span></div>';
-  }).join('') || '<div class="empty-state" style="padding:14px"><p>' + T('سجّل يوميات لعرض المقارنة') + '</p></div>';
+  }).join('') || '<tr><td colspan="11"><div class="empty-state"><p>' + T('لا توجد يوميات مسجلة') + '</p></div></td></tr>';
 
   // معرض أحدث صور الموقع
   const allPhotos = [];
@@ -4391,17 +4389,18 @@ function renderProd(){
       '<div class="bar-amount" style="width:70px">' + (q ? fmtQ(q) : '—') + '</div></div>';
   }).join('');
 
-  // crew summary
+  // crew summary (فريقنا مقابل مقاولي الباطن)
   const crews = {};
   proj().workLogs.forEach(l => {
-    if (!crews[l.crew]) crews[l.crew] = {qty:0, days:new Set(), workers:0, n:0, last:''};
-    const c = crews[l.crew];
+    const key = l.crew || 'own';
+    if (!crews[key]) crews[key] = {qty:0, days:new Set(), workers:0, n:0, last:''};
+    const c = crews[key];
     c.qty += l.qty; c.days.add(l.date); c.workers += (l.workers||0); c.n++;
     if (l.date > c.last) c.last = l.date;
   });
-  $('crew-summary').innerHTML = Object.entries(crews).sort((a,b) => b[1].qty - a[1].qty).map(([name,c]) => {
+  $('crew-summary').innerHTML = Object.entries(crews).sort((a,b) => (a[0]==='own'?-1:b[0]==='own'?1:b[1].qty-a[1].qty)).map(([name,c]) => {
     const avgDay = c.days.size ? c.qty / c.days.size : 0;
-    return '<div class="sc-item" style="align-items:flex-start"><span class="sc-item-name" style="white-space:normal"><strong style="color:var(--text)">' + esc(name) + '</strong><br>' +
+    return '<div class="sc-item" style="align-items:flex-start"><span class="sc-item-name" style="white-space:normal"><strong style="color:var(--text)">' + crewLabel({crew:name}) + '</strong><br>' +
       '<span style="font-size:11px">' + c.days.size + ' ' + T('يوم عمل') + ' · ' + T('آخر نشاط') + ' ' + esc(c.last) + '</span></span>' +
       '<span class="sc-item-val" style="color:var(--blue)">' + fmtQ(avgDay) + ' /' + T('يوم') + '<br><span style="color:var(--text3)">' + T('إجمالي') + ' ' + fmtQ(c.qty) + '</span></span></div>';
   }).join('') || '<div class="empty-state" style="padding:14px"><p>' + T('سجّل يوميات لعرض إحصائيات الفرق') + '</p></div>';
@@ -4550,9 +4549,8 @@ async function addWorkLog(){
   const itemId = $('wl-item').value;
   const it = getItem(itemId);
   const qty = Number($('wl-qty').value);
-  const crew = $('wl-crew').value.trim();
+  const crew = $('wl-crew').value || 'own';
   if (!it) { alert(T('اختر بند من قائمة البحث')); $('wl-item-search').focus(); return; }
-  if (!crew) { alert(T('اكتب اسم الفرقة / المسؤول')); return; }
   if (!qty || qty <= 0) { alert(T('اكتب الكمية المنفذة')); return; }
   if (offlineMode) { alert(T('📴 لا يمكن التسجيل بدون اتصال')); return; }
   let photos = [];
@@ -4561,7 +4559,6 @@ async function addWorkLog(){
     catch(e) { alert(T('تعذر رفع الصور:') + ' ' + e.message); return; }
   }
   const villaNo = $('wl-villa').value;
-  const executor = $('wl-executor').value === '__new__' ? 'own' : ($('wl-executor').value || 'own'); // احتياط: لا يُحفظ "__new__" لو لم يكتمل اختيار الاسم
   const apply = true; // الكمية تنعكس تلقائياً على نسبة إنجاز البند — بلا خيار تعطيل
   let appliedQty = 0;
   if (apply) {
@@ -4574,7 +4571,7 @@ async function addWorkLog(){
     }
   }
   proj().workLogs.push({
-    id: nextSeq(), date: $('wl-date').value || todayStr(), crew, executor,
+    id: nextSeq(), date: $('wl-date').value || todayStr(), crew,
     itemId, villaNo, qty, workers: Number($('wl-workers').value)||0,
     note: $('wl-note').value.trim(), applied: apply, appliedQty, by: currentUser().name, photos
   });
@@ -5027,6 +5024,103 @@ function exportPdbItemsCSV(){
 function openPdbImport(){ biTarget = 'pricedb'; openBoqImport(); }
 
 // ============================================================
+//  SUBCONTRACTORS (المقاولون من الباطن)
+// ============================================================
+let contractorsDb = null;    // {version, seq, contractors, companyId, canEdit}
+let contractorsLoaded = false;
+
+const ctrCanEdit = () => contractorsDb && contractorsDb.canEdit;
+
+async function loadContractors(force){
+  if (contractorsLoaded && !force) return;
+  try {
+    contractorsDb = await API.req('GET', '/api/contractors');
+    contractorsLoaded = true;
+  } catch(e) { contractorsDb = {version:0, seq:1000, contractors:[], canEdit:false}; }
+}
+
+async function saveContractorsDb(){
+  if (!ctrCanEdit()) return;
+  try {
+    const r = await API.req('PUT', '/api/contractors', {baseVersion: contractorsDb.version, data: {seq: contractorsDb.seq, contractors: contractorsDb.contractors}});
+    contractorsDb.version = r.version;
+  } catch(e) {
+    if (e.status === 409) { alert(T('⚠️ عُدّلت قائمة المقاولين من مستخدم آخر — سيتم إعادة التحميل.')); await loadContractors(true); renderContractors(); }
+    else alert(T('تعذر الحفظ:') + ' ' + e.message);
+  }
+}
+const ctrSeq = () => (contractorsDb.seq = (contractorsDb.seq||1000) + 1);
+
+async function onOpenContractors(){
+  $('contractors-loading').style.display = 'block';
+  $('contractors-view').style.display = 'none';
+  await loadContractors();
+  $('contractors-loading').style.display = 'none';
+  $('contractors-view').style.display = 'block';
+  renderContractors();
+}
+
+function renderContractors(){
+  if (!contractorsDb) return;
+  $('tc-contractors').textContent = contractorsDb.contractors.length;
+  const co = isAdmin() ? companyName(contractorsDb.companyId) : companyName(state.me.companyId);
+  $('contractors-company-badge').textContent = co ? '🏢 ' + co : '';
+  $('contractors-btn-add').style.display = ctrCanEdit() ? '' : 'none';
+  $('contractors-tbody').innerHTML = contractorsDb.contractors.map(c =>
+    '<tr>' +
+    '<td>🏗️ ' + esc(c.name) + '</td>' +
+    '<td style="font-size:11px;color:var(--text2)">' + esc(c.notes||'—') + '</td>' +
+    '<td>' + (ctrCanEdit() ? '<button class="mini-btn" onclick="openContractorModal(' + c.id + ')">✏️</button>' : '') + '</td>' +
+    '</tr>'
+  ).join('') || '<tr><td colspan="3"><div class="empty-state"><p>' + T('لا يوجد مقاولون من الباطن مسجّلون بعد') + '</p></div></td></tr>';
+}
+
+let ctrEditId = null;
+function openContractorModal(id){
+  if (!ctrCanEdit()) return;
+  ctrEditId = id;
+  const c = id ? contractorsDb.contractors.find(x => x.id === id) : null;
+  $('contractor-modal-title').textContent = c ? T('تعديل مقاول من الباطن') : T('إضافة مقاول من الباطن');
+  $('ctr-delete').style.display = c ? '' : 'none';
+  $('ctr-name').value = c ? c.name : '';
+  $('ctr-notes').value = c ? (c.notes||'') : '';
+  $('contractor-modal').classList.add('open');
+}
+async function saveContractor(){
+  const name = $('ctr-name').value.trim();
+  if (!name) { alert(T('اكتب اسم المقاول')); return; }
+  const notes = $('ctr-notes').value.trim();
+  if (ctrEditId) { const c = contractorsDb.contractors.find(x=>x.id===ctrEditId); Object.assign(c, {name, notes}); }
+  else contractorsDb.contractors.push({id: ctrSeq(), name, notes});
+  closeModal('contractor-modal'); await saveContractorsDb(); renderContractors(); renderCrewSelect();
+}
+async function deleteContractor(){
+  if (!ctrEditId || !confirm(T('حذف هذا المقاول من الباطن؟'))) return;
+  contractorsDb.contractors = contractorsDb.contractors.filter(x => x.id !== ctrEditId);
+  closeModal('contractor-modal'); await saveContractorsDb(); renderContractors(); renderCrewSelect();
+}
+
+Object.assign(I18N_EN, {
+  'جارٍ تحميل قائمة المقاولين...':'Loading contractors...',
+  'القائمة المعتمدة لمقاولي الباطن — تظهر عند تسجيل يومية إنتاجية لاختيار من نفّذ العمل (فريقنا أو أحد هؤلاء المقاولين).':'The approved list of subcontractors — shown when logging productivity, to pick who did the work (our team or one of these contractors).',
+  '+ إضافة مقاول من الباطن':'+ Add subcontractor',
+  'الاسم':'Name',
+  'ملاحظات':'Notes',
+  'لا يوجد مقاولون من الباطن مسجّلون بعد':'No subcontractors registered yet',
+  'إضافة مقاول من الباطن':'Add subcontractor',
+  'تعديل مقاول من الباطن':'Edit subcontractor',
+  'الاسم *':'Name *',
+  'اختياري':'Optional',
+  '💾 حفظ':'💾 Save',
+  '🗑 حذف':'🗑 Delete',
+  'إلغاء':'Cancel',
+  'اكتب اسم المقاول':'Enter the contractor\'s name',
+  'حذف هذا المقاول من الباطن؟':'Delete this subcontractor?',
+  '⚠️ عُدّلت قائمة المقاولين من مستخدم آخر — سيتم إعادة التحميل.':'⚠️ The contractors list was changed by another user — reloading.',
+  '🏗️ المقاولون من الباطن':'🏗️ Subcontractors'
+});
+
+// ============================================================
 //  BOQ EXCEL IMPORT (استيراد جدول الكميات)
 // ============================================================
 let biTarget = 'boq'; // 'boq' | 'pricedb'
@@ -5474,6 +5568,7 @@ Object.assign(I18N_EN, {
   'الحالة العامة للبند':'Item\'s overall status',
   '📝 تسجيل يومية عمل':'📝 Log a Work Entry',
   'الفرقة / المسؤول':'Crew / Responsible',
+  'الفرقة / المنفّذ':'Crew / Executor',
   'الكمية المنفذة اليوم':'Quantity executed today',
   '📷 صور من الموقع (اختياري — من الكاميرا أو الاستوديو)':'📷 Site Photos (optional — from camera or gallery)',
   'إضافة الكمية تلقائياً إلى نسبة إنجاز البند (والوحدة إذا محددة)':'Automatically add the quantity to the item\'s completion percentage (and the unit, if specified)',

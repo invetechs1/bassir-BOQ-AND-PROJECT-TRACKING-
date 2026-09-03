@@ -635,7 +635,7 @@
       <div class="f-field"><label data-i18n="الكمية الكلية *">الكمية الكلية *</label><input type="number" id="im-qty" min="0" step="0.01"></div>
       <div class="f-field"><label data-i18n="سعر الوحدة (ر.س) *">سعر الوحدة (ر.س) *</label><input type="number" id="im-rate" min="0" step="0.01"></div>
       <div class="f-field"><label data-i18n="الكمية المنفذة">الكمية المنفذة</label><input type="number" id="im-exec" min="0" step="0.01"></div>
-      <div class="f-field full" id="im-group-note" style="display:none"><div class="alert info" style="font-size:12px;margin:0">ℹ️ <span data-i18n="هذا بند مقسَّم — الكمية والسعر والمنفذ تُحسب تلقائياً من مجموع أجزائه ولا تُعدَّل هنا مباشرة. عدّل كل جزء من صفه الخاص في الجدول.">هذا بند مقسَّم — الكمية والسعر والمنفذ تُحسب تلقائياً من مجموع أجزائه ولا تُعدَّل هنا مباشرة. عدّل كل جزء من صفه الخاص في الجدول.</span></div></div>
+      <div class="f-field full" id="im-group-note" style="display:none"><div class="alert info" style="font-size:12px;margin:0">ℹ️ <span data-i18n="هذا جزء من تقسيم سعر — الكمية والمنفذ مرآة للبند الأصلي (نفس الشغل الفعلي) ولا تُعدَّل هنا. عدّل الكمية والتنفيذ من البند الأصلي؛ هنا يمكنك فقط تعديل سعر هذا الجزء.">هذا جزء من تقسيم سعر — الكمية والمنفذ مرآة للبند الأصلي (نفس الشغل الفعلي) ولا تُعدَّل هنا. عدّل الكمية والتنفيذ من البند الأصلي؛ هنا يمكنك فقط تعديل سعر هذا الجزء.</span></div></div>
       <div class="f-field"><label data-i18n="نطاق العمل">نطاق العمل</label>
         <select id="im-scope">
           <option value="azoom" data-i18n="ضمن نطاق أعمالنا">ضمن نطاق أعمالنا</option>
@@ -1575,27 +1575,28 @@ setInterval(async () => {
 //  DERIVED / COMPUTED
 // ============================================================
 const getItem = id => proj().boqItems.find(i => i.id === id);
-// تقسيم البند: البند "الأب" الذي له بنود فرعية (parentId يشير إليه) تصبح كل قيمه المحسوبة
-// (الكمية/القيمة/النسب/المتاح للمطالبة) مجموعاً تلقائياً من البنود الفرعية، لا من حقوله المجمَّدة وقت التقسيم
+// تقسيم السعر: البند الأب (له بنود فرعية parentId يشير إليه) يبقى بنداً عادياً بالكامل —
+// كميته وتنفيذه واعتماده ومطالباته لا تتغير أبداً بالتقسيم. كل بند فرعي "مكوّن سعر" يمثّل
+// نفس الشغل الفعلي فعلياً (نفس الكمية والتنفيذ والاعتماد — مرآة للأب) لكن بسعر وحدة خاص به
+// (مكوّنات الأسعار تجمع لسعر الأب)، وهو للعرض/التوزيع فقط: لا يُنفَّذ أو يُعتمد أو يُطالَب به مستقلاً — الأب فقط هو القابل للمطالبة
 const childrenOf = id => proj().boqItems.filter(c => c.parentId === id);
 const isGroupParent = id => childrenOf(id).length > 0;
-const groupTotalQty = it => { const k = childrenOf(it.id); return k.length ? k.reduce((s,x)=>s+(x.totalQty||0),0) : (it.totalQty||0); };
-const groupExecutedQty = it => { const k = childrenOf(it.id); return k.length ? k.reduce((s,x)=>s+(x.executedQty||0),0) : (it.executedQty||0); };
-const groupClaimedQty = it => { const k = childrenOf(it.id); return k.length ? k.reduce((s,x)=>s+(x.claimedQty||0),0) : (it.claimedQty||0); };
-const amt = it => { const k = childrenOf(it.id); return k.length ? k.reduce((s,x)=>s+amt(x),0) : (it.totalQty||0) * (it.unitRate||0); };
-const approvedOf = it => { const k = childrenOf(it.id); return k.length ? k.reduce((s,x)=>s+approvedOf(x),0) : Math.min(it.executedQty||0, it.approvedQty!==undefined ? it.approvedQty : (it.executedQty||0)); };
-const itemPct = it => { const tot = groupTotalQty(it); return tot > 0 ? clamp(groupExecutedQty(it) / tot, 0, 1) : 0; };      // نسبة المنفذ ميدانياً
-const approvedPct = it => { const tot = groupTotalQty(it); return tot > 0 ? clamp(approvedOf(it) / tot, 0, 1) : 0; };    // نسبة المعتمد من الاستشاري
-const claimedPct = it => { const tot = groupTotalQty(it); return tot > 0 ? clamp(groupClaimedQty(it) / tot, 0, 1) : 0; };
-const pendingApprovalQty = it => { if (it.scope === 'others') return 0; const k = childrenOf(it.id); return k.length ? k.reduce((s,x)=>s+pendingApprovalQty(x),0) : Math.max(0, (it.executedQty||0) - approvedOf(it)); }; // منفذ بانتظار اعتماد الاستشاري
-const pendingApprovalValue = it => { const k = childrenOf(it.id); return k.length ? k.reduce((s,x)=>s+pendingApprovalValue(x),0) : pendingApprovalQty(it) * (it.unitRate||0); };
+const fatherOf = it => it.parentId ? getItem(it.parentId) : null;
+const qtyBase = it => fatherOf(it) || it; // مصدر الكمية/التنفيذ/الاعتماد/المرفوع الفعلي (الأب نفسه لبند فرعي، أو البند ذاته لبند عادي/أب)
+const amt = it => (qtyBase(it).totalQty||0) * (it.unitRate||0);
+const approvedOf = it => { const b = qtyBase(it); return Math.min(b.executedQty||0, b.approvedQty!==undefined ? b.approvedQty : (b.executedQty||0)); };
+const itemPct = it => { const b = qtyBase(it); return b.totalQty > 0 ? clamp(b.executedQty / b.totalQty, 0, 1) : 0; };      // نسبة المنفذ ميدانياً
+const approvedPct = it => { const b = qtyBase(it); return b.totalQty > 0 ? clamp(approvedOf(it) / b.totalQty, 0, 1) : 0; };    // نسبة المعتمد من الاستشاري
+const claimedPct = it => { const b = qtyBase(it); return b.totalQty > 0 ? clamp(b.claimedQty / b.totalQty, 0, 1) : 0; };
+const pendingApprovalQty = it => { const b = qtyBase(it); return b.scope === 'others' ? 0 : Math.max(0, (b.executedQty||0) - approvedOf(it)); }; // منفذ بانتظار اعتماد الاستشاري
+const pendingApprovalValue = it => pendingApprovalQty(it) * (it.unitRate||0);
 // المتاح للمستخلص = المعتمد من الاستشاري ناقص المرفوع سابقاً (وليس المنفذ)
-const availQty = it => { const k = childrenOf(it.id); return k.length ? k.reduce((s,x)=>s+availQty(x),0) : Math.max(0, approvedOf(it) - (it.claimedQty||0)); };
-const netClaimable = it => { if (it.scope === 'others') return 0; const k = childrenOf(it.id); return k.length ? k.reduce((s,x)=>s+netClaimable(x),0) : availQty(it) * it.unitRate; };
-const remainingValue = it => { if (it.scope === 'others') return 0; const k = childrenOf(it.id); return k.length ? k.reduce((s,x)=>s+remainingValue(x),0) : (1 - itemPct(it)) * amt(it); };
-// قائمة "قابلة للتصرف": تستبعد بنود المجموعات الأب (رقمها التجميعي مكرر من أبنائها) —
-// تُستخدم في كل مكان يُبنى منه قرار/إجراء فعلي (مطالبة، إنتاجية، تقارير) حتى لا يظهر البند الأب كعنصر مستقل بجانب أبنائه
-const actionableItems = () => proj().boqItems.filter(i => !isGroupParent(i.id));
+const availQty = it => { const b = qtyBase(it); return Math.max(0, approvedOf(it) - (b.claimedQty||0)); };
+const netClaimable = it => qtyBase(it).scope === 'others' ? 0 : availQty(it) * it.unitRate;
+const remainingValue = it => qtyBase(it).scope === 'others' ? 0 : (1 - itemPct(it)) * amt(it);
+// قائمة "قابلة للتصرف": تستبعد البنود الفرعية (مكوّنات السعر) — تُستخدم في كل مكان يُبنى منه
+// قرار/إجراء فعلي (مطالبة، إنتاجية، تقارير) حتى لا يظهر مكوّن سعر كعنصر مستقل قابل للتنفيذ أو المطالبة
+const actionableItems = () => proj().boqItems.filter(i => !i.parentId);
 const DONE = 0.995;
 
 const STATUS_META = {
@@ -1657,36 +1658,32 @@ function chainOf(it){
 function rootCauseOf(it){ const c = chainOf(it); return c.length ? c[c.length-1] : null; }
 
 // ملاحظة: totalsFor تُستدعى أحياناً لمشروع غير المشروع الحالي المعروض (شبكة المشاريع) — لذا
-// تُستخدم هنا نسخة محلية من دوال التجميع (نطاقها p تحديداً) بدل الدوال العامة (التي تفترض proj() الحالي)
+// نستبعد البنود الفرعية (مكوّنات السعر) محلياً هنا بدل استخدام actionableItems() العامة (التي تفترض proj() الحالي)
 function totalsFor(p){
   const t = {contract:0, azoomScope:0, executed:0, approved:0, pendingApproval:0, claimed:0, net:0, locked:0, othersVal:0, musNet:0, collected:0, blockedCount:0, pendingApprovalCount:0};
   const getP = id => p.boqItems.find(i => i.id === id);
-  const kidsOf = id => p.boqItems.filter(i => i.parentId === id);
-  const lApprovedOf = it => { const k = kidsOf(it.id); return k.length ? k.reduce((s,x)=>s+lApprovedOf(x),0) : Math.min(it.executedQty||0, it.approvedQty!==undefined?it.approvedQty:(it.executedQty||0)); };
-  const lGroupTotalQty = it => { const k = kidsOf(it.id); return k.length ? k.reduce((s,x)=>s+(x.totalQty||0),0) : (it.totalQty||0); };
-  const lGroupExecQty = it => { const k = kidsOf(it.id); return k.length ? k.reduce((s,x)=>s+(x.executedQty||0),0) : (it.executedQty||0); };
-  const lItemPct = it => { const tot = lGroupTotalQty(it); return tot>0 ? clamp(lGroupExecQty(it)/tot,0,1) : 0; };
-  p.boqItems.filter(it => !kidsOf(it.id).length).forEach(it => {
+  p.boqItems.filter(it => !it.parentId).forEach(it => {
     const a = (it.totalQty||0) * (it.unitRate||0);
     t.contract += a;
     if (it.scope === 'others') { t.othersVal += a; return; }
     t.azoomScope += a;
-    const pct = lItemPct(it), apprOf = lApprovedOf(it);
+    const pct = it.totalQty>0 ? clamp((it.executedQty||0)/it.totalQty,0,1) : 0;
+    const apprOf = Math.min(it.executedQty||0, it.approvedQty!==undefined?it.approvedQty:(it.executedQty||0));
     const apprPct = it.totalQty>0 ? clamp(apprOf/it.totalQty,0,1) : 0;
     const claimPct = it.totalQty>0 ? clamp((it.claimedQty||0)/it.totalQty,0,1) : 0;
-    const pendQty = it.scope==='others' ? 0 : Math.max(0,(it.executedQty||0)-apprOf);
+    const pendQty = Math.max(0,(it.executedQty||0)-apprOf);
     const availQ = Math.max(0, apprOf-(it.claimedQty||0));
     t.executed += pct * a;
     t.approved += apprPct * a;
     t.pendingApproval += pendQty * (it.unitRate||0);
     if (pendQty > 0.001) t.pendingApprovalCount++;
     t.claimed += claimPct * a;
-    t.net += it.scope==='others' ? 0 : availQ * it.unitRate;
+    t.net += availQ * it.unitRate;
     if (it.blocker && it.blocker.active && pct < DONE) t.blockedCount++;
     let locked = it.blocker && it.blocker.active && pct < DONE;
     if (!locked && pct === 0) {
       if (it.scope === 'client_supply') locked = true;
-      else locked = (it.predecessors||[]).map(getP).filter(Boolean).some(x => lItemPct(x) < DONE);
+      else locked = (it.predecessors||[]).map(getP).filter(Boolean).some(x => (x.totalQty>0 ? (x.executedQty||0)/x.totalQty : 0) < DONE);
     }
     if (locked) t.locked += (1 - pct) * a;
   });
@@ -2511,26 +2508,29 @@ const expandedGroups = new Set();
 function toggleGroup(id){ if (expandedGroups.has(id)) expandedGroups.delete(id); else expandedGroups.add(id); renderItemsTable(); }
 
 function itemMatchesSearchOrFilter(it, search){
-  const matchesSearch = it.desc.toLowerCase().includes(search) || it.id.toLowerCase().includes(search) || (it.divAr||'').includes(search);
-  if (search) return matchesSearch;
+  const selfMatches = s => s.desc.toLowerCase().includes(search) || s.id.toLowerCase().includes(search) || (s.divAr||'').includes(search);
+  if (search) return selfMatches(it) || childrenOf(it.id).some(selfMatches);
   if (currentFilter === 'all') return true;
   if (currentFilter === 'claimable') return netClaimable(it) > 1;
   if (currentFilter === 'pending_approval') return pendingApprovalQty(it) > 0.001;
   return statusOf(it) === currentFilter;
 }
 
-// صف بند عادي (مستقل أو بند فرعي داخل مجموعة) — نفس القالب لكلا الحالتين
-function itemRowHtml(it, indented){
+// صف بند عادي أو مقسَّم السعر (له أجزاء): نفس البند الأصلي بكل إجراءاته العادية —
+// التقسيم لا يغيّر تنفيذه أو اعتماده أو مطالبته إطلاقاً، فقط يُضاف له زر طيّ/فتح لعرض أجزاء السعر تحته
+function itemRowHtml(it, kidsCount, expanded){
   const st = statusOf(it);
   const net = netClaimable(it);
+  const hasKids = kidsCount > 0;
   let depHtml = '—';
   if (it.blocker && it.blocker.active) depHtml = '<span class="blocker-box" data-tip="' + esc(it.blocker.note||'') + '">⛔ ' + esc(it.blocker.reason) + '</span>';
   else if ((it.predecessors||[]).length) {
     const preds = it.predecessors.map(pid => { const p = getItem(pid); return p ? esc(pid) + ' (' + (itemPct(p)*100).toFixed(0) + '%)' : esc(pid); }).join('، ');
     depHtml = '<span class="prereq-box" data-tip="' + T('لا يمكن البدء قبل اكتمال هذه البنود') + '">⏭ ' + preds + '</span>';
   }
-  return '<tr' + (indented ? ' style="background:var(--bg1,transparent)"' : '') + '>' +
-    '<td><span class="item-no"' + (indented ? ' style="margin-inline-start:22px"' : '') + '>' + (indented ? '└ ' : '') + esc(it.id) + '</span><br><span style="font-size:10px;color:var(--text3)' + (indented?';margin-inline-start:22px':'') + '">' + esc(it.div) + '</span></td>' +
+  return '<tr>' +
+    '<td>' + (hasKids ? '<button class="mini-btn" onclick="toggleGroup(\'' + esc(it.id) + '\')" style="margin-inline-end:4px" data-tip="' + T('عرض/إخفاء أجزاء تقسيم السعر') + '">' + (expanded?'▾':'▸') + '</button>' : '') +
+      '<span class="item-no">' + esc(it.id) + '</span>' + (hasKids ? ' <span class="pill blue" style="font-size:9px">' + kidsCount + ' ' + T('أسعار') + '</span>' : '') + '<br><span style="font-size:10px;color:var(--text3)">' + esc(it.div) + '</span></td>' +
     '<td><div class="desc-text" data-tip="' + esc(it.desc) + '">' + esc(it.desc) + '</div><span style="font-size:10px;color:var(--text3)">' + esc(it.divAr||'') + '</span></td>' +
     '<td><span class="pill gray" style="font-size:10px">' + esc(it.unit) + '</span></td>' +
     '<td class="amount muted">' + fmtQ(it.totalQty) + '</td>' +
@@ -2552,37 +2552,28 @@ function itemRowHtml(it, indented){
       ? ' <button class="mini-btn green" onclick="itemToMustakhlas(\'' + esc(it.id) + '\')" data-tip="' + T('مستخلص') + '">📤</button>' : '') +
     (it.scope !== 'others' && it.totalQty > 0 && (it.executedQty||0) < it.totalQty - 0.001
       ? ' <button class="mini-btn" style="border-color:rgba(240,136,62,0.5);color:var(--orange)" onclick="markItemDone(\'' + esc(it.id) + '\')" data-tip="' + T('تسجيل البند كمنجز 100% — يُسجَّل الباقي يوميةً باسمك ويتحول البند لانتظار اعتماد الاستشاري') + '">✔</button>' : '') +
-    (canSplitItem(it) ? ' <button class="mini-btn" onclick="openSplitItemModal(\'' + esc(it.id) + '\')" data-tip="' + T('تقسيم البند إلى بندين أو أكثر بنفس الكمية الكلية') + '">✂</button>' : '') + '</td>' +
+    (canSplitItem(it) ? ' <button class="mini-btn" onclick="openSplitItemModal(\'' + esc(it.id) + '\')" data-tip="' + T('تقسيم سعر الوحدة إلى مكوّنات (نفس الكمية)') + '">✂</button>' : '') + '</td>' +
     '</tr>';
 }
 
-// صف رأس مجموعة (بند قُسِّم إلى أجزاء): يعرض إجماليات محسوبة تلقائياً من الأجزاء، بدون إجراءات تنفيذ/اعتماد/مطالبة مباشرة عليه
-function groupHeaderRowHtml(parent, kidsCount, expanded){
-  const st = statusOf(parent);
-  const net = netClaimable(parent);
-  const pend = pendingApprovalQty(parent), appr = approvedOf(parent);
-  let depHtml = '—';
-  if (parent.blocker && parent.blocker.active) depHtml = '<span class="blocker-box" data-tip="' + esc(parent.blocker.note||'') + '">⛔ ' + esc(parent.blocker.reason) + '</span>';
-  else if ((parent.predecessors||[]).length) {
-    const preds = parent.predecessors.map(pid => { const p = getItem(pid); return p ? esc(pid) + ' (' + (itemPct(p)*100).toFixed(0) + '%)' : esc(pid); }).join('، ');
-    depHtml = '<span class="prereq-box" data-tip="' + T('لا يمكن البدء قبل اكتمال هذه البنود') + '">⏭ ' + preds + '</span>';
-  }
-  return '<tr style="background:var(--bg3)">' +
-    '<td><button class="mini-btn" onclick="toggleGroup(\'' + esc(parent.id) + '\')" style="margin-inline-end:4px">' + (expanded?'▾':'▸') + '</button>' +
-      '<span class="item-no">' + esc(parent.id) + '</span> <span class="pill blue" style="font-size:9px">' + kidsCount + ' ' + T('أجزاء') + '</span><br><span style="font-size:10px;color:var(--text3)">' + esc(parent.div) + '</span></td>' +
-    '<td><div class="desc-text" data-tip="' + esc(parent.desc) + '">' + esc(parent.desc) + '</div><span style="font-size:10px;color:var(--text3)">' + esc(parent.divAr||'') + '</span></td>' +
-    '<td><span class="pill gray" style="font-size:10px">' + esc(parent.unit) + '</span></td>' +
-    '<td class="amount muted">' + fmtQ(groupTotalQty(parent)) + '</td>' +
-    '<td class="amount muted">—</td>' +
-    '<td class="amount">' + fmtN(amt(parent)) + '</td>' +
-    '<td>' + (parent.scope==='others' ? '<span style="color:var(--text3)">—</span>' :
-      '<span style="display:inline-flex;align-items:center;gap:5px"><span style="font-family:var(--mono);font-size:10px;color:var(--text2)">' + (itemPct(parent)*100).toFixed(1) + '%</span><span class="prog-bar" style="width:56px"><span class="prog-fill ' + (itemPct(parent)>=DONE?'green':itemPct(parent)>0?'amber':'red') + '" style="width:' + (itemPct(parent)*100) + '%;display:block"></span></span></span>') + '</td>' +
+// صف "جزء تقسيم سعر" (بند فرعي): للعرض فقط — الكمية/التنفيذ/الاعتماد/الحالة كلها مرآة للبند الأصلي،
+// ولا إجراءات تنفيذ/اعتماد/مطالبة عليه مباشرة — فقط سعره الخاص وحصته من القيمة
+function kidRowHtml(kid, father){
+  const pend = pendingApprovalQty(father), appr = approvedOf(father);
+  return '<tr style="background:var(--bg1,transparent);opacity:0.9">' +
+    '<td><span class="item-no" style="margin-inline-start:22px">└ ' + esc(kid.id) + '</span><br><span style="font-size:10px;color:var(--text3);margin-inline-start:22px">' + esc(kid.div) + '</span></td>' +
+    '<td><div class="desc-text" data-tip="' + esc(kid.desc) + '">' + esc(kid.desc) + '</div></td>' +
+    '<td><span class="pill gray" style="font-size:10px">' + esc(kid.unit) + '</span></td>' +
+    '<td class="amount muted" data-tip="' + T('نفس كمية البند الأصلي') + '">' + fmtQ(father.totalQty) + '</td>' +
+    '<td class="amount">' + fmtN(kid.unitRate) + '</td>' +
+    '<td class="amount">' + fmtN(amt(kid)) + '</td>' +
+    '<td><span style="display:inline-flex;align-items:center;gap:5px" data-tip="' + T('مرآة لتنفيذ البند الأصلي') + '"><span style="font-family:var(--mono);font-size:10px;color:var(--text2)">' + (itemPct(father)*100).toFixed(1) + '%</span><span class="prog-bar" style="width:56px"><span class="prog-fill ' + (itemPct(father)>=DONE?'green':itemPct(father)>0?'amber':'red') + '" style="width:' + (itemPct(father)*100) + '%;display:block"></span></span></span></td>' +
     '<td style="font-size:10px;color:var(--text2)">' + (appr>0.001 ? '✅ ' + fmtQ(appr) + ' ' : '') + (pend>0.001 ? '🕵 ' + fmtQ(pend) : '') + (appr<0.001 && pend<0.001 ? '—' : '') + '</td>' +
-    '<td class="amount" style="color:var(--teal)">' + (claimedPct(parent)*100).toFixed(0) + '%</td>' +
-    '<td class="amount ' + (net>1?'claimable':'muted') + '">' + (net>1?fmtN(net):'—') + '</td>' +
-    '<td>' + statusPill(st) + '</td>' +
-    '<td>' + depHtml + '</td>' +
-    '<td style="white-space:nowrap"><button class="mini-btn" onclick="openItemModal(\'' + esc(parent.id) + '\')" data-tip="' + T('تعديل') + '">✏️</button></td>' +
+    '<td class="amount" style="color:var(--teal)">' + (claimedPct(father)*100).toFixed(0) + '%</td>' +
+    '<td class="amount muted" data-tip="' + T('حصة هذا الجزء من القيمة القابلة للمطالبة الآن') + '">' + (netClaimable(kid)>1?fmtN(netClaimable(kid)):'—') + '</td>' +
+    '<td><span style="font-size:10px;color:var(--text3)">' + T('مرآة') + '</span></td>' +
+    '<td>—</td>' +
+    '<td style="white-space:nowrap"><button class="mini-btn" onclick="openItemModal(\'' + esc(kid.id) + '\')" data-tip="' + T('تعديل سعر هذا الجزء') + '">✏️</button></td>' +
     '</tr>';
 }
 
@@ -2592,21 +2583,13 @@ function renderItemsTable(){
   const rowsHtml = [];
   let sumAmt = 0, sumNet = 0, rowCount = 0;
 
-  proj().boqItems.filter(it => !it.parentId).forEach(parent => {
-    const kids = childrenOf(parent.id);
-    if (kids.length) {
-      const matchingKids = kids.filter(k => itemMatchesSearchOrFilter(k, search));
-      // تظهر المجموعة إذا لم يوجد فلتر/بحث نشط، أو إذا طابق أحد أبنائها البحث/الفلتر
-      if (filtering && !matchingKids.length) return;
-      sumAmt += amt(parent); sumNet += netClaimable(parent); rowCount++;
-      const expanded = expandedGroups.has(parent.id) || filtering;
-      rowsHtml.push(groupHeaderRowHtml(parent, kids.length, expanded));
-      if (expanded) (filtering ? matchingKids : kids).forEach(k => rowsHtml.push(itemRowHtml(k, true)));
-    } else {
-      if (!itemMatchesSearchOrFilter(parent, search)) return;
-      sumAmt += amt(parent); sumNet += netClaimable(parent); rowCount++;
-      rowsHtml.push(itemRowHtml(parent, false));
-    }
+  actionableItems().forEach(it => {
+    if (!itemMatchesSearchOrFilter(it, search)) return;
+    sumAmt += amt(it); sumNet += netClaimable(it); rowCount++;
+    const kids = childrenOf(it.id);
+    const expanded = expandedGroups.has(it.id) || (filtering && kids.length > 0);
+    rowsHtml.push(itemRowHtml(it, kids.length, expanded));
+    if (kids.length && expanded) kids.forEach(k => rowsHtml.push(kidRowHtml(k, it)));
   });
 
   $('items-tbody').innerHTML = rowsHtml.join('') || '<tr><td colspan="13"><div class="empty-state"><p>' + T('لا توجد بنود مطابقة') + '</p></div></td></tr>';
@@ -2911,6 +2894,8 @@ let editingItemId = null;
 function openItemModal(id){
   editingItemId = id;
   const it = id ? getItem(id) : null;
+  const isKid = it && !!it.parentId;
+  const father = isKid ? fatherOf(it) : null;
   $('item-modal-title').textContent = it ? T('تعديل بند') + ' ' + it.id : T('إضافة بند جديد');
   $('im-delete-btn').style.display = it ? '' : 'none';
   $('im-id').value = it ? it.id : ''; $('im-id').disabled = !!it;
@@ -2919,12 +2904,12 @@ function openItemModal(id){
   $('im-desc').value = it ? it.desc : '';
   $('im-unit').value = it ? it.unit : 'م²';
   $('im-qtyv').value = it ? it.qtyPerVilla : '';
-  const isGroup = it && isGroupParent(it.id);
-  $('im-qty').value = it ? (isGroup ? groupTotalQty(it) : it.totalQty) : '';
+  // بند فرعي (مكوّن سعر): الكمية/المنفذ مرآة للبند الأصلي، لا تُعدَّل هنا — فقط الوصف وسعر الوحدة
+  $('im-qty').value = it ? (isKid ? father.totalQty : it.totalQty) : '';
   $('im-rate').value = it ? it.unitRate : '';
-  $('im-exec').value = it ? (isGroup ? groupExecutedQty(it) : it.executedQty) : 0;
-  $('im-qty').disabled = $('im-rate').disabled = $('im-exec').disabled = !!isGroup;
-  $('im-group-note').style.display = isGroup ? '' : 'none';
+  $('im-exec').value = it ? (isKid ? father.executedQty : it.executedQty) : 0;
+  $('im-qty').disabled = $('im-exec').disabled = !!isKid;
+  $('im-group-note').style.display = isKid ? '' : 'none';
   $('im-scope').value = it ? it.scope : 'azoom';
   $('im-blk').checked = !!(it && it.blocker && it.blocker.active);
   $('im-blk-reason').value = it && it.blocker ? it.blocker.reason : '';
@@ -2959,14 +2944,24 @@ function saveItem(){
   };
   if (editingItemId) {
     const it = getItem(editingItemId);
-    // بند مقسَّم: الكمية/السعر/المنفذ محسوبة تلقائياً من الأجزاء — لا تُطبَّق قيم النموذج المعطَّلة عليها
-    if (isGroupParent(it.id)) {
-      data.totalQty = it.totalQty; data.unitRate = it.unitRate; data.executedQty = it.executedQty; data.qtyPerVilla = it.qtyPerVilla;
+    const isKid = !!it.parentId;
+    if (isKid) {
+      // بند فرعي (مكوّن سعر): لا كمية/تنفيذ/اعتماد/مرفوع خاص به (كلها مرآة للبند الأصلي) — يُعدَّل فقط الوصف وسعر الوحدة
+      const pendingReqs = [];
+      if (editsGated() && Math.abs((data.unitRate||0) - (it.unitRate||0)) > 0.001) {
+        pendingReqs.push({ type:'rate_edit', itemId:it.id, fromRate:(it.unitRate||0), newRate:data.unitRate,
+          label: T('تعديل سعر الوحدة للبند') + ' ' + it.id + ': ' + fmtN(it.unitRate||0) + ' ← ' + fmtN(data.unitRate) });
+        data.unitRate = it.unitRate;
+      }
+      it.desc = data.desc; it.notes = data.notes; it.unitRate = data.unitRate; // data.unitRate أُعيد لقيمته القديمة أعلاه إن كان هناك طلب معلّق
+      closeModal('item-modal');
+      if (pendingReqs.length) submitEditRequest(pendingReqs); else { save(); renderAll(); }
+      return;
     }
     // مدير المشروع: تغيير الكمية المنفذة أو سعر الوحدة أو الكمية الكلية من النموذج يتحول لطلب موافقة
     // (سعر الوحدة والكمية الكلية يؤثران في قيمة المطالبة تماماً كالكمية المنفذة)
     const pendingReqs = [];
-    if (editsGated() && !isGroupParent(it.id)) {
+    if (editsGated()) {
       if (Math.abs((data.executedQty||0) - (it.executedQty||0)) > 0.001) {
         pendingReqs.push({ type:'qty_edit', itemId:it.id, fromQty:(it.executedQty||0), newQty:data.executedQty,
           label: T('تعديل الكمية المنفذة للبند') + ' ' + it.id + ': ' + fmtQ(it.executedQty||0) + ' ← ' + fmtQ(data.executedQty) + ' ' + (it.unit||'') });
@@ -3004,23 +2999,24 @@ function saveItem(){
 function deleteItem(){
   if (!editingItemId) return;
   const it = getItem(editingItemId);
-  // بند مقسَّم: لا يُحذف مباشرة وله أجزاء — يجب حذف كل جزء أولاً (أو تركها فارغة فيعود بنداً عادياً)
-  if (isGroupParent(editingItemId)) { alert(T('هذا البند مقسَّم إلى أجزاء — احذف كل الأجزاء أولاً من صفوفها الخاصة قبل حذف البند نفسه.')); return; }
+  const hasKids = isGroupParent(editingItemId);
   // مدير المشروع: حذف البند يتطلب موافقة مالك الشركة — لا حذف مباشر
   if (editsGated()) {
     closeModal('item-modal');
     submitEditRequest({ type:'item_delete', itemId: editingItemId,
-      label: T('حذف البند') + ' ' + esc(editingItemId) + ' — ' + esc((it.desc||'').substring(0,60)) });
+      label: T('حذف البند') + ' ' + esc(editingItemId) + ' — ' + esc((it.desc||'').substring(0,60)) + (hasKids ? ' ' + T('(وكل أجزاء تقسيم سعره)') : '') });
     return;
   }
-  if (it.claimedQty > 0 && !confirm(T('هذا البند مرفوع في مستخلصات سابقة. متأكد من حذفه؟'))) return;
+  if (!it.parentId && (it.claimedQty > 0) && !confirm(T('هذا البند مرفوع في مستخلصات سابقة. متأكد من حذفه؟'))) return;
+  if (hasKids && !confirm(T('هذا البند مقسَّم السعر — سيُحذف معه كل أجزائه') + ' (' + childrenOf(editingItemId).length + '). ' + T('متابعة؟'))) return;
   if (!confirm(T('حذف البند') + ' ' + editingItemId + T(' نهائياً؟'))) return;
   applyItemDelete(editingItemId);
   closeModal('item-modal'); save(); renderAll();
 }
 
-// تنفيذ حذف البند فعلياً (مباشرة من الإدارة أو بعد اعتماد مالك الشركة للطلب)
+// تنفيذ حذف البند فعلياً (مباشرة من الإدارة أو بعد اعتماد مالك الشركة للطلب) — يحذف معه أي أجزاء تقسيم سعر تابعة له
 function applyItemDelete(itemId){
+  childrenOf(itemId).forEach(k => { proj().boqItems = proj().boqItems.filter(i => i.id !== k.id); });
   proj().boqItems = proj().boqItems.filter(i => i.id !== itemId);
   proj().boqItems.forEach(i => { i.predecessors = (i.predecessors||[]).filter(p => p !== itemId); });
   delete proj().villaProgress[itemId];
@@ -3033,44 +3029,44 @@ function applyItemDelete(itemId){
 // مسموح فقط للبند "النظيف": بدون تنفيذ أو اعتماد أو رفع سابق — لتفادي
 // تعقيد إعادة توزيع الاستلامات والمستخلصات التاريخية على البنود الفرعية.
 // ولا يُقسَّم بند فرعي (له parentId) ولا بند مقسَّم مسبقاً (له بنود فرعية) — مستوى واحد فقط من التقسيم
+// لا يُقسَّم بند فرعي (مكوّن سعر) ولا بند مقسَّم مسبقاً (له مكوّنات) — مستوى واحد فقط.
+// لا يشترط عدم وجود تنفيذ/اعتماد سابق: التقسيم لا يغيّر كمية البند أو تنفيذه أو اعتماده أبداً — فقط يوزّع سعر الوحدة
 function canSplitItem(it){
-  return it.scope !== 'others' && !it.parentId && !isGroupParent(it.id) &&
-    (it.executedQty||0) < 0.001 && (it.approvedQty||0) < 0.001 &&
-    (it.claimedQty||0) < 0.001 && !(it.approvals||[]).length;
+  return it.scope !== 'others' && !it.parentId && !isGroupParent(it.id);
 }
 
 let splitItemId = null;
 function openSplitItemModal(id){
   const it = getItem(id);
   if (!it) return;
-  if (!canSplitItem(it)) { alert(T('لا يمكن تقسيم بند له تنفيذ أو اعتماد أو رفع سابق — قسّمه قبل بدء العمل عليه.')); return; }
+  if (!canSplitItem(it)) return;
   splitItemId = id;
   $('split-item-info').innerHTML = '<strong>' + esc(it.id) + '</strong> — ' + esc(it.desc) + '<br>' +
-    T('الكمية الكلية:') + ' ' + fmtQ(it.totalQty) + ' ' + esc(it.unit) + ' · ' + T('سعر الوحدة:') + ' ' + fmtN(it.unitRate) +
-    '<br><span style="font-size:11px;color:var(--text2)">' + T('سيبقى هذا البند في الجدول كمجموعة قابلة للطي تعرض إجمالي أبنائها — وكل جزء يصبح بنداً مستقلاً بالكامل (تنفيذ، اعتماد، مطالبة).') + '</span>';
+    T('الكمية:') + ' ' + fmtQ(it.totalQty) + ' ' + esc(it.unit) + ' · ' + T('سعر الوحدة:') + ' ' + fmtN(it.unitRate) +
+    '<br><span style="font-size:11px;color:var(--text2)">' + T('الكمية تبقى كما هي لكل الأجزاء (نفس الشغل الفعلي) — فقط سعر الوحدة يتوزّع بينها. البند الأصلي يبقى هو من يُنفَّذ ويُعتمد ويُطالَب به؛ الأجزاء لعرض توزيع القيمة فقط.') + '</span>';
   $('split-count').value = '2';
   renderSplitRows();
   $('split-item-modal').classList.add('open');
 }
 
-// يبني صفوف الإدخال حسب عدد الأجزاء، بتوزيع افتراضي متساوٍ (والباقي من التقريب يذهب للجزء الأخير حتى يكون المجموع مطابقاً تماماً)
+// يبني صفوف الإدخال حسب عدد الأجزاء، بتوزيع سعر افتراضي متساوٍ (والباقي من التقريب يذهب للجزء الأخير حتى يكون المجموع مطابقاً تماماً)
 function renderSplitRows(){
   const it = getItem(splitItemId);
   if (!it) return;
   const n = Number($('split-count').value) || 2;
-  const base = Math.floor((it.totalQty / n) * 100) / 100;
+  const base = Math.floor((it.unitRate / n) * 100) / 100;
   const rows = [];
   let used = 0;
   for (let i = 0; i < n; i++) {
-    const qty = i < n - 1 ? base : Math.round((it.totalQty - used) * 100) / 100;
-    used = Math.round((used + qty) * 100) / 100;
-    rows.push({ id: it.id + '-' + String.fromCharCode(65 + i), desc: it.desc + ' (' + (i+1) + '/' + n + ')', qty });
+    const rate = i < n - 1 ? base : Math.round((it.unitRate - used) * 100) / 100;
+    used = Math.round((used + rate) * 100) / 100;
+    rows.push({ id: it.id + '-' + String.fromCharCode(65 + i), desc: it.desc + ' (' + (i+1) + '/' + n + ')', rate });
   }
   $('split-rows').innerHTML = rows.map((r, i) =>
     '<div class="f-grid" style="grid-template-columns:1fr 2fr 1fr;gap:8px;align-items:end;border:1px solid var(--border);border-radius:8px;padding:8px">' +
-    '<div class="f-field"><label>' + T('رقم البند') + ' ' + (i+1) + '</label><input type="text" id="split-id-' + i + '" value="' + esc(r.id) + '"></div>' +
+    '<div class="f-field"><label>' + T('رقم الجزء') + ' ' + (i+1) + '</label><input type="text" id="split-id-' + i + '" value="' + esc(r.id) + '"></div>' +
     '<div class="f-field"><label>' + T('الوصف') + '</label><input type="text" id="split-desc-' + i + '" value="' + esc(r.desc) + '"></div>' +
-    '<div class="f-field"><label>' + T('الكمية') + '</label><input type="number" id="split-qty-' + i + '" min="0" step="0.01" value="' + r.qty + '" oninput="splitRowsRecalc()"></div>' +
+    '<div class="f-field"><label>' + T('سعر الوحدة') + '</label><input type="number" id="split-rate-' + i + '" min="0" step="0.01" value="' + r.rate + '" oninput="splitRowsRecalc()"></div>' +
     '</div>'
   ).join('');
   splitRowsRecalc();
@@ -3081,18 +3077,18 @@ function splitRowsRecalc(){
   if (!it) return;
   const n = Number($('split-count').value) || 2;
   let sum = 0;
-  for (let i = 0; i < n; i++) sum += Number($('split-qty-' + i).value) || 0;
+  for (let i = 0; i < n; i++) sum += Number($('split-rate-' + i).value) || 0;
   sum = Math.round(sum * 100) / 100;
-  const remaining = Math.round((it.totalQty - sum) * 100) / 100;
+  const remaining = Math.round((it.unitRate - sum) * 100) / 100;
   const box = $('split-remaining');
   if (Math.abs(remaining) < 0.01) {
     box.style.color = 'var(--green-bright)';
-    box.textContent = '✅ ' + T('المجموع مطابق للكمية الكلية') + ' (' + fmtQ(it.totalQty) + ' ' + it.unit + ')';
+    box.textContent = '✅ ' + T('المجموع مطابق لسعر الوحدة') + ' (' + fmtN(it.unitRate) + ')';
     $('split-confirm-btn').disabled = false;
   } else {
     box.style.color = 'var(--red)';
-    box.textContent = (remaining > 0 ? '⚠️ ' + T('متبقٍ') : '⚠️ ' + T('زيادة')) + ' ' + fmtQ(Math.abs(remaining)) + ' ' + it.unit +
-      ' — ' + T('يجب أن يساوي مجموع الأجزاء الكمية الكلية للبند الأصلي.');
+    box.textContent = (remaining > 0 ? '⚠️ ' + T('متبقٍ') : '⚠️ ' + T('زيادة')) + ' ' + fmtN(Math.abs(remaining)) +
+      ' — ' + T('يجب أن يساوي مجموع أسعار الأجزاء سعر وحدة البند الأصلي.');
     $('split-confirm-btn').disabled = true;
   }
 }
@@ -3106,44 +3102,41 @@ function confirmSplitItem(){
   for (let i = 0; i < n; i++) {
     const id = $('split-id-' + i).value.trim();
     const desc = $('split-desc-' + i).value.trim();
-    const qty = Number($('split-qty-' + i).value) || 0;
+    const rate = Number($('split-rate-' + i).value) || 0;
     if (!id || !desc) { alert(T('أكمل رقم ووصف كل جزء')); return; }
-    if (qty <= 0) { alert(T('كمية كل جزء يجب أن تكون أكبر من صفر')); return; }
+    if (rate <= 0) { alert(T('سعر كل جزء يجب أن يكون أكبر من صفر')); return; }
     if (seenIds.has(id) || (getItem(id) && id !== it.id)) { alert(T('رقم البند') + ' "' + id + '" ' + T('مكرر أو مستخدم في بند آخر')); return; }
     seenIds.add(id);
-    children.push({ id, desc, totalQty: Math.round(qty*100)/100 });
+    children.push({ id, desc, unitRate: Math.round(rate*100)/100 });
   }
-  const sum = Math.round(children.reduce((s,c) => s + c.totalQty, 0) * 100) / 100;
-  if (Math.abs(sum - it.totalQty) > 0.01) { alert(T('مجموع كميات الأجزاء يجب أن يساوي الكمية الكلية للبند الأصلي بالضبط')); return; }
+  const sum = Math.round(children.reduce((s,c) => s + c.unitRate, 0) * 100) / 100;
+  if (Math.abs(sum - it.unitRate) > 0.01) { alert(T('مجموع أسعار الأجزاء يجب أن يساوي سعر وحدة البند الأصلي بالضبط')); return; }
 
   closeModal('split-item-modal');
-  // مدير المشروع: تقسيم البند يتطلب موافقة مالك الشركة (مثل حذف البند تماماً)
+  // مدير المشروع: تقسيم سعر البند يتطلب موافقة مالك الشركة (يغيّر توزيع القيمة المالية)
   if (editsGated()) {
     submitEditRequest({ type:'item_split', parentId: it.id, children,
-      label: T('تقسيم البند') + ' ' + esc(it.id) + ' — ' + esc(it.desc) + ' ' + T('إلى') + ' ' + n + ' ' + T('أجزاء') + ': ' + children.map(c=>esc(c.id)).join('، ') });
+      label: T('تقسيم سعر البند') + ' ' + esc(it.id) + ' — ' + esc(it.desc) + ' ' + T('إلى') + ' ' + n + ' ' + T('أجزاء') + ': ' + children.map(c=>esc(c.id)).join('، ') });
   } else {
     applyItemSplit(it.id, children);
     expandedGroups.add(it.id);
     save(); renderAll();
-    alert('✅ ' + T('تم تقسيم البند إلى') + ' ' + n + ' ' + T('أجزاء.'));
+    alert('✅ ' + T('تم تقسيم سعر البند إلى') + ' ' + n + ' ' + T('أجزاء.'));
   }
 }
 
-// تنفيذ التقسيم فعلياً (مباشرة من الإدارة أو بعد اعتماد مالك الشركة للطلب):
-// البند الأصلي يبقى في الجدول كـ"مجموعة أب" (كل قيمه المعروضة تُحسب تلقائياً من مجموع أبنائه)،
-// وتُنشأ بنود فرعية جديدة ترث خصائصه (القسم، الوحدة، سعر الوحدة، النطاق، العائق، البنود التابعة)
+// تنفيذ تقسيم السعر فعلياً (مباشرة من الإدارة أو بعد اعتماد مالك الشركة للطلب):
+// البند الأصلي (الأب) لا يتغيّر إطلاقاً — يبقى هو من يُنفَّذ ويُعتمد ويُطالَب به بالكامل.
+// الأجزاء بنود عرض فقط: لا كمية ولا تنفيذ ولا اعتماد مخزّن عليها — كلها تُقرأ من الأب (نفس الشغل الفعلي)، فقط سعر الوحدة خاص بها
 function applyItemSplit(parentId, children){
   const parent = getItem(parentId);
   if (!parent) return;
-  const inherited = { div: parent.div, divAr: parent.divAr, unit: parent.unit, unitRate: parent.unitRate,
-    scope: parent.scope, predecessors: [...(parent.predecessors||[])],
-    blocker: parent.blocker ? Object.assign({}, parent.blocker) : null, notes: parent.notes || '' };
   children.forEach(c => {
-    proj().boqItems.push(Object.assign({
-      id: c.id, desc: c.desc, totalQty: c.totalQty, qtyPerVilla: 0,
-      executedQty: 0, approvedQty: 0, approvals: [], claimedQty: 0,
+    proj().boqItems.push({
+      id: c.id, desc: c.desc, unitRate: c.unitRate,
+      div: parent.div, divAr: parent.divAr, unit: parent.unit, scope: parent.scope,
       parentId: parentId, splitAt: new Date().toISOString()
-    }, inherited));
+    });
   });
 }
 Object.assign(I18N_EN, {
@@ -3171,7 +3164,28 @@ Object.assign(I18N_EN, {
   'تعذّر تطبيق التقسيم: البند الأصلي لم يعد بحالته وقت تقديم الطلب (رُفع عليه تنفيذ أو اعتماد). راجع الطلب مع مدير المشروع.':'Could not apply the split: the original item is no longer in the state it was when the request was submitted (execution or approval was logged against it). Discuss the request with the project manager.',
   'هذا البند مقسَّم إلى أجزاء — احذف كل الأجزاء أولاً من صفوفها الخاصة قبل حذف البند نفسه.':'This item is split into parts — delete every part first from its own row before deleting the item itself.',
   'سيبقى هذا البند في الجدول كمجموعة قابلة للطي تعرض إجمالي أبنائها — وكل جزء يصبح بنداً مستقلاً بالكامل (تنفيذ، اعتماد، مطالبة).':'This item stays in the table as a collapsible group showing its parts\' combined totals — each part becomes a fully independent item (execution, approval, claiming).',
-  'هذا بند مقسَّم — الكمية والسعر والمنفذ تُحسب تلقائياً من مجموع أجزائه ولا تُعدَّل هنا مباشرة. عدّل كل جزء من صفه الخاص في الجدول.':'This item is split — its quantity, price, and executed amount are calculated automatically from its parts and can\'t be edited here directly. Edit each part from its own row in the table.'
+  'هذا بند مقسَّم — الكمية والسعر والمنفذ تُحسب تلقائياً من مجموع أجزائه ولا تُعدَّل هنا مباشرة. عدّل كل جزء من صفه الخاص في الجدول.':'This item is split — its quantity, price, and executed amount are calculated automatically from its parts and can\'t be edited here directly. Edit each part from its own row in the table.',
+  'عرض/إخفاء أجزاء تقسيم السعر':'Show/hide price-split parts',
+  'أسعار':'prices',
+  'تقسيم سعر الوحدة إلى مكوّنات (نفس الكمية)':'Split the unit price into components (same quantity)',
+  'نفس كمية البند الأصلي':'Same quantity as the original item',
+  'مرآة لتنفيذ البند الأصلي':'Mirrors the original item\'s execution',
+  'حصة هذا الجزء من القيمة القابلة للمطالبة الآن':'This part\'s share of the value currently claimable',
+  'مرآة':'Mirrored',
+  'تعديل سعر هذا الجزء':'Edit this part\'s price',
+  '(وكل أجزاء تقسيم سعره)':'(and all its price-split parts)',
+  'هذا البند مقسَّم السعر — سيُحذف معه كل أجزائه':'This item\'s price is split — all its parts will be deleted along with it',
+  'الكمية:':'Quantity:',
+  'الكمية تبقى كما هي لكل الأجزاء (نفس الشغل الفعلي) — فقط سعر الوحدة يتوزّع بينها. البند الأصلي يبقى هو من يُنفَّذ ويُعتمد ويُطالَب به؛ الأجزاء لعرض توزيع القيمة فقط.':'The quantity stays the same for every part (it\'s the same physical work) — only the unit price is divided among them. The original item remains the one that is executed, approved, and claimed; the parts are just for showing how the value breaks down.',
+  'رقم الجزء':'Part no.',
+  'المجموع مطابق لسعر الوحدة':'The total matches the unit price',
+  'يجب أن يساوي مجموع أسعار الأجزاء سعر وحدة البند الأصلي.':'The parts\' prices must add up to the original item\'s unit price.',
+  'سعر كل جزء يجب أن يكون أكبر من صفر':'Each part\'s price must be greater than zero',
+  'مجموع أسعار الأجزاء يجب أن يساوي سعر وحدة البند الأصلي بالضبط':'The parts\' prices must add up exactly to the original item\'s unit price',
+  'تقسيم سعر البند':'Split item price',
+  'تم تقسيم سعر البند إلى':'The item\'s price was split into',
+  'تعذّر تطبيق تقسيم السعر: البند الأصلي لم يعد بحالته وقت تقديم الطلب (حُذف أو قُسِّم بالفعل). راجع الطلب مع مدير المشروع.':'Could not apply the price split: the original item is no longer in the state it was when the request was submitted (it was deleted or already split). Discuss the request with the project manager.',
+  'هذا جزء من تقسيم سعر — الكمية والمنفذ مرآة للبند الأصلي (نفس الشغل الفعلي) ولا تُعدَّل هنا. عدّل الكمية والتنفيذ من البند الأصلي؛ هنا يمكنك فقط تعديل سعر هذا الجزء.':'This is a price-split part — its quantity and executed amount mirror the original item (the same physical work) and can\'t be edited here. Edit the quantity and execution from the original item; here you can only edit this part\'s price.'
 });
 
 // «منجز»: المهندس يعلن اكتمال البند — الباقي يُسجَّل يوميةً موثقة باسمه،
@@ -4610,9 +4624,9 @@ function approveEditRequest(id){
   }
   else if (r.type === 'item_split') {
     const it = getItem(r.parentId);
-    // إعادة تحقق عند الاعتماد: قد يكون البند تغيّر منذ تقديم الطلب (تنفيذ/اعتماد/رفع جديد)
+    // إعادة تحقق عند الاعتماد: قد يكون البند حُذف أو قُسِّم بالفعل منذ تقديم الطلب
     if (!it || !canSplitItem(it)) {
-      alert(T('تعذّر تطبيق التقسيم: البند الأصلي لم يعد بحالته وقت تقديم الطلب (رُفع عليه تنفيذ أو اعتماد). راجع الطلب مع مدير المشروع.'));
+      alert(T('تعذّر تطبيق تقسيم السعر: البند الأصلي لم يعد بحالته وقت تقديم الطلب (حُذف أو قُسِّم بالفعل). راجع الطلب مع مدير المشروع.'));
       return;
     }
     applyItemSplit(r.parentId, r.children);

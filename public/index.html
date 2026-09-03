@@ -125,6 +125,9 @@
   .mini-btn:hover { border-color: var(--amber); color: var(--amber); }
   .mini-btn.green { border-color: rgba(63,185,80,0.4); color: var(--green-bright); }
   .mini-btn.red { border-color: rgba(248,81,73,0.4); color: var(--red); }
+  .group-toggle { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 18px; height: 18px; padding: 0; border-radius: 4px; border: 1px solid var(--border); background: var(--bg3); color: var(--text2); cursor: pointer; font-size: 9px; line-height: 1; }
+  .group-toggle:hover { border-color: var(--amber); color: var(--amber); }
+  .item-id-row { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
 
   .two-col { display: grid; grid-template-columns: 1fr 350px; gap: 20px; align-items: start; }
   .two-col > div { min-width: 0; } /* يسمح للأعمدة بالانكماش والجداول تتمرر داخل حاوياتها */
@@ -1597,6 +1600,13 @@ Object.assign(I18N_EN, {
 window.addEventListener('pagehide', () => { if (dirtyProjects.size) flushSaves(true); });
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && dirtyProjects.size) flushSaves(true); });
 
+// حماية من عيب معروف في المتصفحات: تمرير عجلة الفأرة فوق حقل رقمي مركَّز عليه (focus) يغيّر قيمته بصمت
+// (مثلاً أثناء التمرير في الصفحة) بدل تمرير الصفحة عادةً — قد يُفسد سعراً أو كمية دون أن يلاحظ المستخدم.
+// الحل: إلغاء تركيز أي حقل رقمي فور محاولة التمرير فوقه، فتعمل عجلة الفأرة كتمرير صفحة عادي دائماً.
+document.addEventListener('wheel', e => {
+  if (document.activeElement && document.activeElement.tagName === 'INPUT' && document.activeElement.type === 'number') document.activeElement.blur();
+}, { passive: true });
+
 // مزامنة دورية: لو عدّل مستخدم آخر مشروعاً، حدّث تلقائياً
 setInterval(async () => {
   if (!API.token || !state || dirtyProjects.size) return;
@@ -2584,8 +2594,10 @@ function itemRowHtml(it, kidsCount, expanded){
     depHtml = '<span class="prereq-box" data-tip="' + T('لا يمكن البدء قبل اكتمال هذه البنود') + '">⏭ ' + preds + '</span>';
   }
   return '<tr>' +
-    '<td>' + (hasKids ? '<button class="mini-btn" onclick="toggleGroup(\'' + esc(it.id) + '\')" style="margin-inline-end:4px" data-tip="' + T('عرض/إخفاء أجزاء تقسيم السعر') + '">' + (expanded?'▾':'▸') + '</button>' : '') +
-      '<span class="item-no">' + esc(it.id) + '</span>' + (hasKids ? ' <span class="pill blue" style="font-size:9px">' + kidsCount + ' ' + T('أسعار') + '</span>' : '') + '<br><span style="font-size:10px;color:var(--text3)">' + esc(it.div) + '</span></td>' +
+    '<td><div class="item-id-row">' +
+      (hasKids ? '<button class="group-toggle" onclick="toggleGroup(\'' + esc(it.id) + '\')" data-tip="' + T('عرض/إخفاء أجزاء تقسيم السعر') + '">' + (expanded?'▾':'▸') + '</button>' : '') +
+      '<span class="item-no">' + esc(it.id) + '</span>' + (hasKids ? '<span class="pill blue" style="font-size:9px">' + kidsCount + ' ' + T('أسعار') + '</span>' : '') +
+      '</div><span style="font-size:10px;color:var(--text3)">' + esc(it.div) + '</span></td>' +
     '<td><div class="desc-text" data-tip="' + esc(it.desc) + '">' + esc(it.desc) + '</div><span style="font-size:10px;color:var(--text3)">' + esc(it.divAr||'') + '</span></td>' +
     '<td><span class="pill gray" style="font-size:10px">' + esc(it.unit) + '</span></td>' +
     '<td class="amount muted">' + fmtQ(it.totalQty) + '</td>' +

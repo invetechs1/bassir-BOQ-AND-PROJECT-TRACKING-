@@ -654,7 +654,7 @@
       <div class="f-field"><label data-i18n="الكمية الكلية *">الكمية الكلية *</label><input type="number" id="im-qty" min="0" step="0.01"></div>
       <div class="f-field"><label data-i18n="سعر الوحدة (ر.س) *">سعر الوحدة (ر.س) *</label><input type="number" id="im-rate" min="0" step="0.01"></div>
       <div class="f-field"><label data-i18n="الكمية المنفذة">الكمية المنفذة</label><input type="number" id="im-exec" min="0" step="0.01"></div>
-      <div class="f-field full" id="im-group-note" style="display:none"><div class="alert info" style="font-size:12px;margin:0">ℹ️ <span data-i18n="هذا جزء من تقسيم سعر — الكمية والمنفذ مرآة للبند الأصلي (نفس الشغل الفعلي) ولا تُعدَّل هنا. عدّل الكمية والتنفيذ من البند الأصلي؛ هنا يمكنك فقط تعديل سعر هذا الجزء.">هذا جزء من تقسيم سعر — الكمية والمنفذ مرآة للبند الأصلي (نفس الشغل الفعلي) ولا تُعدَّل هنا. عدّل الكمية والتنفيذ من البند الأصلي؛ هنا يمكنك فقط تعديل سعر هذا الجزء.</span></div></div>
+      <div class="f-field full" id="im-group-note" style="display:none"><div class="alert info" style="font-size:12px;margin:0">ℹ️ <span data-i18n="هذا جزء من تقسيم سعر — الكمية والمنفذ مرآة للبند الأصلي (نفس الشغل الفعلي) ولا تُعدَّل هنا. عدّل الكمية والتنفيذ من البند الأصلي؛ هنا يمكنك فقط تعديل سعر هذا الجزء. اعتماد هذا الجزء مستقل عن الأجزاء الأخرى ويُدار من زر الاعتماد في صفه بالجدول.">هذا جزء من تقسيم سعر — الكمية والمنفذ مرآة للبند الأصلي (نفس الشغل الفعلي) ولا تُعدَّل هنا. عدّل الكمية والتنفيذ من البند الأصلي؛ هنا يمكنك فقط تعديل سعر هذا الجزء. اعتماد هذا الجزء مستقل عن الأجزاء الأخرى ويُدار من زر الاعتماد في صفه بالجدول.</span></div></div>
       <div class="f-field"><label data-i18n="نطاق العمل">نطاق العمل</label>
         <select id="im-scope">
           <option value="azoom" data-i18n="ضمن نطاق أعمالنا">ضمن نطاق أعمالنا</option>
@@ -1243,6 +1243,8 @@ const clamp = (n,a,b) => Math.min(b, Math.max(a, Number(n)||0));
 const round2 = n => Math.round((Number(n)||0) * 100) / 100; // تفادي أخطاء الفاصلة العائمة في المبالغ المخزّنة
 const fmtN = n => Number(n||0).toLocaleString('en-US',{maximumFractionDigits:0});
 const fmtQ = n => Number(n||0).toLocaleString('en-US',{maximumFractionDigits:1});
+// سعر الوحدة تحديداً: يُعرض بدقة كسور — تقريب fmtN لأقرب رقم صحيح يُخفي هللات قد تُربك عند تقسيم السعر لاحقاً
+const fmtRate = n => Number(n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
 const money = n => fmtN(n) + (LANG === 'en' ? ' SAR' : ' ر.س');
 const todayStr = () => new Date().toISOString().slice(0,10);
 const daysAgo = k => { const d = new Date(); d.setDate(d.getDate()-k); return d.toISOString().slice(0,10); };
@@ -1611,15 +1613,18 @@ setInterval(async () => {
 // ============================================================
 const getItem = id => proj().boqItems.find(i => i.id === id);
 // تقسيم السعر: البند الأب (له بنود فرعية parentId يشير إليه) يبقى بنداً عادياً بالكامل —
-// كميته وتنفيذه واعتماده ومطالباته لا تتغير أبداً بالتقسيم. كل بند فرعي "مكوّن سعر" يمثّل
-// نفس الشغل الفعلي فعلياً (نفس الكمية والتنفيذ والاعتماد — مرآة للأب) لكن بسعر وحدة خاص به
-// (مكوّنات الأسعار تجمع لسعر الأب)، وهو للعرض/التوزيع فقط: لا يُنفَّذ أو يُعتمد أو يُطالَب به مستقلاً — الأب فقط هو القابل للمطالبة
+// كميته وتنفيذه ومطالباته لا تتغير أبداً بالتقسيم. كل بند فرعي "مكوّن سعر" يمثّل نفس الشغل
+// الفعلي فعلياً (نفس الكمية والتنفيذ — مرآة للأب) لكن بسعر وحدة خاص به (مكوّنات الأسعار تجمع
+// لسعر الأب)، وهو للعرض/التوزيع فقط: لا يُنفَّذ أو يُطالَب به مستقلاً — الأب فقط هو القابل للمطالبة.
+// الاعتماد فقط مستقل لكل جزء: قد يعتمد الاستشاري مكوّناً (مثلاً المواد) باستلام منفصل عن آخر
+// (مثلاً العمالة) رغم أنها نفس الكمية الفعلية — لكل جزء (والأب) اعتماداته وكميته المعتمدة الخاصة.
 const childrenOf = id => proj().boqItems.filter(c => c.parentId === id);
 const isGroupParent = id => childrenOf(id).length > 0;
 const fatherOf = it => it.parentId ? getItem(it.parentId) : null;
-const qtyBase = it => fatherOf(it) || it; // مصدر الكمية/التنفيذ/الاعتماد/المرفوع الفعلي (الأب نفسه لبند فرعي، أو البند ذاته لبند عادي/أب)
+const qtyBase = it => fatherOf(it) || it; // مصدر الكمية/التنفيذ/المرفوع الفعلي (الأب نفسه لبند فرعي، أو البند ذاته لبند عادي/أب)
 const amt = it => (qtyBase(it).totalQty||0) * (it.unitRate||0);
-const approvedOf = it => { const b = qtyBase(it); return Math.min(b.executedQty||0, b.approvedQty!==undefined ? b.approvedQty : (b.executedQty||0)); };
+// المعتمد: مستقل لكل بند (بما فيها كل جزء تقسيم سعر على حدة) — سقفه الكمية المنفذة فعلياً (من qtyBase)
+const approvedOf = it => { const b = qtyBase(it); const appr = it.approvedQty!==undefined ? it.approvedQty : (it.executedQty||0); return Math.min(b.executedQty||0, appr); };
 const itemPct = it => { const b = qtyBase(it); return b.totalQty > 0 ? clamp(b.executedQty / b.totalQty, 0, 1) : 0; };      // نسبة المنفذ ميدانياً
 const approvedPct = it => { const b = qtyBase(it); return b.totalQty > 0 ? clamp(approvedOf(it) / b.totalQty, 0, 1) : 0; };    // نسبة المعتمد من الاستشاري
 const claimedPct = it => { const b = qtyBase(it); return b.totalQty > 0 ? clamp(b.claimedQty / b.totalQty, 0, 1) : 0; };
@@ -2540,8 +2545,22 @@ function searchItemsChanged(){
 }
 
 // مجموعات مفتوحة (موسّعة) في جدول البنود — حالة عرض فقط للجلسة الحالية، لا تُحفظ
+// أثناء البحث/الفلترة تُفتح المجموعات تلقائياً (ليظهر الجزء المطابق ضمن سياقه)، لكن لو المستخدم طوى المجموعة
+// يدوياً تبقى مطوية حتى أثناء البحث (بدل أن يبدو زر الطي/الفتح وكأنه لا يعمل)
 const expandedGroups = new Set();
-function toggleGroup(id){ if (expandedGroups.has(id)) expandedGroups.delete(id); else expandedGroups.add(id); renderItemsTable(); }
+const collapsedGroups = new Set();
+function isGroupExpanded(id, kidsCount, filtering){
+  if (collapsedGroups.has(id)) return false;
+  return expandedGroups.has(id) || (filtering && kidsCount > 0);
+}
+function toggleGroup(id){
+  const search = ($('search-items').value || '').toLowerCase();
+  const filtering = !!search || currentFilter !== 'all';
+  const wasExpanded = isGroupExpanded(id, childrenOf(id).length, filtering);
+  if (wasExpanded) { collapsedGroups.add(id); expandedGroups.delete(id); }
+  else { expandedGroups.add(id); collapsedGroups.delete(id); }
+  renderItemsTable();
+}
 
 function itemMatchesSearchOrFilter(it, search){
   const selfMatches = s => s.desc.toLowerCase().includes(search) || s.id.toLowerCase().includes(search) || (s.divAr||'').includes(search);
@@ -2570,7 +2589,7 @@ function itemRowHtml(it, kidsCount, expanded){
     '<td><div class="desc-text" data-tip="' + esc(it.desc) + '">' + esc(it.desc) + '</div><span style="font-size:10px;color:var(--text3)">' + esc(it.divAr||'') + '</span></td>' +
     '<td><span class="pill gray" style="font-size:10px">' + esc(it.unit) + '</span></td>' +
     '<td class="amount muted">' + fmtQ(it.totalQty) + '</td>' +
-    '<td class="amount muted">' + fmtN(it.unitRate) + '</td>' +
+    '<td class="amount muted">' + fmtRate(it.unitRate) + '</td>' +
     '<td class="amount">' + fmtN(amt(it)) + '</td>' +
     '<td>' + (it.scope==='others' ? '<span style="color:var(--text3)">—</span>' :
       '<span style="display:inline-flex;flex-direction:column;gap:3px;align-items:flex-start">' +
@@ -2592,19 +2611,20 @@ function itemRowHtml(it, kidsCount, expanded){
     '</tr>';
 }
 
-// صف "جزء تقسيم سعر" (بند فرعي): للعرض فقط — الكمية/التنفيذ/الاعتماد/الحالة كلها مرآة للبند الأصلي،
-// ولا إجراءات تنفيذ/اعتماد/مطالبة عليه مباشرة — فقط سعره الخاص وحصته من القيمة
+// صف "جزء تقسيم سعر" (بند فرعي): الكمية/التنفيذ/الحالة/المطالبة كلها مرآة للبند الأصلي —
+// لا يُنفَّذ ولا يُطالَب به مستقلاً، فالأب فقط هو القابل للمطالبة. لكن الاعتماد مستقل لكل جزء:
+// قد يوقّع الاستشاري استلاماً لمكوّن (مثلاً المواد) دون آخر (مثلاً العمالة) رغم أنها نفس الكمية،
+// فلكل جزء زر اعتماد واستلامات خاصة به (نفس خلية الاعتماد المستخدمة للبند العادي)
 function kidRowHtml(kid, father){
-  const pend = pendingApprovalQty(father), appr = approvedOf(father);
   return '<tr style="background:var(--bg1,transparent);opacity:0.9">' +
     '<td><span class="item-no" style="margin-inline-start:22px">└ ' + esc(kid.id) + '</span><br><span style="font-size:10px;color:var(--text3);margin-inline-start:22px">' + esc(kid.div) + '</span></td>' +
     '<td><div class="desc-text" data-tip="' + esc(kid.desc) + '">' + esc(kid.desc) + '</div></td>' +
     '<td><span class="pill gray" style="font-size:10px">' + esc(kid.unit) + '</span></td>' +
     '<td class="amount muted" data-tip="' + T('نفس كمية البند الأصلي') + '">' + fmtQ(father.totalQty) + '</td>' +
-    '<td class="amount">' + fmtN(kid.unitRate) + '</td>' +
+    '<td class="amount">' + fmtRate(kid.unitRate) + '</td>' +
     '<td class="amount">' + fmtN(amt(kid)) + '</td>' +
     '<td><span style="display:inline-flex;align-items:center;gap:5px" data-tip="' + T('مرآة لتنفيذ البند الأصلي') + '"><span style="font-family:var(--mono);font-size:10px;color:var(--text2)">' + (itemPct(father)*100).toFixed(1) + '%</span><span class="prog-bar" style="width:56px"><span class="prog-fill ' + (itemPct(father)>=DONE?'green':itemPct(father)>0?'amber':'red') + '" style="width:' + (itemPct(father)*100) + '%;display:block"></span></span></span></td>' +
-    '<td style="font-size:10px;color:var(--text2)">' + (appr>0.001 ? '✅ ' + fmtQ(appr) + ' ' : '') + (pend>0.001 ? '🕵 ' + fmtQ(pend) : '') + (appr<0.001 && pend<0.001 ? '—' : '') + '</td>' +
+    '<td>' + approvalCell(kid) + '</td>' +
     '<td class="amount" style="color:var(--teal)">' + (claimedPct(father)*100).toFixed(0) + '%</td>' +
     '<td class="amount muted" data-tip="' + T('حصة هذا الجزء من القيمة القابلة للمطالبة الآن') + '">' + (netClaimable(kid)>1?fmtN(netClaimable(kid)):'—') + '</td>' +
     '<td><span style="font-size:10px;color:var(--text3)">' + T('مرآة') + '</span></td>' +
@@ -2623,7 +2643,7 @@ function renderItemsTable(){
     if (!itemMatchesSearchOrFilter(it, search)) return;
     sumAmt += amt(it); sumNet += netClaimable(it); rowCount++;
     const kids = childrenOf(it.id);
-    const expanded = expandedGroups.has(it.id) || (filtering && kids.length > 0);
+    const expanded = isGroupExpanded(it.id, kids.length, filtering);
     rowsHtml.push(itemRowHtml(it, kids.length, expanded));
     if (kids.length && expanded) kids.forEach(k => rowsHtml.push(kidRowHtml(k, it)));
   });
@@ -2674,8 +2694,9 @@ function setItemQty(id, val){
     return;
   }
   it.executedQty = newVal;
-  // المعتمد لا يتجاوز المنفذ (لو خفّض المنفذ تحت المعتمد يُقلّص المعتمد)
+  // المعتمد لا يتجاوز المنفذ (لو خفّض المنفذ تحت المعتمد يُقلّص المعتمد) — ويشمل اعتماد كل جزء تقسيم سعر مستقلاً
   if ((it.approvedQty||0) > it.executedQty) it.approvedQty = it.executedQty;
+  childrenOf(it.id).forEach(kid => { if ((kid.approvedQty||0) > it.executedQty) kid.approvedQty = it.executedQty; });
   if (it.executedQty < it.claimedQty) {
     alert(T('تنبيه: الكمية المنفذة (') + fmtQ(it.executedQty) + T(') أصبحت أقل من الكمية المرفوعة بمستخلصات سابقة (') + fmtQ(it.claimedQty) + ').');
   }
@@ -2703,7 +2724,7 @@ function openApproveQty(id, opts){
   aqItemId = id; aqPendingFiles = []; aqThenMustakhlas = !!(opts && opts.thenMustakhlas);
   $('aq-title').textContent = aqThenMustakhlas ? T('📤 تحويل الكمية إلى مستخلص (رفع الاستلام)') : T('📋 اعتماد كمية من الاستشاري');
   const pend = pendingApprovalQty(it);
-  $('aq-info').innerHTML = '<strong>' + esc(it.desc) + '</strong><br>' + T('منفذ ميدانياً:') + ' ' + fmtQ(it.executedQty) + ' ' + esc(it.unit) +
+  $('aq-info').innerHTML = '<strong>' + esc(it.desc) + '</strong><br>' + T('منفذ ميدانياً:') + ' ' + fmtQ(qtyBase(it).executedQty||0) + ' ' + esc(it.unit) +
     ' · ' + T('معتمد سابقاً:') + ' ' + fmtQ(approvedOf(it)) + ' · <span style="color:var(--orange)">' + T('بانتظار الاعتماد:') + ' ' + fmtQ(pend) + '</span>';
   $('aq-sysqty').value = Math.round(pend*100)/100; // المنفذ غير المعتمد الذي أدخله المهندس
   $('aq-arqty').value = Math.round(pend*100)/100;
@@ -2758,7 +2779,7 @@ async function saveApproveQty(){
   it.approvals.push({id: nextSeq(), qty, arQty, sysQty: Number($('aq-sysqty').value)||0,
     date: $('aq-date').value || todayStr(), consultant: $('aq-consultant').value.trim(),
     arNo: $('aq-arno').value.trim(), ar: docs[0], docs, note: $('aq-note').value.trim(), by: currentUser().name});
-  it.approvedQty = Math.min(it.executedQty, (it.approvedQty||0) + qty);
+  it.approvedQty = Math.min(qtyBase(it).executedQty||0, (it.approvedQty||0) + qty);
   const toMustakhlas = aqThenMustakhlas;
   closeModal('approve-qty-modal'); save(); renderAll();
   if (toMustakhlas) {
@@ -2821,7 +2842,8 @@ function buildApprovalAudit(){
   }).join('');
 
   // بنود منفذة لم تُعتمد بعد (بانتظار استلام الاستشاري)
-  const pendingItems = actionableItems().filter(i => pendingApprovalQty(i) > 0.001);
+  // يشمل أجزاء تقسيم السعر أيضاً (لكل جزء اعتماده الخاص) — لا يقتصر على actionableItems()
+  const pendingItems = proj().boqItems.filter(i => pendingApprovalQty(i) > 0.001);
   const pendingRows = pendingItems.map(it =>
     '<tr>' + cell('<span style="font-family:var(--mono);color:var(--amber)">' + esc(it.id) + '</span> ' + esc(it.desc.slice(0,45))) +
     cell(fmtQ(it.executedQty), 'text-align:center;font-family:var(--mono);color:var(--blue)') +
@@ -2982,11 +3004,11 @@ function saveItem(){
     const it = getItem(editingItemId);
     const isKid = !!it.parentId;
     if (isKid) {
-      // بند فرعي (مكوّن سعر): لا كمية/تنفيذ/اعتماد/مرفوع خاص به (كلها مرآة للبند الأصلي) — يُعدَّل فقط الوصف وسعر الوحدة
+      // بند فرعي (مكوّن سعر): لا كمية/تنفيذ/مرفوع خاص به (مرآة للبند الأصلي) — اعتماده مستقل ويُدار من زر الاعتماد في صف الجدول، لا هنا — يُعدَّل من هذا النموذج فقط الوصف وسعر الوحدة
       const pendingReqs = [];
       if (editsGated() && Math.abs((data.unitRate||0) - (it.unitRate||0)) > 0.001) {
         pendingReqs.push({ type:'rate_edit', itemId:it.id, fromRate:(it.unitRate||0), newRate:data.unitRate,
-          label: T('تعديل سعر الوحدة للبند') + ' ' + it.id + ': ' + fmtN(it.unitRate||0) + ' ← ' + fmtN(data.unitRate) });
+          label: T('تعديل سعر الوحدة للبند') + ' ' + it.id + ': ' + fmtRate(it.unitRate||0) + ' ← ' + fmtRate(data.unitRate) });
         data.unitRate = it.unitRate;
       }
       it.desc = data.desc; it.notes = data.notes; it.unitRate = data.unitRate; // data.unitRate أُعيد لقيمته القديمة أعلاه إن كان هناك طلب معلّق
@@ -3005,7 +3027,7 @@ function saveItem(){
       }
       if (Math.abs((data.unitRate||0) - (it.unitRate||0)) > 0.001) {
         pendingReqs.push({ type:'rate_edit', itemId:it.id, fromRate:(it.unitRate||0), newRate:data.unitRate,
-          label: T('تعديل سعر الوحدة للبند') + ' ' + it.id + ': ' + fmtN(it.unitRate||0) + ' ← ' + fmtN(data.unitRate) });
+          label: T('تعديل سعر الوحدة للبند') + ' ' + it.id + ': ' + fmtRate(it.unitRate||0) + ' ← ' + fmtRate(data.unitRate) });
         data.unitRate = it.unitRate;
       }
       if (Math.abs((data.totalQty||0) - (it.totalQty||0)) > 0.001) {
@@ -3078,8 +3100,8 @@ function openSplitItemModal(id){
   if (!canSplitItem(it)) return;
   splitItemId = id;
   $('split-item-info').innerHTML = '<strong>' + esc(it.id) + '</strong> — ' + esc(it.desc) + '<br>' +
-    T('الكمية:') + ' ' + fmtQ(it.totalQty) + ' ' + esc(it.unit) + ' · ' + T('سعر الوحدة:') + ' ' + fmtN(it.unitRate) +
-    '<br><span style="font-size:11px;color:var(--text2)">' + T('الكمية تبقى كما هي لكل الأجزاء (نفس الشغل الفعلي) — فقط سعر الوحدة يتوزّع بينها. البند الأصلي يبقى هو من يُنفَّذ ويُعتمد ويُطالَب به؛ الأجزاء لعرض توزيع القيمة فقط.') + '</span>';
+    T('الكمية:') + ' ' + fmtQ(it.totalQty) + ' ' + esc(it.unit) + ' · ' + T('سعر الوحدة:') + ' ' + fmtRate(it.unitRate) +
+    '<br><span style="font-size:11px;color:var(--text2)">' + T('الكمية تبقى كما هي لكل الأجزاء (نفس الشغل الفعلي) — فقط سعر الوحدة يتوزّع بينها. البند الأصلي يبقى هو من يُنفَّذ ويُطالَب به؛ لكل جزء اعتماده الخاص من الاستشاري (استلام منفصل ممكن لكل مكوّن).') + '</span>';
   $('split-count').value = '2';
   renderSplitRows();
   $('split-item-modal').classList.add('open');
@@ -3119,11 +3141,11 @@ function splitRowsRecalc(){
   const box = $('split-remaining');
   if (Math.abs(remaining) < 0.01) {
     box.style.color = 'var(--green-bright)';
-    box.textContent = '✅ ' + T('المجموع مطابق لسعر الوحدة') + ' (' + fmtN(it.unitRate) + ')';
+    box.textContent = '✅ ' + T('المجموع مطابق لسعر الوحدة') + ' (' + fmtRate(it.unitRate) + ')';
     $('split-confirm-btn').disabled = false;
   } else {
     box.style.color = 'var(--red)';
-    box.textContent = (remaining > 0 ? '⚠️ ' + T('متبقٍ') : '⚠️ ' + T('زيادة')) + ' ' + fmtN(Math.abs(remaining)) +
+    box.textContent = (remaining > 0 ? '⚠️ ' + T('متبقٍ') : '⚠️ ' + T('زيادة')) + ' ' + fmtRate(Math.abs(remaining)) +
       ' — ' + T('يجب أن يساوي مجموع أسعار الأجزاء سعر وحدة البند الأصلي.');
     $('split-confirm-btn').disabled = true;
   }
@@ -3155,15 +3177,16 @@ function confirmSplitItem(){
       label: T('تقسيم سعر البند') + ' ' + esc(it.id) + ' — ' + esc(it.desc) + ' ' + T('إلى') + ' ' + n + ' ' + T('أجزاء') + ': ' + children.map(c=>esc(c.id)).join('، ') });
   } else {
     applyItemSplit(it.id, children);
-    expandedGroups.add(it.id);
+    expandedGroups.add(it.id); collapsedGroups.delete(it.id);
     save(); renderAll();
     alert('✅ ' + T('تم تقسيم سعر البند إلى') + ' ' + n + ' ' + T('أجزاء.'));
   }
 }
 
 // تنفيذ تقسيم السعر فعلياً (مباشرة من الإدارة أو بعد اعتماد مالك الشركة للطلب):
-// البند الأصلي (الأب) لا يتغيّر إطلاقاً — يبقى هو من يُنفَّذ ويُعتمد ويُطالَب به بالكامل.
-// الأجزاء بنود عرض فقط: لا كمية ولا تنفيذ ولا اعتماد مخزّن عليها — كلها تُقرأ من الأب (نفس الشغل الفعلي)، فقط سعر الوحدة خاص بها
+// البند الأصلي (الأب) لا يتغيّر إطلاقاً — يبقى هو من يُنفَّذ ويُطالَب به بالكامل.
+// الأجزاء بنود عرض فقط: لا كمية ولا تنفيذ مخزّن عليها — كلها تُقرأ من الأب (نفس الشغل الفعلي)، فقط سعر الوحدة
+// واعتماده الخاصين بها (كل جزء يبدأ بلا اعتماد، بانتظار استلام الاستشاري الخاص به)
 function applyItemSplit(parentId, children){
   const parent = getItem(parentId);
   if (!parent) return;
@@ -3171,7 +3194,7 @@ function applyItemSplit(parentId, children){
     proj().boqItems.push({
       id: c.id, desc: c.desc, unitRate: c.unitRate,
       div: parent.div, divAr: parent.divAr, unit: parent.unit, scope: parent.scope,
-      parentId: parentId, splitAt: new Date().toISOString()
+      parentId: parentId, splitAt: new Date().toISOString(), approvedQty: 0, approvals: []
     });
   });
 }
@@ -3212,7 +3235,7 @@ Object.assign(I18N_EN, {
   '(وكل أجزاء تقسيم سعره)':'(and all its price-split parts)',
   'هذا البند مقسَّم السعر — سيُحذف معه كل أجزائه':'This item\'s price is split — all its parts will be deleted along with it',
   'الكمية:':'Quantity:',
-  'الكمية تبقى كما هي لكل الأجزاء (نفس الشغل الفعلي) — فقط سعر الوحدة يتوزّع بينها. البند الأصلي يبقى هو من يُنفَّذ ويُعتمد ويُطالَب به؛ الأجزاء لعرض توزيع القيمة فقط.':'The quantity stays the same for every part (it\'s the same physical work) — only the unit price is divided among them. The original item remains the one that is executed, approved, and claimed; the parts are just for showing how the value breaks down.',
+  'الكمية تبقى كما هي لكل الأجزاء (نفس الشغل الفعلي) — فقط سعر الوحدة يتوزّع بينها. البند الأصلي يبقى هو من يُنفَّذ ويُطالَب به؛ لكل جزء اعتماده الخاص من الاستشاري (استلام منفصل ممكن لكل مكوّن).':'The quantity stays the same for every part (it\'s the same physical work) — only the unit price is divided among them. The original item remains the one that is executed and claimed; each part has its own consultant approval (a separate receipt is possible for each component).',
   'رقم الجزء':'Part no.',
   'المجموع مطابق لسعر الوحدة':'The total matches the unit price',
   'يجب أن يساوي مجموع أسعار الأجزاء سعر وحدة البند الأصلي.':'The parts\' prices must add up to the original item\'s unit price.',
@@ -3221,7 +3244,7 @@ Object.assign(I18N_EN, {
   'تقسيم سعر البند':'Split item price',
   'تم تقسيم سعر البند إلى':'The item\'s price was split into',
   'تعذّر تطبيق تقسيم السعر: البند الأصلي لم يعد بحالته وقت تقديم الطلب (حُذف أو قُسِّم بالفعل). راجع الطلب مع مدير المشروع.':'Could not apply the price split: the original item is no longer in the state it was when the request was submitted (it was deleted or already split). Discuss the request with the project manager.',
-  'هذا جزء من تقسيم سعر — الكمية والمنفذ مرآة للبند الأصلي (نفس الشغل الفعلي) ولا تُعدَّل هنا. عدّل الكمية والتنفيذ من البند الأصلي؛ هنا يمكنك فقط تعديل سعر هذا الجزء.':'This is a price-split part — its quantity and executed amount mirror the original item (the same physical work) and can\'t be edited here. Edit the quantity and execution from the original item; here you can only edit this part\'s price.'
+  'هذا جزء من تقسيم سعر — الكمية والمنفذ مرآة للبند الأصلي (نفس الشغل الفعلي) ولا تُعدَّل هنا. عدّل الكمية والتنفيذ من البند الأصلي؛ هنا يمكنك فقط تعديل سعر هذا الجزء. اعتماد هذا الجزء مستقل عن الأجزاء الأخرى ويُدار من زر الاعتماد في صفه بالجدول.':'This is a price-split part — its quantity and executed amount mirror the original item (the same physical work) and can\'t be edited here. Edit the quantity and execution from the original item; here you can only edit this part\'s price. This part\'s approval is independent of the other parts and is managed from the Approve button on its own row in the table.'
 });
 
 // «منجز»: المهندس يعلن اكتمال البند — الباقي يُسجَّل يوميةً موثقة باسمه،
@@ -3280,7 +3303,7 @@ function renderBuilder(){
       '<td><span class="item-no">' + esc(it.id) + '</span></td>' +
       '<td><div class="desc-text" style="max-width:200px" data-tip="' + esc(it.desc) + '">' + esc(it.desc) + '</div></td>' +
       '<td>' + esc(it.unit) + '</td>' +
-      '<td class="amount muted">' + fmtN(it.unitRate) + '</td>' +
+      '<td class="amount muted">' + fmtRate(it.unitRate) + '</td>' +
       '<td class="amount" style="color:var(--green)">' + fmtQ(approvedOf(it)) + '</td>' +
       '<td class="amount muted">' + fmtQ(it.claimedQty) + '</td>' +
       '<td><input type="number" class="qty-input" min="0" max="' + availQty(it) + '" step="0.1" value="' + (Math.round(qty*100)/100) + '"' + (sel?'':' disabled') + ' onchange="mbQty(\'' + esc(it.id) + '\', this.value)"></td>' +
@@ -4682,7 +4705,7 @@ function approveEditRequest(id){
       return;
     }
     applyItemSplit(r.parentId, r.children);
-    expandedGroups.add(r.parentId);
+    expandedGroups.add(r.parentId); collapsedGroups.delete(r.parentId);
   }
   r.status = 'applied'; r.appliedAt = new Date().toISOString();
   save(); renderAll();

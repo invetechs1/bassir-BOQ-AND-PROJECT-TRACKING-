@@ -434,7 +434,10 @@ app.put('/api/projects/:id', auth, (req, res) => {
           return res.status(403).json({ error: 'pm_log_edit_needs_owner' });
         }
       } else if (l.applied) {
-        addByItem[l.itemId] = (addByItem[l.itemId] || 0) + (Number(l.appliedQty) || 0);
+        // لا نثق بـ appliedQty وحدها: تُقيَّد بالكمية المسجّلة فعلياً في اليومية (qty)
+        // لمنع تهريب زيادة تنفيذ غير موثقة عبر يومية بكمية صغيرة و appliedQty كبيرة
+        const capped = Math.min(Number(l.appliedQty) || 0, Number(l.qty) || 0);
+        addByItem[l.itemId] = (addByItem[l.itemId] || 0) + Math.max(0, capped);
       }
     }
     for (const it of (data.boqItems || [])) {
@@ -446,6 +449,13 @@ app.put('/api/projects/:id', auth, (req, res) => {
       const allowed = (Number(st.executedQty) || 0) + (addByItem[it.id] || 0);
       if (Math.abs((Number(it.executedQty) || 0) - allowed) > 0.02) {
         return res.status(403).json({ error: 'pm_qty_edit_needs_owner', itemId: it.id });
+      }
+      // سعر الوحدة والكمية الكلية للبند يؤثران في قيمة المطالبة تماماً كالكمية المنفذة — يتطلبان موافقة مالك الشركة أيضاً
+      if (Math.abs((Number(it.unitRate) || 0) - (Number(st.unitRate) || 0)) > 0.001) {
+        return res.status(403).json({ error: 'pm_rate_edit_needs_owner', itemId: it.id });
+      }
+      if (Math.abs((Number(it.totalQty) || 0) - (Number(st.totalQty) || 0)) > 0.001) {
+        return res.status(403).json({ error: 'pm_totalqty_edit_needs_owner', itemId: it.id });
       }
     }
     // طلبات التعديل: مدير المشروع يضيف طلبات جديدة معلقة فقط ولا يعدّل القائمة

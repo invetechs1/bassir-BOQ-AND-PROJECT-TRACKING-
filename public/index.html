@@ -1144,6 +1144,8 @@ const ERR_CODES = {
   pm_log_delete_needs_owner: {ar:'حذف يومية الإنتاجية يتطلب موافقة مالك الشركة', en:'Deleting a work log requires the company owner\'s approval'},
   pm_log_edit_needs_owner: {ar:'تعديل يومية الإنتاجية يتطلب موافقة مالك الشركة', en:'Editing a work log requires the company owner\'s approval'},
   pm_qty_edit_needs_owner: {ar:'تعديل الكمية المنفذة يتطلب موافقة مالك الشركة', en:'Editing the executed quantity requires the company owner\'s approval'},
+  pm_rate_edit_needs_owner: {ar:'تعديل سعر الوحدة يتطلب موافقة مالك الشركة', en:'Editing the unit price requires the company owner\'s approval'},
+  pm_totalqty_edit_needs_owner: {ar:'تعديل الكمية الكلية للبند يتطلب موافقة مالك الشركة', en:'Editing the item\'s total quantity requires the company owner\'s approval'},
   pm_new_item_qty_zero: {ar:'البند الجديد يبدأ بكمية منفذة صفر', en:'A new item starts with zero executed quantity'},
   pm_cannot_approve_requests: {ar:'مدير المشروع لا يعتمد طلبات التعديل — الاعتماد لمالك الشركة', en:'A project manager cannot approve edit requests — approval belongs to the company owner'},
   edit_request_must_start_pending: {ar:'طلب التعديل الجديد يبدأ بانتظار الموافقة', en:'A new edit request must start as pending'}
@@ -2846,19 +2848,33 @@ function saveItem(){
   };
   if (editingItemId) {
     const it = getItem(editingItemId);
-    // مدير المشروع: تغيير الكمية المنفذة من النموذج يتحول لطلب موافقة
-    let qtyReq = null;
-    if (editsGated() && Math.abs((data.executedQty||0) - (it.executedQty||0)) > 0.001) {
-      qtyReq = { type:'qty_edit', itemId:it.id, fromQty:(it.executedQty||0), newQty:data.executedQty,
-        label: T('تعديل الكمية المنفذة للبند') + ' ' + it.id + ': ' + fmtQ(it.executedQty||0) + ' ← ' + fmtQ(data.executedQty) + ' ' + (it.unit||'') };
-      data.executedQty = it.executedQty; // إبقاء القيمة حتى موافقة مالك الشركة
+    // مدير المشروع: تغيير الكمية المنفذة أو سعر الوحدة أو الكمية الكلية من النموذج يتحول لطلب موافقة
+    // (سعر الوحدة والكمية الكلية يؤثران في قيمة المطالبة تماماً كالكمية المنفذة)
+    const pendingReqs = [];
+    if (editsGated()) {
+      if (Math.abs((data.executedQty||0) - (it.executedQty||0)) > 0.001) {
+        pendingReqs.push({ type:'qty_edit', itemId:it.id, fromQty:(it.executedQty||0), newQty:data.executedQty,
+          label: T('تعديل الكمية المنفذة للبند') + ' ' + it.id + ': ' + fmtQ(it.executedQty||0) + ' ← ' + fmtQ(data.executedQty) + ' ' + (it.unit||'') });
+        data.executedQty = it.executedQty; // إبقاء القيمة حتى موافقة مالك الشركة
+      }
+      if (Math.abs((data.unitRate||0) - (it.unitRate||0)) > 0.001) {
+        pendingReqs.push({ type:'rate_edit', itemId:it.id, fromRate:(it.unitRate||0), newRate:data.unitRate,
+          label: T('تعديل سعر الوحدة للبند') + ' ' + it.id + ': ' + fmtN(it.unitRate||0) + ' ← ' + fmtN(data.unitRate) });
+        data.unitRate = it.unitRate;
+      }
+      if (Math.abs((data.totalQty||0) - (it.totalQty||0)) > 0.001) {
+        pendingReqs.push({ type:'totalqty_edit', itemId:it.id, fromTotalQty:(it.totalQty||0), newTotalQty:data.totalQty,
+          label: T('تعديل الكمية الكلية للبند') + ' ' + it.id + ': ' + fmtQ(it.totalQty||0) + ' ← ' + fmtQ(data.totalQty) + ' ' + (it.unit||'') });
+        data.totalQty = it.totalQty;
+        data.executedQty = Math.min(data.executedQty, it.totalQty);
+      }
     }
     data.claimedQty = it.claimedQty;
     data.approvedQty = Math.min(it.approvedQty||0, data.executedQty);
     data.approvals = it.approvals || [];
     Object.assign(it, data);
     closeModal('item-modal');
-    if (qtyReq) submitEditRequest(qtyReq); else { save(); renderAll(); }
+    if (pendingReqs.length) submitEditRequest(pendingReqs); else { save(); renderAll(); }
     return;
   } else {
     if (editsGated()) data.executedQty = 0; // البنود الجديدة من مدير المشروع تبدأ بكمية منفذة صفر
@@ -4275,14 +4291,25 @@ function applyLogDelete(id, deletePhotos){
 // ============================================================
 //  طلبات تعديل الإنتاجية (رقابة على مدير المشروع)
 // ============================================================
-// يُنشئ مدير المشروع طلباً؛ لا يُطبَّق إلا بموافقة مالك الشركة (العميل) أو أدمن النظام
-function submitEditRequest(payload){
+// يُنشئ مدير المشروع طلباً (أو عدة طلبات دفعة واحدة)؛ لا يُطبَّق إلا بموافقة مالك الشركة (العميل) أو أدمن النظام
+function submitEditRequest(payloadOrList){
+  const list = Array.isArray(payloadOrList) ? payloadOrList : [payloadOrList];
+  if (!list.length) return;
   const p = proj();
   p.editRequests = p.editRequests || [];
-  p.editRequests.push(Object.assign({
-    id: nextSeq(), status:'pending',
-    by: currentUser().name, byId: state.me.id, createdAt: new Date().toISOString()
-  }, payload));
+  // لا تُنشئ طلباً مكرراً إذا كان هناك طلب مماثل بانتظار الموافقة أصلاً من نفس الشخص
+  const isDup = payload => p.editRequests.some(r => r.status === 'pending' && r.byId === state.me.id &&
+    r.type === payload.type && r.itemId === payload.itemId && r.logId === payload.logId);
+  let added = 0;
+  list.forEach(payload => {
+    if (isDup(payload)) return;
+    p.editRequests.push(Object.assign({
+      id: nextSeq(), status:'pending',
+      by: currentUser().name, byId: state.me.id, createdAt: new Date().toISOString()
+    }, payload));
+    added++;
+  });
+  if (!added) { alert(T('📨 يوجد طلب مشابه بانتظار موافقة مالك الشركة بالفعل.')); return; }
   save(); renderAll();
   alert(T('📨 تم إرسال الطلب إلى مالك الشركة — لن يُطبَّق أي تغيير أو حذف إلا بعد موافقته.'));
 }
@@ -4299,7 +4326,21 @@ function approveEditRequest(id){
   else if (r.type === 'qty_edit') {
     const it = getItem(r.itemId);
     if (it) {
-      it.executedQty = Math.round(clamp(r.newQty, 0, it.totalQty) * 100) / 100;
+      // نطبّق الفرق المطلوب (وليس استبدالاً كاملاً) حتى لا نفقد أي تنفيذ موثّق سُجّل بعد تقديم الطلب
+      const delta = (Number(r.newQty)||0) - (Number(r.fromQty)||0);
+      it.executedQty = Math.round(clamp((it.executedQty||0) + delta, 0, it.totalQty) * 100) / 100;
+      if ((it.approvedQty||0) > it.executedQty) it.approvedQty = it.executedQty;
+    }
+  }
+  else if (r.type === 'rate_edit') {
+    const it = getItem(r.itemId);
+    if (it) it.unitRate = Number(r.newRate) || 0;
+  }
+  else if (r.type === 'totalqty_edit') {
+    const it = getItem(r.itemId);
+    if (it) {
+      it.totalQty = Number(r.newTotalQty) || 0;
+      it.executedQty = Math.min(it.executedQty||0, it.totalQty);
       if ((it.approvedQty||0) > it.executedQty) it.approvedQty = it.executedQty;
     }
   }
@@ -4353,6 +4394,11 @@ Object.assign(I18N_EN, {
   'لن يُطبَّق أي تعديل أو حذف من مدير المشروع إلا بموافقتك — الموافقة تُطبِّق فوراً والرفض يُبقي كل شيء كما هو':'No edit or deletion from the project manager is applied without your approval — approving applies it immediately, rejecting keeps everything as is',
   'السبب':'Reason', 'مقدّم الطلب':'Requested by', 'موافقة وتطبيق':'Approve & apply', 'رفض':'Reject',
   'طلبات بانتظار موافقة مالك الشركة':'Requests awaiting the company owner\'s approval',
+  '📨 يوجد طلب مشابه بانتظار موافقة مالك الشركة بالفعل.':'📨 A similar request is already pending the company owner\'s approval.',
+  'تعديل سعر الوحدة للبند':'Edit unit price for item',
+  'تعديل الكمية الكلية للبند':'Edit total quantity for item',
+  'تعديل الكمية المنفذة للبند':'Edit executed quantity for item',
+  'أدمن':'Admin',
   'الكمية تُضاف تلقائياً إلى نسبة إنجاز البند (والوحدة إذا محددة) وتظهر للاستشاري ضمن «بانتظار الاعتماد».':'The quantity is automatically added to the item\'s completion percentage (and the unit, if specified) and appears to the consultant as "pending approval".',
   'طلب حذف (يحتاج موافقة مالك الشركة)':'Deletion request (requires the company owner\'s approval)',
   'تسجيل البند كمنجز 100% — يُسجَّل الباقي يوميةً باسمك ويتحول البند لانتظار اعتماد الاستشاري':'Mark the item 100% done — the remainder is logged in your name and the item moves to pending consultant approval',

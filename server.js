@@ -582,6 +582,9 @@ function pricedbCompanyOf(req) {
   return req.user.companyId || null;
 }
 const canEditPricedb = u => ['admin', 'client', 'pmo'].includes(u.role);
+// المقاولون من الباطن: يُسمح لمدير المشروع (pm) أيضاً بالإضافة/التعديل — لا يتضمن أسعاراً أو بيانات مالية
+// (بخلاف قاعدة الأسعار)، والهدف تمكينه من إضافة مقاول جديد فوراً عند تسجيل يومية إنتاجية ميدانية
+const canEditContractors = u => ['admin', 'client', 'pmo', 'pm'].includes(u.role);
 
 app.get('/api/pricedb', auth, (req, res) => {
   const companyId = pricedbCompanyOf(req);
@@ -635,15 +638,15 @@ app.post('/api/pricedb/upload', auth, (req, res) => {
 
 // ---------- المقاولون من الباطن ----------
 // نطاق: كل شركة لها قائمتها (مثل قاعدة الأسعار). الجميع يقرأ (لاختيار من نفّذ العمل عند تسجيل الإنتاجية)،
-// والإضافة/التعديل/الحذف لمدير المشاريع فأعلى فقط (نفس صلاحية تعديل قاعدة الأسعار)
+// والإضافة/التعديل/الحذف لمدير المشروع (pm) فأعلى — أوسع من قاعدة الأسعار لأنها لا تحمل بيانات مالية
 app.get('/api/contractors', auth, (req, res) => {
   const companyId = pricedbCompanyOf(req);
   if (!companyId) return res.json({ companyId: null, version: 0, seq: 1000, contractors: [], canEdit: false });
-  res.json({ ...loadContractors(companyId), companyId, canEdit: canEditPricedb(req.user) });
+  res.json({ ...loadContractors(companyId), companyId, canEdit: canEditContractors(req.user) });
 });
 
 app.put('/api/contractors', auth, (req, res) => {
-  if (!canEditPricedb(req.user)) return res.status(403).json({ error: 'pmo_or_above_required' });
+  if (!canEditContractors(req.user)) return res.status(403).json({ error: 'pm_or_above_required' });
   const companyId = pricedbCompanyOf(req);
   if (!companyId) return res.status(400).json({ error: 'no_company_selected' });
   const { baseVersion, data } = req.body || {};

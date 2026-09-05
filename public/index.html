@@ -316,6 +316,7 @@
   <div class="nav-tab" data-tab="villas" onclick="switchTab('villas')">🏠 <span id="villas-tab-label">الوحدات</span> <span class="tab-count" id="tc-villas">0</span></div>
   <div class="nav-tab" data-tab="prod" onclick="switchTab('prod')">👷 الإنتاجية <span class="tab-count" id="tc-prod">0</span><span class="tab-count" id="tc-prod-req" style="display:none;background:var(--red);color:#fff">0</span></div>
   <div class="nav-tab" data-tab="pricedb" onclick="switchTab('pricedb')">💲 قاعدة الأسعار <span class="tab-count" id="tc-pricedb">0</span></div>
+  <div class="nav-tab" data-tab="subs" onclick="switchTab('subs')">🧱 مقاولو الباطن <span class="tab-count" id="tc-subs">0</span><span class="tab-count" id="tc-subs-alert" style="display:none;background:var(--red);color:#fff">0</span></div>
 </div>
 
 <div class="main">
@@ -534,6 +535,7 @@
               </div>
             </div>
             <div class="f-field"><label id="wl-villa-label">الوحدة (اختياري)</label><select id="wl-villa"></select></div>
+            <div class="f-field"><label>مقاول الباطن المنفّذ</label><select id="wl-sub"></select></div>
             <div class="f-field"><label>الكمية المنفذة اليوم</label><input type="number" id="wl-qty" min="0" step="0.1" placeholder="م² / خ.م / قطعة"></div>
             <div class="f-field full"><label>ملاحظات</label><input type="text" id="wl-note" placeholder="اختياري"></div>
             <div class="f-field full">
@@ -556,7 +558,7 @@
         </div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>التاريخ</th><th>الفرقة</th><th>البند</th><th id="wl-th-villa">الوحدة</th><th>الكمية</th><th>عمال</th><th>الإنتاجية/عامل</th><th>📷</th><th>مضافة للنسبة</th><th>سجلها</th><th></th></tr></thead>
+            <thead><tr><th>التاريخ</th><th>الفرقة</th><th>البند</th><th id="wl-th-villa">الوحدة</th><th>مقاول الباطن</th><th>الكمية</th><th>عمال</th><th>الإنتاجية/عامل</th><th>📷</th><th>مضافة للنسبة</th><th>سجلها</th><th></th></tr></thead>
             <tbody id="wl-tbody"></tbody>
           </table>
         </div>
@@ -617,6 +619,33 @@
         <button class="btn btn-amber" id="pdb-btn-addoffer" onclick="openPdbOfferModal(null)">+ إضافة عرض</button>
       </div>
       <div class="status-cards" id="pdb-offers-grid"></div>
+    </div>
+  </div>
+
+  <!-- ===================== مقاولو الباطن ===================== -->
+  <div class="tab-panel" id="tab-subs">
+    <div id="subs-alert-banner"></div>
+    <div class="filter-bar">
+      <button class="filter-btn active" id="sub-tab-list" onclick="switchSubView('list')">🧱 مقاولو الباطن</button>
+      <button class="filter-btn" id="sub-tab-mus" onclick="switchSubView('mus')">📑 مستخلصات مقاولي الباطن <span class="tab-count" id="sub-mus-count">0</span></button>
+    </div>
+
+    <div id="sub-view-list">
+      <div class="alert info" style="font-size:12px">💡 سجّل مقاولي الباطن وبنودهم وأسعارهم المتفق عليها. عند إدخال الإنتاجية اليومية يُنسب العمل لمقاول الباطن المنفّذ، وبعد اعتماد الاستشاري للكمية تصبح مستحقة للصرف. افتح صفحة المقاول لتعميد كمياته وبناء مستخلصه تلقائياً.</div>
+      <div class="filter-bar"><span style="margin-inline-start:auto"></span>
+        <button class="btn btn-green" id="sub-add-btn" onclick="openSubEdit(null)">+ إضافة مقاول باطن</button>
+      </div>
+      <div id="subs-cards" class="status-cards"></div>
+    </div>
+
+    <div id="sub-view-mus" style="display:none">
+      <div id="submus-kpis" class="kpi-grid" style="margin-bottom:14px"></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>المستخلص</th><th>مقاول الباطن</th><th>التاريخ</th><th>بنود</th><th>الإجمالي</th><th>محتجز+خصومات</th><th>الصافي</th><th>المدفوع</th><th>الحالة</th><th>إجراء</th></tr></thead>
+          <tbody id="submus-tbody"></tbody>
+        </table>
+      </div>
     </div>
   </div>
 
@@ -746,6 +775,22 @@
     <div style="display:flex;gap:10px;margin-top:16px">
       <button class="btn btn-green" onclick="savePayment()">💾 حفظ الدفعة</button>
       <button class="btn btn-ghost" onclick="closeModal('pay-modal')">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="subpay-modal">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-title"><span>💵 اعتماد صرف لمقاول الباطن</span><span class="modal-close" onclick="closeModal('subpay-modal')">✕</span></div>
+    <div class="f-grid" style="grid-template-columns:1fr">
+      <div class="f-field"><label id="subpay-info" style="font-size:12px;color:var(--text2)"></label></div>
+      <div class="f-field"><label>تاريخ الصرف</label><input type="date" id="subpay-date"></div>
+      <div class="f-field"><label>المبلغ المعتمَد صرفه (ر.س) — كامل أو جزء</label><input type="number" id="subpay-amount" min="0" step="0.01"></div>
+      <div class="f-field"><label>ملاحظات</label><input type="text" id="subpay-note" placeholder="حوالة / شيك..."></div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:16px">
+      <button class="btn btn-green" onclick="saveSubPay()">💾 اعتماد الصرف</button>
+      <button class="btn btn-ghost" onclick="closeModal('subpay-modal')">إلغاء</button>
     </div>
   </div>
 </div>
@@ -933,6 +978,79 @@
     <div style="display:flex;gap:8px;margin-top:8px">
       <button class="btn btn-green" id="le-save-btn" onclick="saveLogEdit()">💾 حفظ التعديل</button>
       <button class="btn btn-ghost" onclick="closeModal('log-edit-modal')">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- إضافة/تعديل مقاول باطن -->
+<div class="modal-overlay" id="sub-edit-modal">
+  <div class="modal wide">
+    <div class="modal-title"><span id="sub-edit-title">مقاول باطن</span><span class="modal-close" onclick="closeModal('sub-edit-modal')">✕</span></div>
+    <div class="f-grid">
+      <div class="f-field"><label>اسم مقاول الباطن *</label><input type="text" id="sub-name" placeholder="مؤسسة ..."></div>
+      <div class="f-field"><label>جوال / تواصل</label><input type="text" id="sub-phone" placeholder="05xxxxxxxx" dir="ltr" style="text-align:left"></div>
+      <div class="f-field"><label>نسبة حجز الجودة الافتراضية %</label><input type="number" id="sub-ret" min="0" max="100" step="0.5" value="10"></div>
+      <div class="f-field full"><label>ملاحظات</label><input type="text" id="sub-note" placeholder="نطاق أعماله / تفاصيل العقد"></div>
+    </div>
+    <div class="divider"></div>
+    <div class="card-title" style="font-size:13px">📋 بنود مقاول الباطن وأسعاره المتفق عليها</div>
+    <div class="alert info" style="font-size:11px">اختر بنداً من جدول كميات المشروع وأدخل السعر المتفق عليه مع المقاول (قد يختلف عن سعر العقد الرئيسي). النظام يحسب مستخلصه بهذه الأسعار.</div>
+    <div class="f-grid" style="grid-template-columns:2fr 1fr auto;align-items:end">
+      <div class="f-field"><label>البند</label>
+        <div class="combo">
+          <input type="text" id="sub-item-search" autocomplete="off" placeholder="🔍 ابحث بالكود أو اسم البند..." oninput="subItemFilter(true)" onfocus="subItemFilter(false)" onblur="subItemBlur()">
+          <input type="hidden" id="sub-item-id">
+          <div id="sub-item-list" class="combo-list"></div>
+        </div>
+      </div>
+      <div class="f-field"><label>السعر المتفق (ر.س)</label><input type="number" id="sub-item-rate" min="0" step="0.01"></div>
+      <button class="btn btn-amber" onclick="subAddItemRate()">+ إضافة</button>
+    </div>
+    <div id="sub-items-list" style="margin-top:8px"></div>
+    <div class="divider"></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-green" onclick="saveSub()">💾 حفظ مقاول الباطن</button>
+      <button class="btn btn-ghost" onclick="closeModal('sub-edit-modal')">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- صفحة مقاول باطن: الكميات + بناء مستخلص -->
+<div class="modal-overlay" id="sub-detail-modal">
+  <div class="modal wide">
+    <div class="modal-title"><span id="sub-detail-title">صفحة مقاول الباطن</span><span class="modal-close" onclick="closeModal('sub-detail-modal')">✕</span></div>
+    <div class="alert info" style="font-size:12px">الكمية المؤهلة = ما نفّذه هذا المقاول (من يومياته) بحدود ما اعتمده الاستشاري. عمّد كمية كل بند (لا تتجاوز المتاح) ثم ابنِ المستخلص.</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>البند</th><th>الوحدة</th><th>سعر المقاول</th><th>نفّذه</th><th>مؤهل (معتمد)</th><th>سبق تعميده</th><th>متاح للتعميد</th><th>تعميد الآن</th><th>القيمة</th></tr></thead>
+        <tbody id="sub-detail-tbody"></tbody>
+      </table>
+    </div>
+    <div class="divider"></div>
+    <div class="two-col">
+      <div>
+        <div class="card-title" style="font-size:13px">الخصومات (يضعها مدير المشروع أو يصفّرها)</div>
+        <div class="f-grid" style="grid-template-columns:1fr 1fr">
+          <div class="f-field"><label>حجز جودة أعمال %</label><input type="number" id="sd-ret" min="0" max="100" step="0.5" oninput="renderSubMusTotals()"></div>
+          <div class="f-field"><label>خصم مواد (ر.س)</label><input type="number" id="sd-materials" min="0" step="0.01" value="0" oninput="renderSubMusTotals()"></div>
+          <div class="f-field"><label>كهرباء وماء (ر.س)</label><input type="number" id="sd-utilities" min="0" step="0.01" value="0" oninput="renderSubMusTotals()"></div>
+          <div class="f-field"><label>سوء أداء / غرامات (ر.س)</label><input type="number" id="sd-performance" min="0" step="0.01" value="0" oninput="renderSubMusTotals()"></div>
+          <div class="f-field"><label>خصومات أخرى (ر.س)</label><input type="number" id="sd-other" min="0" step="0.01" value="0" oninput="renderSubMusTotals()"></div>
+          <div class="f-field"><label>تاريخ المستخلص</label><input type="date" id="sd-date"></div>
+          <div class="f-field full"><label>📎 التسوية والأوراق الداعمة * (PDF أو صور)</label>
+            <input type="file" id="sd-files" accept="image/*,.pdf,application/pdf" multiple onchange="sdFilesPicked(this)">
+            <div id="sd-files-list" style="display:flex;flex-direction:column;gap:4px;margin-top:6px"></div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="invoice-sidebar">
+          <div class="card-title" style="color:var(--green-bright)">💰 ملخص مستخلص المقاول</div>
+          <div id="sd-totals"></div>
+          <div class="divider"></div>
+          <button class="btn btn-green" onclick="buildSubMus()">💾 بناء مستخلص المقاول</button>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -1235,6 +1353,9 @@ function migrateProject(p){
   p.seq = p.seq || 1000;
   p.blockerLog = p.blockerLog || []; p.workLogs = p.workLogs || [];
   p.editRequests = p.editRequests || []; // طلبات تعديل الإنتاجية بانتظار موافقة الإدارة
+  p.subcontractors = p.subcontractors || []; // مقاولو الباطن (بنودهم وأسعارهم المتفق عليها)
+  p.subMustakhlasat = p.subMustakhlasat || []; // مستخلصات مقاولي الباطن (جانب الصرف)
+  p.subAlerts = p.subAlerts || []; // إنذارات محاولات تجاوز الكميات
   p.villas = p.villas || []; p.villaProgress = p.villaProgress || {}; p.boqItems = p.boqItems || [];
   p.mustakhlasat = p.mustakhlasat || [];
   p.mustakhlasat.forEach(m => { m.payments = m.payments || []; m.attachments = m.attachments || []; });
@@ -1469,7 +1590,7 @@ function totals(){ return totalsFor(proj()); }
 function renderAll(){
   renderHeader(); renderProjects(); renderKPIs(); renderCharts(); renderAlerts(); renderClaimSummary();
   renderItemFilters(); renderItemsTable(); renderPlan(); renderBuilder(); renderHistory();
-  renderBlocked(); renderVillaFilters(); renderVillaGrid(); renderProd(); updateTabCounts();
+  renderBlocked(); renderVillaFilters(); renderVillaGrid(); renderProd(); renderSubs(); updateTabCounts();
 }
 
 function renderHeader(){
@@ -1606,7 +1727,7 @@ async function saveProject(){
         const src = state.projects.find(x => x.id === srcId);
         if (src) boqItems = src.boqItems.map(it => ({...it, predecessors:[...(it.predecessors||[])], blocker:null, executedQty:0, claimedQty:0}));
       }
-      const data = {managerUserId, companyId, info, seq:1000, boqItems, villas:[], villaProgress:{}, mustakhlasat:[], workLogs:[], blockerLog:[], editRequests:[]};
+      const data = {managerUserId, companyId, info, seq:1000, boqItems, villas:[], villaProgress:{}, mustakhlasat:[], workLogs:[], blockerLog:[], editRequests:[], subcontractors:[], subMustakhlasat:[], subAlerts:[]};
       const r = await API.req('POST', '/api/projects', {data});
       state.projects.push({...data, id:r.id, version:r.version});
       state.currentProjectId = r.id;
@@ -3334,6 +3455,9 @@ function renderProd(){
   // البند: حقل بحث ذكي بدل القائمة الطويلة — إعادة الضبط لو تغيّر المشروع أو حُذف البند المختار
   if ($('wl-item').value && !getItem($('wl-item').value)) { $('wl-item').value = ''; $('wl-item-search').value = ''; }
   $('wl-villa').innerHTML = '<option value="">— بدون ' + UL() + ' محددة —</option>' + proj().villas.map(v => '<option value="' + esc(v.no) + '">' + esc(v.no) + ' (' + esc(v.sheet) + ')</option>').join('');
+  const wlSubCur = $('wl-sub').value;
+  $('wl-sub').innerHTML = '<option value="">— تنفيذ ذاتي (بدون مقاول باطن) —</option>' + (proj().subcontractors||[]).map(s => '<option value="' + s.id + '">🧱 ' + esc(s.name) + '</option>').join('');
+  if (wlSubCur) $('wl-sub').value = wlSubCur;
 
   const logs = [...proj().workLogs].sort((a,b) => b.date.localeCompare(a.date) || b.id - a.id);
   $('wl-tbody').innerHTML = logs.slice(0, 60).map(l => {
@@ -3344,6 +3468,7 @@ function renderProd(){
       '<td>' + esc(l.crew) + '</td>' +
       '<td><span class="item-no">' + esc(l.itemId) + '</span> <span style="font-size:11px;color:var(--text3)">' + esc(it ? it.desc.substring(0,25) : '') + '</span></td>' +
       '<td>' + (l.villaNo ? '#' + esc(l.villaNo) : '—') + '</td>' +
+      '<td style="font-size:11px">' + (l.subId && getSub(l.subId) ? '🧱 ' + esc(getSub(l.subId).name) : '<span style="color:var(--text3)">تنفيذ ذاتي</span>') + '</td>' +
       '<td class="amount">' + fmtQ(l.qty) + ' ' + esc(it ? it.unit : '') + '</td>' +
       '<td class="amount muted">' + (l.workers||'—') + '</td>' +
       '<td class="amount muted">' + fmtQ(perWorker) + '</td>' +
@@ -3355,7 +3480,7 @@ function renderProd(){
       '<td style="white-space:nowrap"><button class="mini-btn" onclick="openLogEdit(' + l.id + ')" data-tip="' + (editsGated()?'طلب تعديل (يحتاج موافقة الإدارة)':'تعديل') + '">✏️</button> ' +
       '<button class="mini-btn red" onclick="deleteWorkLog(' + l.id + ')" data-tip="' + (editsGated()?'طلب حذف (يحتاج موافقة الإدارة)':'حذف') + '">🗑</button></td>' +
       '</tr>';
-  }).join('') || '<tr><td colspan="11"><div class="empty-state"><p>لا توجد يوميات مسجلة</p></div></td></tr>';
+  }).join('') || '<tr><td colspan="12"><div class="empty-state"><p>لا توجد يوميات مسجلة</p></div></td></tr>';
 
   // معرض أحدث صور الموقع
   const allPhotos = [];
@@ -3544,7 +3669,7 @@ async function addWorkLog(){
   }
   proj().workLogs.push({
     id: nextSeq(), date: $('wl-date').value || todayStr(), crew,
-    itemId, villaNo, qty, workers: Number($('wl-workers').value)||0,
+    itemId, villaNo, subId: Number($('wl-sub').value) || null, qty, workers: Number($('wl-workers').value)||0,
     note: $('wl-note').value.trim(), applied: apply, appliedQty, by: currentUser().name, photos
   });
   $('wl-qty').value = ''; $('wl-note').value = '';
@@ -3733,6 +3858,392 @@ function renderEditRequests(){
     box.innerHTML = '<div class="alert info" style="font-size:12px"><strong>طلبات تعديل بانتظار موافقة الإدارة (' + pendMine.length + ')</strong><br>' +
       pendMine.map(r => '• ' + esc(r.label||r.type) + ' — ' + (r.clientApproved?'✅':'⏳') + ' العميل · ' + (r.pmoApproved?'✅':'⏳') + ' مدير المشاريع').join('<br>') + '</div>';
   } else { box.innerHTML = ''; }
+}
+
+// ============================================================
+//  مقاولو الباطن (جانب الصرف) — تسجيلهم، كمياتهم، مستخلصاتهم
+// ============================================================
+const getSub = id => (proj().subcontractors||[]).find(s => s.id === id);
+const subRate = (sub, itemId) => { const r = (sub && sub.items||[]).find(x => x.itemId === itemId); return r ? (Number(r.rate)||0) : 0; };
+// ما نفّذه هذا المقاول لبند (من يومياته المطبّقة على البند)
+function subExecForItem(subId, itemId){
+  return round2((proj().workLogs||[]).filter(l => l.subId === subId && l.itemId === itemId && l.applied)
+    .reduce((s,l) => s + (Number(l.appliedQty)||0), 0));
+}
+const totalSubExecForItem = itemId => round2((proj().subcontractors||[]).reduce((s,sub) => s + subExecForItem(sub.id, itemId), 0));
+// الكمية المؤهلة للصرف = المنفذ من هذا المقاول بحدود المعتمد من الاستشاري (موزّع بالتناسب عند تعدد المقاولين)
+function subEligibleQty(subId, itemId){
+  const it = getItem(itemId); if (!it) return 0;
+  const subEx = subExecForItem(subId, itemId);
+  const totEx = totalSubExecForItem(itemId);
+  if (totEx <= 0 || subEx <= 0) return 0;
+  const factor = Math.min(1, approvedOf(it) / totEx);
+  return round2(subEx * factor);
+}
+// ما سبق تعميده لهذا المقاول لبند (من مستخلصاته غير المرفوضة)
+function subClaimedQty(subId, itemId){
+  return round2((proj().subMustakhlasat||[]).filter(m => m.subId === subId && m.status !== 'rejected')
+    .reduce((s,m) => s + ((m.lines||[]).filter(l => l.itemId === itemId).reduce((a,l)=>a+(Number(l.currQty)||0),0)), 0));
+}
+const subAvailQty = (subId, itemId) => Math.max(0, round2(subEligibleQty(subId, itemId) - subClaimedQty(subId, itemId)));
+// بنود يعمل عليها المقاول (المتفق عليها في عقده) — نعرض ما له فيه سعر متفق
+const subItemIds = sub => (sub.items||[]).map(x => x.itemId).filter(id => getItem(id));
+function subMusOf(subId){ return (proj().subMustakhlasat||[]).filter(m => m.subId === subId); }
+function subPaid(m){ return (m.payments||[]).reduce((s,p)=>s+(Number(p.amount)||0),0); }
+function subDueSummary(subId){
+  const ms = subMusOf(subId).filter(m => m.status !== 'rejected');
+  const net = round2(ms.reduce((s,m)=>s+(m.net||0),0));
+  const paid = round2(ms.reduce((s,m)=>s+subPaid(m),0));
+  // متاح للتعميد الآن (لم يُبنَ له مستخلص بعد)
+  const avail = round2(subItemIds(getSub(subId)).reduce((s,id)=>s+subAvailQty(subId,id)*subRate(getSub(subId),id),0));
+  return { musCount: ms.length, net, paid, remaining: Math.max(0, round2(net-paid)), availValue: avail };
+}
+// من يعتمد مستخلصات مقاولي الباطن؟ العميل ومدير المشاريع والأدمن
+const canApproveSubMus = () => ['admin','client','pmo'].includes(state.me.role);
+const SUBMUS_STATUS = {
+  submitted:{label:'⏳ بانتظار الاعتماد', color:'amber'},
+  rejected:{label:'↩ مرفوض', color:'red'},
+  approved:{label:'✅ معتمد', color:'blue'},
+  paid:{label:'💵 مدفوع', color:'green'}
+};
+
+let subView = 'list';
+function switchSubView(v){
+  subView = v;
+  $('sub-view-list').style.display = v === 'list' ? '' : 'none';
+  $('sub-view-mus').style.display = v === 'mus' ? '' : 'none';
+  $('sub-tab-list').classList.toggle('active', v === 'list');
+  $('sub-tab-mus').classList.toggle('active', v === 'mus');
+}
+
+function renderSubs(){
+  // شارة العدد + الإنذارات
+  $('tc-subs').textContent = (proj().subcontractors||[]).length;
+  const alerts = proj().subAlerts||[];
+  const ab = $('tc-subs-alert');
+  if (ab) { ab.textContent = alerts.length; ab.style.display = (alerts.length && canApproveSubMus()) ? '' : 'none'; }
+  $('sub-mus-count').textContent = (proj().subMustakhlasat||[]).length;
+  // بانر إنذارات التلاعب (للمعتمِدين)
+  const banner = $('subs-alert-banner');
+  if (banner) {
+    if (canApproveSubMus() && alerts.length) {
+      banner.innerHTML = '<div class="card red-b" style="margin-bottom:12px"><div class="sc-header"><div class="sc-icon" style="background:var(--red-dim)">🚨</div>' +
+        '<div><div style="font-weight:700;color:var(--red)">إنذارات محاولات تجاوز كميات مقاولي الباطن (' + alerts.length + ')</div>' +
+        '<div style="font-size:11px;color:var(--text2)">حاول مدير المشروع تعميد كمية أكبر من المنفذ فعلاً — مُنعت تلقائياً</div></div>' +
+        '<button class="mini-btn" style="margin-inline-start:auto" onclick="clearSubAlerts()">مسح</button></div>' +
+        '<div style="margin-top:8px;font-size:12px;display:flex;flex-direction:column;gap:4px">' +
+        alerts.slice(-6).reverse().map(a => '• ' + esc(a.at||'') + ' — ' + esc(a.by||'') + ': بند ' + esc(a.itemId) + ' لمقاول «' + esc(a.subName||'') + '» حاول ' + fmtQ(a.attempted) + ' والمتاح ' + fmtQ(a.max)).join('') +
+        '</div></div>';
+    } else banner.innerHTML = '';
+  }
+  // البطاقات
+  const canManage = isManagerial() || ['pmo','pm'].includes(state.me.role);
+  $('sub-add-btn').style.display = canManage ? '' : 'none';
+  const cards = (proj().subcontractors||[]).map(s => {
+    const d = subDueSummary(s.id);
+    return '<div class="card" style="cursor:default">' +
+      '<div class="sc-header"><div class="sc-icon" style="background:var(--blue-dim,rgba(88,166,255,0.15))">🧱</div>' +
+      '<div><div style="font-weight:700">' + esc(s.name) + '</div>' +
+      '<div style="font-size:11px;color:var(--text2)">' + (s.phone?esc(s.phone)+' · ':'') + (s.items||[]).length + ' بند · حجز ' + (s.retentionRate!=null?s.retentionRate:10) + '%</div></div></div>' +
+      '<div style="display:flex;flex-direction:column;gap:4px;margin-top:8px;font-size:12px">' +
+      '<div class="sc-item"><span class="sc-item-name">متاح للتعميد الآن</span><span class="sc-item-val" style="color:var(--green-bright)">' + money(d.availValue) + '</span></div>' +
+      '<div class="sc-item"><span class="sc-item-name">صافي مستخلصاته</span><span class="sc-item-val">' + money(d.net) + '</span></div>' +
+      '<div class="sc-item"><span class="sc-item-name">مدفوع</span><span class="sc-item-val" style="color:var(--teal)">' + money(d.paid) + '</span></div>' +
+      '<div class="sc-item"><span class="sc-item-name">متبقٍ للصرف</span><span class="sc-item-val" style="color:var(--red)">' + money(d.remaining) + '</span></div>' +
+      '</div>' +
+      '<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">' +
+      (canManage ? '<button class="mini-btn green" onclick="openSubDetail(' + s.id + ')">📂 فتح الصفحة وبناء مستخلص</button>' : '') +
+      (canManage ? '<button class="mini-btn" onclick="openSubEdit(' + s.id + ')">✏️ تعديل</button>' : '') +
+      (isManagerial() ? '<button class="mini-btn red" onclick="deleteSub(' + s.id + ')">🗑</button>' : '') +
+      '</div></div>';
+  }).join('') || '<div class="empty-state"><div class="icon">🧱</div><p>لا يوجد مقاولو باطن — أضف أول مقاول</p></div>';
+  $('subs-cards').innerHTML = cards;
+  renderSubMusTable();
+}
+
+function clearSubAlerts(){ if (!canApproveSubMus()) return; proj().subAlerts = []; save(); renderAll(); }
+
+function renderSubMusTable(){
+  const ms = [...(proj().subMustakhlasat||[])].sort((a,b)=> (b.date||'').localeCompare(a.date||'') || b.id-a.id);
+  const totNet = round2(ms.filter(m=>m.status!=='rejected').reduce((s,m)=>s+(m.net||0),0));
+  const totPaid = round2(ms.reduce((s,m)=>s+subPaid(m),0));
+  $('submus-kpis').innerHTML = [
+    {label:'عدد المستخلصات', value:ms.length, color:'amber', sub:''},
+    {label:'إجمالي صافي المستحق', value:money(totNet), color:'blue', sub:'بعد الحجز والخصومات'},
+    {label:'💵 المدفوع', value:money(totPaid), color:'green', sub:''},
+    {label:'متبقٍ للصرف', value:money(Math.max(0,round2(totNet-totPaid))), color:'red', sub:''}
+  ].map(k => '<div class="kpi-card ' + k.color + '"><div class="kpi-label">' + k.label + '</div><div class="kpi-value ' + k.color + '">' + k.value + '</div><div class="kpi-sub">' + k.sub + '</div></div>').join('');
+  $('submus-tbody').innerHTML = ms.map(m => {
+    const sub = getSub(m.subId); const st = SUBMUS_STATUS[m.status]||SUBMUS_STATUS.submitted;
+    const paid = subPaid(m); const nAtt = (m.docs||[]).length;
+    let btns = '<button class="mini-btn" onclick="viewSubMus(' + m.id + ')">📄 عرض</button> ';
+    if (canApproveSubMus()) {
+      if (m.status === 'submitted') btns += '<button class="mini-btn green" onclick="approveSubMus(' + m.id + ')">✅ اعتماد</button> <button class="mini-btn red" onclick="rejectSubMus(' + m.id + ')">↩ رفض</button> ';
+      if (['approved','paid'].includes(m.status)) btns += '<button class="mini-btn green" onclick="openSubPay(' + m.id + ')">💵 اعتماد صرف</button> ';
+    }
+    const canDel = isManagerial() || ['submitted','rejected'].includes(m.status);
+    return '<tr>' +
+      '<td><span class="item-no">' + esc(m.no) + '</span>' + (nAtt?'<br><span class="pill blue" style="font-size:9px">📎 ' + nAtt + '</span>':'') + '</td>' +
+      '<td>' + esc(sub?sub.name:'—') + '</td>' +
+      '<td style="font-family:var(--mono);font-size:12px">' + esc(m.date) + '</td>' +
+      '<td>' + (m.lines||[]).length + '</td>' +
+      '<td class="amount">' + fmtN(m.gross) + '</td>' +
+      '<td class="amount muted">' + fmtN(round2((m.retention||0)+(m.dedTotal||0))) + '</td>' +
+      '<td class="amount claimable">' + fmtN(m.net) + '</td>' +
+      '<td class="amount" style="color:' + (paid>=m.net-1?'var(--green-bright)':paid>0?'var(--amber)':'var(--text3)') + '">' + (paid>0?fmtN(paid):'—') + '</td>' +
+      '<td><span class="pill ' + st.color + '"' + (m.status==='rejected'&&m.rejectReason?' data-tip="'+esc(m.rejectReason)+'"':'') + '>' + st.label + '</span></td>' +
+      '<td style="white-space:nowrap">' + btns + (canDel?'<button class="mini-btn red" onclick="deleteSubMus(' + m.id + ')">🗑</button>':'') + '</td>' +
+      '</tr>';
+  }).join('') || '<tr><td colspan="10"><div class="empty-state"><p>لا توجد مستخلصات مقاولي باطن بعد</p></div></td></tr>';
+}
+
+// ---- إضافة/تعديل مقاول باطن ----
+let editingSubId = null, subDraftItems = [];
+function openSubEdit(id){
+  const s = id ? getSub(id) : null;
+  editingSubId = id;
+  subDraftItems = s ? JSON.parse(JSON.stringify(s.items||[])) : [];
+  $('sub-edit-title').textContent = s ? 'تعديل مقاول باطن' : 'إضافة مقاول باطن';
+  $('sub-name').value = s ? s.name : '';
+  $('sub-phone').value = s ? (s.phone||'') : '';
+  $('sub-ret').value = s ? (s.retentionRate!=null?s.retentionRate:10) : 10;
+  $('sub-note').value = s ? (s.note||'') : '';
+  $('sub-item-id').value = ''; $('sub-item-search').value = ''; $('sub-item-rate').value = '';
+  renderSubDraftItems();
+  $('sub-edit-modal').classList.add('open');
+}
+function renderSubDraftItems(){
+  $('sub-items-list').innerHTML = subDraftItems.length ? subDraftItems.map((r,i) => {
+    const it = getItem(r.itemId);
+    return '<div class="sc-item"><span class="sc-item-name" style="white-space:normal"><span class="item-no">' + esc(r.itemId) + '</span> ' + esc(it?it.desc.substring(0,40):'(بند محذوف)') + ' <span style="color:var(--text3)">(' + esc(it?it.unit:'') + ')</span></span>' +
+      '<span style="display:flex;align-items:center;gap:8px"><span class="sc-item-val">' + fmtN(r.rate) + ' ر.س</span>' +
+      '<button class="mini-btn red" onclick="subDraftItems.splice(' + i + ',1);renderSubDraftItems()">✕</button></span></div>';
+  }).join('') : '<div style="color:var(--text3);font-size:12px;padding:6px">لم تُضف بنود بعد</div>';
+}
+function subAddItemRate(){
+  const itemId = $('sub-item-id').value;
+  const rate = Number($('sub-item-rate').value);
+  if (!itemId) { alert('اختر بنداً من القائمة'); return; }
+  if (!rate || rate <= 0) { alert('أدخل السعر المتفق عليه'); return; }
+  if (subDraftItems.some(r => r.itemId === itemId)) { alert('البند مضاف مسبقاً'); return; }
+  subDraftItems.push({ itemId, rate });
+  $('sub-item-id').value = ''; $('sub-item-search').value = ''; $('sub-item-rate').value = '';
+  renderSubDraftItems();
+}
+function saveSub(){
+  const name = $('sub-name').value.trim();
+  if (!name) { alert('اكتب اسم مقاول الباطن'); return; }
+  const data = { name, phone:$('sub-phone').value.trim(), retentionRate:clamp($('sub-ret').value,0,100), note:$('sub-note').value.trim(), items:subDraftItems };
+  if (editingSubId) { Object.assign(getSub(editingSubId), data); }
+  else { proj().subcontractors.push(Object.assign({id: nextSeq()}, data)); }
+  closeModal('sub-edit-modal'); save(); renderAll();
+}
+function deleteSub(id){
+  if (!isManagerial()) { alert('حذف مقاول الباطن صلاحية العميل أو الأدمن'); return; }
+  const s = getSub(id); if (!s) return;
+  if (subMusOf(id).length) { alert('لا يمكن حذف مقاول له مستخلصات — احذف مستخلصاته أولاً'); return; }
+  if (!confirm('حذف مقاول الباطن «' + s.name + '»؟')) return;
+  proj().subcontractors = proj().subcontractors.filter(x => x.id !== id);
+  save(); renderAll();
+}
+// combobox لاختيار بند في نموذج المقاول
+function subItemFilter(typing){
+  const q = ($('sub-item-search').value||'').toLowerCase().trim();
+  if (typing) $('sub-item-id').value = '';
+  const items = proj().boqItems.filter(i => i.scope !== 'others' && !isParent(i));
+  const norm = s => String(s||'').toLowerCase();
+  const list = q ? items.filter(i => norm(i.id).includes(q) || norm(i.desc).includes(q) || norm(i.divAr).includes(q)) : items;
+  const box = $('sub-item-list');
+  box.innerHTML = list.slice(0,50).map(i =>
+    '<div class="combo-opt" onmousedown="subItemPick(\'' + esc(i.id).replace(/\x27/g,"\\\x27") + '\')"><span class="co-code">' + esc(i.id) + '</span> ' + esc(i.desc) + ' <span class="co-unit">(' + esc(i.unit) + ')</span></div>').join('')
+    || '<div class="combo-opt" style="color:var(--text3)">لا يوجد بند مطابق</div>';
+  box.style.display = 'block';
+}
+function subItemPick(id){ const it = getItem(id); if (!it) return; $('sub-item-id').value = id; $('sub-item-search').value = id + ' - ' + it.desc; $('sub-item-list').style.display = 'none'; }
+function subItemBlur(){ setTimeout(()=>{ $('sub-item-list').style.display = 'none'; }, 160); }
+
+// ---- صفحة مقاول الباطن: تعميد الكميات وبناء المستخلص ----
+let sdSubId = null, sdSel = {}, sdPendingFiles = [];
+function openSubDetail(id){
+  const s = getSub(id); if (!s) return;
+  sdSubId = id; sdSel = {}; sdPendingFiles = [];
+  $('sub-detail-title').textContent = '📂 ' + s.name + ' — تعميد الكميات وبناء المستخلص';
+  $('sd-ret').value = s.retentionRate!=null?s.retentionRate:10;
+  ['sd-materials','sd-utilities','sd-performance','sd-other'].forEach(k => $(k).value = 0);
+  $('sd-date').value = todayStr();
+  $('sd-files-list').innerHTML = '';
+  renderSubDetail();
+  $('sub-detail-modal').classList.add('open');
+}
+function renderSubDetail(){
+  const s = getSub(sdSubId); if (!s) return;
+  const ids = subItemIds(s);
+  $('sub-detail-tbody').innerHTML = ids.map(id => {
+    const it = getItem(id); const rate = subRate(s, id);
+    const ex = subExecForItem(sdSubId, id), elig = subEligibleQty(sdSubId, id), claimed = subClaimedQty(sdSubId, id), avail = subAvailQty(sdSubId, id);
+    const val = sdSel[id]!==undefined ? sdSel[id] : '';
+    return '<tr>' +
+      '<td><span class="item-no">' + esc(id) + '</span> <span style="font-size:11px;color:var(--text3)">' + esc(it.desc.substring(0,24)) + '</span></td>' +
+      '<td><span class="pill gray" style="font-size:10px">' + esc(it.unit) + '</span></td>' +
+      '<td class="amount muted">' + fmtN(rate) + '</td>' +
+      '<td class="amount">' + fmtQ(ex) + '</td>' +
+      '<td class="amount" style="color:var(--blue)">' + fmtQ(elig) + '</td>' +
+      '<td class="amount muted">' + fmtQ(claimed) + '</td>' +
+      '<td class="amount ' + (avail>0.01?'claimable':'muted') + '">' + fmtQ(avail) + '</td>' +
+      '<td><input type="number" class="qty-input" min="0" max="' + avail + '" step="any" value="' + val + '" placeholder="0" oninput="sdSetQty(\'' + esc(id) + '\', this.value)" style="width:90px"></td>' +
+      '<td class="amount">' + fmtN(round2((Number(val)||0)*rate)) + '</td>' +
+      '</tr>';
+  }).join('') || '<tr><td colspan="9"><div class="empty-state"><p>لا بنود لهذا المقاول — أضف بنوده وأسعاره من «تعديل»</p></div></td></tr>';
+  renderSubMusTotals();
+}
+function sdSetQty(id, val){
+  const s = getSub(sdSubId); const avail = subAvailQty(sdSubId, id);
+  let q = Math.round((Number(val)||0)*100)/100;
+  if (q > avail + 0.001) {
+    // منع التلاعب: تجاوز المتاح (المنفذ المعتمد) — إنذار + تسجيل
+    recordSubAlert(sdSubId, id, q, avail);
+    alert('⛔ إنذار: لا يمكن تعميد كمية (' + fmtQ(q) + ') أكبر من المتاح فعلاً (' + fmtQ(avail) + ') لهذا المقاول في البند ' + id + '. تم إبلاغ الإدارة.');
+    q = avail;
+  }
+  if (q <= 0) delete sdSel[id]; else sdSel[id] = q;
+  renderSubDetail();
+}
+function recordSubAlert(subId, itemId, attempted, max){
+  const s = getSub(subId);
+  proj().subAlerts = proj().subAlerts || [];
+  proj().subAlerts.push({ id: nextSeq(), subId, subName: s?s.name:'', itemId, attempted: round2(attempted), max: round2(max), by: currentUser().name, at: new Date().toISOString().slice(0,16).replace('T',' ') });
+  save();
+}
+function subMusComputeDraft(){
+  const s = getSub(sdSubId); const lines = [];
+  Object.entries(sdSel).forEach(([id, q]) => {
+    const qty = Number(q)||0; if (qty <= 0) return;
+    const it = getItem(id); if (!it) return;
+    const rate = subRate(s, id); const prev = subClaimedQty(sdSubId, id);
+    lines.push({itemId:id, desc:it.desc, unit:it.unit, rate, prevQty:prev, currQty:qty, cumQty:round2(prev+qty), amount:round2(qty*rate)});
+  });
+  const gross = round2(lines.reduce((a,l)=>a+l.amount,0));
+  const retRate = clamp($('sd-ret').value,0,100);
+  const ded = { materials:Number($('sd-materials').value)||0, utilities:Number($('sd-utilities').value)||0, performance:Number($('sd-performance').value)||0, other:Number($('sd-other').value)||0 };
+  const retention = round2(gross*retRate/100);
+  const dedTotal = round2(ded.materials+ded.utilities+ded.performance+ded.other);
+  const prevPaid = round2(subMusOf(sdSubId).filter(m=>m.status!=='rejected').reduce((a,m)=>a+(m.net||0),0));
+  const net = round2(gross - retention - dedTotal);
+  return {lines, gross, retRate, retention, ded, dedTotal, prevPaid, net};
+}
+function renderSubMusTotals(){
+  const c = subMusComputeDraft();
+  $('sd-totals').innerHTML =
+    '<div class="sc-item"><span class="sc-item-name">قيمة الأعمال (' + c.lines.length + ' بند)</span><span class="sc-item-val" style="color:var(--green-bright)">' + money(c.gross) + '</span></div>' +
+    '<div class="sc-item"><span class="sc-item-name">− حجز جودة ' + c.retRate + '%</span><span class="sc-item-val" style="color:var(--red)">' + money(c.retention) + '</span></div>' +
+    (c.ded.materials?'<div class="sc-item"><span class="sc-item-name">− مواد</span><span class="sc-item-val" style="color:var(--red)">' + money(c.ded.materials) + '</span></div>':'') +
+    (c.ded.utilities?'<div class="sc-item"><span class="sc-item-name">− كهرباء وماء</span><span class="sc-item-val" style="color:var(--red)">' + money(c.ded.utilities) + '</span></div>':'') +
+    (c.ded.performance?'<div class="sc-item"><span class="sc-item-name">− سوء أداء/غرامات</span><span class="sc-item-val" style="color:var(--red)">' + money(c.ded.performance) + '</span></div>':'') +
+    (c.ded.other?'<div class="sc-item"><span class="sc-item-name">− خصومات أخرى</span><span class="sc-item-val" style="color:var(--red)">' + money(c.ded.other) + '</span></div>':'') +
+    (c.prevPaid?'<div class="sc-item"><span class="sc-item-name" style="font-size:11px;color:var(--text3)">(سبق صرفه لهذا المقاول تراكمياً: ' + money(c.prevPaid) + ')</span><span></span></div>':'') +
+    '<div class="sc-item"><span class="sc-item-name" style="font-weight:700">صافي مستحق هذا المستخلص</span><span class="sc-item-val" style="color:var(--green-bright);font-size:15px;font-weight:700">' + money(c.net) + '</span></div>';
+}
+async function sdFilesPicked(input){
+  const files = [...(input.files||[])].slice(0, 15 - sdPendingFiles.length);
+  for (const f of files) {
+    try {
+      if (f.type === 'application/pdf') { if (f.size > 9*1024*1024) { alert(f.name+': أكبر من 9MB'); continue; } sdPendingFiles.push({dataUrl: await readFileAsDataURL(f), name:f.name}); }
+      else if (f.type.startsWith('image/')) sdPendingFiles.push({dataUrl: await compressImage(f), name:f.name});
+      else alert(f.name+': صيغة غير مدعومة');
+    } catch(e){ alert(e.message); }
+  }
+  input.value = '';
+  $('sd-files-list').innerHTML = sdPendingFiles.map((f,i)=>'<div class="sc-item" style="padding:3px 0"><span class="sc-item-name" style="font-size:11px">' + (f.name.toLowerCase().endsWith('.pdf')?'📄':'🖼') + ' ' + esc(f.name) + '</span><button class="mini-btn red" onclick="sdPendingFiles.splice(' + i + ',1);sdFilesPicked({files:[]})">✕</button></div>').join('');
+}
+async function buildSubMus(){
+  const c = subMusComputeDraft();
+  if (!c.lines.length) { alert('عمّد كمية بند واحد على الأقل'); return; }
+  if (offlineMode) { alert('📴 لا يمكن البناء بدون اتصال'); return; }
+  // فحص أمان أخير: لا تجاوز للمتاح
+  for (const l of c.lines) {
+    if (l.currQty > subAvailQty(sdSubId, l.itemId) + 0.01) { alert('⛔ كمية البند ' + l.itemId + ' تتجاوز المتاح'); return; }
+  }
+  if (!sdPendingFiles.length && !confirm('⚠️ لم ترفق التسوية والأوراق الداعمة — الإدارة تحتاجها للاعتماد. متابعة بدون مرفقات؟')) return;
+  if (!confirm('بناء مستخلص مقاول الباطن بصافي ' + money(c.net) + ' ورفعه للاعتماد؟')) return;
+  let docs = [];
+  if (sdPendingFiles.length) {
+    try { for (const f of sdPendingFiles) { const r = await API.req('POST', '/api/projects/' + proj().id + '/photos', {dataUrl:f.dataUrl}); docs.push({url:r.url, name:f.name}); } }
+    catch(e){ alert('تعذر رفع المرفقات: ' + e.message); return; }
+  }
+  const s = getSub(sdSubId);
+  const no = 'SUB-' + String((proj().subMustakhlasat||[]).length + 1).padStart(3,'0');
+  proj().subMustakhlasat.push({
+    id: nextSeq(), no, subId: sdSubId, date: $('sd-date').value || todayStr(), status:'submitted',
+    lines:c.lines, gross:c.gross, retRate:c.retRate, retention:c.retention, ded:c.ded, dedTotal:c.dedTotal,
+    prevPaid:c.prevPaid, net:c.net, docs, payments:[], by: currentUser().name, createdAt: new Date().toISOString()
+  });
+  closeModal('sub-detail-modal'); save(); renderAll(); switchSubView('mus');
+  setTimeout(()=>alert('✅ تم رفع مستخلص مقاول الباطن للاعتماد.'), 200);
+}
+
+// ---- عرض/اعتماد/صرف مستخلص مقاول الباطن ----
+function subMusDocHtml(m){
+  const sub = getSub(m.subId);
+  const rows = (m.lines||[]).map(l => '<tr><td style="text-align:right">' + esc(l.itemId) + ' — ' + esc(l.desc) + '</td><td style="text-align:center">' + esc(l.unit) + '</td><td style="text-align:center;font-family:var(--mono)">' + fmtN(l.rate) + '</td><td style="text-align:center;font-family:var(--mono)">' + fmtQ(l.currQty) + '</td><td style="text-align:center;font-family:var(--mono)">' + fmtN(l.amount) + '</td></tr>').join('');
+  const dedRows = [];
+  if (m.retention) dedRows.push(['حجز جودة ' + m.retRate + '%', m.retention]);
+  if (m.ded && m.ded.materials) dedRows.push(['خصم مواد', m.ded.materials]);
+  if (m.ded && m.ded.utilities) dedRows.push(['كهرباء وماء', m.ded.utilities]);
+  if (m.ded && m.ded.performance) dedRows.push(['سوء أداء/غرامات', m.ded.performance]);
+  if (m.ded && m.ded.other) dedRows.push(['خصومات أخرى', m.ded.other]);
+  const docsHtml = (m.docs||[]).length ? '<div style="margin-top:10px"><strong>المرفقات والتسوية:</strong><br>' + m.docs.map(d=>'<a href="' + esc(d.url) + '" target="_blank" style="color:var(--blue);font-size:12px">' + (String(d.url).endsWith('.pdf')?'📄':'🖼') + ' ' + esc(d.name||'ملف') + ' ↗</a>').join('<br>') + '</div>' : '<div style="margin-top:10px;color:var(--red);font-size:12px">⚠ لا مرفقات</div>';
+  return '<div style="font-family:var(--font)"><div style="font-size:14px;font-weight:700;margin-bottom:4px">مستخلص مقاول باطن ' + esc(m.no) + '</div>' +
+    '<div style="font-size:12px;color:var(--text2);margin-bottom:10px">المقاول: ' + esc(sub?sub.name:'—') + ' · التاريخ: ' + esc(m.date) + ' · أعدّه: ' + esc(m.by||'—') + '</div>' +
+    '<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:var(--bg2)"><th style="text-align:right;padding:5px">البند</th><th>الوحدة</th><th>السعر</th><th>الكمية</th><th>القيمة</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+    '<table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:8px">' +
+    '<tr><td style="text-align:right;padding:4px"><strong>قيمة الأعمال</strong></td><td style="text-align:left;font-family:var(--mono)">' + fmtN(m.gross) + '</td></tr>' +
+    dedRows.map(d=>'<tr><td style="text-align:right;padding:4px;color:var(--red)">− ' + esc(d[0]) + '</td><td style="text-align:left;font-family:var(--mono);color:var(--red)">' + fmtN(d[1]) + '</td></tr>').join('') +
+    '<tr style="background:var(--green-dim)"><td style="text-align:right;padding:6px"><strong style="color:var(--green-bright)">صافي المستحق</strong></td><td style="text-align:left;font-family:var(--mono);font-weight:700;color:var(--green-bright)">' + fmtN(m.net) + '</td></tr>' +
+    (m.prevPaid?'<tr><td style="text-align:right;padding:4px;font-size:11px;color:var(--text3)">سبق صرفه تراكمياً</td><td style="text-align:left;font-family:var(--mono);font-size:11px;color:var(--text3)">' + fmtN(m.prevPaid) + '</td></tr>':'') +
+    '</table>' + docsHtml + '</div>';
+}
+function viewSubMus(id){ const m = (proj().subMustakhlasat||[]).find(x=>x.id===id); if (m) showPrintable('مستخلص مقاول باطن ' + m.no, subMusDocHtml(m)); }
+function approveSubMus(id){
+  if (!canApproveSubMus()) { alert('اعتماد مستخلصات مقاولي الباطن صلاحية العميل ومدير المشاريع'); return; }
+  const m = (proj().subMustakhlasat||[]).find(x=>x.id===id); if (!m || m.status!=='submitted') return;
+  if (!confirm('اعتماد مستخلص ' + m.no + ' بصافي ' + money(m.net) + '؟ راجع الأوراق والتسوية قبل الاعتماد.')) return;
+  m.status = 'approved'; m.approvedBy = currentUser().name; m.approvedAt = todayStr(); m.rejectReason = '';
+  save(); renderAll();
+}
+function rejectSubMus(id){
+  if (!canApproveSubMus()) return;
+  const m = (proj().subMustakhlasat||[]).find(x=>x.id===id); if (!m) return;
+  const reason = prompt('سبب الرفض (يظهر لمدير المشروع):'); if (reason===null) return;
+  m.status = 'rejected'; m.rejectReason = reason.trim()||'يحتاج تعديل'; m.approvedBy = currentUser().name; m.approvedAt = todayStr();
+  save(); renderAll();
+}
+let subPayId = null;
+function openSubPay(id){
+  if (!canApproveSubMus()) { alert('اعتماد الصرف صلاحية العميل ومدير المشاريع'); return; }
+  const m = (proj().subMustakhlasat||[]).find(x=>x.id===id); if (!m) return;
+  subPayId = id; const paid = subPaid(m);
+  $('subpay-info').textContent = m.no + ' — صافي ' + money(m.net) + ' · مدفوع ' + money(paid) + ' · متبقٍ ' + money(Math.max(0,round2(m.net-paid)));
+  $('subpay-date').value = todayStr();
+  $('subpay-amount').value = Math.max(0, round2(m.net - paid));
+  $('subpay-note').value = '';
+  $('subpay-modal').classList.add('open');
+}
+function saveSubPay(){
+  const m = (proj().subMustakhlasat||[]).find(x=>x.id===subPayId); if (!m) return;
+  const amount = Number($('subpay-amount').value);
+  if (!amount || amount <= 0) { alert('اكتب مبلغ الصرف'); return; }
+  const paid = subPaid(m);
+  if (amount > round2(m.net - paid) + 0.01) { if (!confirm('المبلغ أكبر من المتبقٍ — متابعة؟')) return; }
+  m.payments.push({id:nextSeq(), date:$('subpay-date').value||todayStr(), amount:round2(amount), note:$('subpay-note').value.trim(), by:currentUser().name});
+  if (subPaid(m) >= m.net - 1) m.status = 'paid';
+  closeModal('subpay-modal'); save(); renderAll();
+}
+function deleteSubMus(id){
+  const m = (proj().subMustakhlasat||[]).find(x=>x.id===id); if (!m) return;
+  if (!isManagerial() && !['submitted','rejected'].includes(m.status)) { alert('لا يمكن حذف مستخلص معتمد — راجع الإدارة'); return; }
+  if (!confirm('حذف مستخلص ' + m.no + '؟ سترجع كمياته للمتاح.')) return;
+  proj().subMustakhlasat = proj().subMustakhlasat.filter(x=>x.id!==id);
+  save(); renderAll();
 }
 
 // ============================================================

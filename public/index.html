@@ -1037,7 +1037,8 @@
           <div class="f-field"><label>سوء أداء / غرامات (ر.س)</label><input type="number" id="sd-performance" min="0" step="0.01" value="0" oninput="renderSubMusTotals()"></div>
           <div class="f-field"><label>خصومات أخرى (ر.س)</label><input type="number" id="sd-other" min="0" step="0.01" value="0" oninput="renderSubMusTotals()"></div>
           <div class="f-field"><label>تاريخ المستخلص</label><input type="date" id="sd-date"></div>
-          <div class="f-field full"><label>📎 التسوية والأوراق الداعمة * (PDF أو صور)</label>
+          <div class="f-field full"><label style="color:var(--red)">📎 المرفقات إلزامية * — تُحفظ في أرشيف المشروع</label>
+            <div style="font-size:11px;color:var(--text2);margin-bottom:4px">أرفق: <strong>المستخلص المعمول من قِبل الشركة</strong> + <strong>اعتمادات الاستشاري</strong> + التسوية (PDF أو صور)</div>
             <input type="file" id="sd-files" accept="image/*,.pdf,application/pdf" multiple onchange="sdFilesPicked(this)">
             <div id="sd-files-list" style="display:flex;flex-direction:column;gap:4px;margin-top:6px"></div>
           </div>
@@ -4163,7 +4164,7 @@ async function buildSubMus(){
   for (const l of c.lines) {
     if (l.currQty > subAvailQty(sdSubId, l.itemId) + 0.01) { alert('⛔ كمية البند ' + l.itemId + ' تتجاوز المتاح'); return; }
   }
-  if (!sdPendingFiles.length && !confirm('⚠️ لم ترفق التسوية والأوراق الداعمة — الإدارة تحتاجها للاعتماد. متابعة بدون مرفقات؟')) return;
+  if (!sdPendingFiles.length) { alert('⛔ المرفقات إلزامية: أرفق المستخلص المعمول من قِبل الشركة واعتمادات الاستشاري قبل الرفع (تُحفظ في أرشيف المشروع).'); return; }
   if (!confirm('بناء مستخلص مقاول الباطن بصافي ' + money(c.net) + ' ورفعه للاعتماد؟')) return;
   let docs = [];
   if (sdPendingFiles.length) {

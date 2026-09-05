@@ -492,6 +492,10 @@ app.put('/api/projects/:id', auth, (req, res) => {
         if (m.status !== 'submitted' || (m.payments || []).length) {
           return res.status(403).json({ error: 'مستخلص مقاول الباطن الجديد يبدأ بانتظار الاعتماد وبدون صرف' });
         }
+        // المرفقات إلزامية: المستخلص المعمول من الشركة واعتمادات الاستشاري (أرشيف المشروع)
+        if (!(m.docs || []).some(d => d && d.url)) {
+          return res.status(400).json({ error: 'مستخلص مقاول الباطن يتطلب إرفاق المستخلص المعمول من الشركة واعتمادات الاستشاري' });
+        }
         // فحص الكميات: لا تجاوز للمؤهّل
         for (const l of (m.lines || [])) {
           const k = m.subId + '|' + l.itemId;

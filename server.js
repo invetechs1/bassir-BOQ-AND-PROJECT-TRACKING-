@@ -438,7 +438,7 @@ app.put('/api/projects/:id', auth, (req, res) => {
       if (st) {
         if ((st.qty || 0) !== (l.qty || 0) || (st.appliedQty || 0) !== (l.appliedQty || 0) ||
             !!st.applied !== !!l.applied || st.itemId !== l.itemId || st.date !== l.date ||
-            (st.crew || 'own') !== (l.crew || 'own')) {
+            (st.crew || 'own') !== (l.crew || 'own') || (st.subId || null) !== (l.subId || null)) {
           return res.status(403).json({ error: 'pm_log_edit_needs_owner' });
         }
       } else if (l.applied) {
@@ -495,7 +495,8 @@ app.put('/api/projects/:id', auth, (req, res) => {
       const s = storedLogs.get(l.id);
       if (s) {
         if ((s.qty || 0) !== (l.qty || 0) || (s.appliedQty || 0) !== (l.appliedQty || 0) ||
-            !!s.applied !== !!l.applied || s.itemId !== l.itemId || s.date !== l.date) {
+            !!s.applied !== !!l.applied || s.itemId !== l.itemId || s.date !== l.date ||
+            (s.subId || null) !== (l.subId || null)) {
           return res.status(403).json({ error: 'تعديل يومية الإنتاجية يتطلب موافقة العميل ومدير المشاريع' });
         }
       } else if (l.applied) {

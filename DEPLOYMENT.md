@@ -15,6 +15,24 @@
 
 > كلمة مرور SSH لا تُكتب هنا أبداً — أدخلها يدوياً عند الطلب في كل أمر `scp`/`ssh`. **لا تضع كلمة مرور السيرفر داخل أي ملف يُرفع لـ git.**
 
+## نشر سريع (بعد بناء `azoom-boq.tar` محلياً)
+
+إن كانت الصورة مبنية ومُصدَّرة مسبقاً إلى `azoom-boq.tar` في جذر المشروع (الخطوات 1-3 أدناه)، هذه هي الأوامر الثلاثة فقط لرفعها وتشغيلها:
+
+```bash
+cd "E:\Projects\Bassir\BOQ-AND-PROJECT-TRACKING-"
+scp azoom-boq.tar root@13.140.138.252:/root/boq-and-site-work/
+scp scripts/run.sh root@13.140.138.252:/root/boq-and-site-work/
+ssh root@13.140.138.252 "cd /root/boq-and-site-work && chmod +x run.sh && bash run.sh"
+```
+
+ثم تحقق (الخطوة 6 أدناه):
+
+```bash
+ssh root@13.140.138.252 "docker ps --filter name=azoom-boq-app"
+curl -s -o /dev/null -w 'HTTP %{http_code}\n' https://boq.bassir.net/
+```
+
 ## 1. حذف الصورة القديمة لهذا المشروع (محلياً)
 
 ```bash

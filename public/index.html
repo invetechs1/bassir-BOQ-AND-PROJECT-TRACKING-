@@ -190,6 +190,8 @@
   .f-field label { display: block; font-size: 11px; color: var(--text2); margin-bottom: 4px; }
   .f-field input, .f-field select, .f-field textarea { width: 100%; min-width: 0; padding: 7px 10px; border-radius: 6px; background: var(--bg3); border: 1px solid var(--border); color: var(--text); font-family: var(--font); font-size: 13px; }
   .f-field input:focus, .f-field select:focus, .f-field textarea:focus { outline: none; border-color: var(--amber); }
+  .f-field input.qty-cap-exceeded { border-color: var(--red); }
+  .qty-cap-hint { display: block; font-size: 11px; color: var(--red); margin-top: 4px; }
   /* SEARCHABLE COMBOBOX (بحث البنود) */
   .combo { position: relative; }
   .combo-list { position: absolute; top: 100%; right: 0; left: 0; z-index: 60; background: var(--bg3); border: 1px solid var(--amber); border-radius: 6px; max-height: 280px; overflow-y: auto; margin-top: 2px; box-shadow: 0 8px 28px rgba(0,0,0,0.5); }
@@ -538,9 +540,10 @@
                 <div id="wl-item-list" class="combo-list" style="display:none"></div>
               </div>
             </div>
+            <div class="f-field full" id="wl-split-info" style="display:none"></div>
             <div class="f-field"><label id="wl-villa-label" data-i18n="الوحدة (اختياري)">الوحدة (اختياري)</label><select id="wl-villa"></select></div>
             <div class="f-field"><label data-i18n="مقاول الباطن المنفّذ">مقاول الباطن المنفّذ</label><select id="wl-sub"></select></div>
-            <div class="f-field"><label data-i18n="الكمية المنفذة اليوم">الكمية المنفذة اليوم</label><input type="number" id="wl-qty" min="0" step="0.1" placeholder="م² / خ.م / قطعة"></div>
+            <div class="f-field"><label data-i18n="الكمية المنفذة اليوم">الكمية المنفذة اليوم</label><input type="number" id="wl-qty" min="0" step="0.1" placeholder="م² / خ.م / قطعة" oninput="qtyCapHintCheck(this,'wl-qty-hint')"><span id="wl-qty-hint" class="qty-cap-hint" style="display:none"></span></div>
             <div class="f-field full"><label data-i18n="ملاحظات">ملاحظات</label><input type="text" id="wl-note" placeholder="اختياري"></div>
             <div class="f-field full">
               <label data-i18n="📷 صور من الموقع (اختياري — من الكاميرا أو الاستوديو)">📷 صور من الموقع (اختياري — من الكاميرا أو الاستوديو)</label>
@@ -996,7 +999,8 @@
     <div class="modal-title"><span data-i18n="✏️ تعديل يومية إنتاجية">✏️ تعديل يومية إنتاجية</span><span class="modal-close" onclick="closeModal('log-edit-modal')">✕</span></div>
     <div id="le-info" class="alert info" style="font-size:12px"></div>
     <div class="f-grid">
-      <div class="f-field"><label data-i18n="الكمية المنفذة *">الكمية المنفذة *</label><input type="number" id="le-qty" min="0" step="0.01"></div>
+      <div class="f-field"><label data-i18n="الكمية المنفذة *">الكمية المنفذة *</label><input type="number" id="le-qty" min="0" step="0.01" oninput="qtyCapHintCheck(this,'le-qty-hint')"><span id="le-qty-hint" class="qty-cap-hint" style="display:none"></span></div>
+      <div class="f-field"><label data-i18n="مقاول الباطن المنفّذ">مقاول الباطن المنفّذ</label><select id="le-sub"></select></div>
       <div class="f-field full"><label data-i18n="ملاحظة">ملاحظة</label><input type="text" id="le-note"></div>
       <div class="f-field full" id="le-reason-wrap"><label data-i18n="سبب التعديل (يُعرض للمعتمِدين) *">سبب التعديل (يُعرض للمعتمِدين) *</label><input type="text" id="le-reason" placeholder="مثال: خطأ في إدخال الكمية"></div>
     </div>
@@ -1842,6 +1846,9 @@ const parentOf = it => (it && it.parentId) ? getItem(it.parentId) : null;
 // الأب لمكوّن سعر، أو البند ذاته لأي بند آخر (عادي أو بند فرعي مستقل بكميته الخاصة)
 const isSplitChild = it => !!it && !!it.splitAt && !!it.parentId;
 const qtyBase = it => { const b = isSplitChild(it) ? getItem(it.parentId) : null; return b || it; };
+// بند مقسَّم لبنود فرعية مستقلة (بكميتها الخاصة، عبر "➕ بند فرعي") — بخلاف تقسيم السعر، هنا الأب نفسه
+// مجرد تجميع ولا يُنفَّذ عليه مباشرة، فيُستبعد من قوائم اختيار "بند فعلي للتنفيذ/المطالبة/التعيين"
+const hasIndependentKids = it => !!it && childrenOf(it.id).some(k => !k.splitAt);
 // تجميع أرقام البند الرئيسي من فروعه (لتفادي الازدواج في الحساب)
 function groupAgg(parent){
   const kids = childrenOf(parent.id);
@@ -3510,7 +3517,7 @@ Object.assign(I18N_EN, {
 // ============================================================
 let mbSel = {}; // itemId -> qty
 
-function claimableItems(){ return proj().boqItems.filter(i => i.scope !== 'others' && !isParent(i) && !isSplitChild(i) && availQty(i) > 0.01); }
+function claimableItems(){ return proj().boqItems.filter(i => i.scope !== 'others' && !hasIndependentKids(i) && !isSplitChild(i) && availQty(i) > 0.01); }
 
 let mbRatesProjectId = null; // آخر مشروع زُامنت له حقول محتجز الضمان / الدفعة المقدمة
 function renderBuilder(){
@@ -4480,7 +4487,7 @@ function villaPct(itemId, villaNo){
 function renderVillaGrid(){
   let list = proj().villas;
   if (currentVillaFilter !== 'all') list = list.filter(v => v.sheet === currentVillaFilter);
-  const activeItems = proj().boqItems.filter(i => i.scope !== 'others' && !isParent(i) && !isSplitChild(i));
+  const activeItems = proj().boqItems.filter(i => i.scope !== 'others' && !hasIndependentKids(i) && !isSplitChild(i));
   $('villa-grid').innerHTML = list.map(v => {
     let wSum = 0, wTot = 0, done = 0, prog = 0, blockedC = 0;
     activeItems.forEach(it => {
@@ -4508,7 +4515,7 @@ function showVillaDetail(no){
   $('villa-grid').style.display = 'none';
   $('villa-detail').style.display = 'block';
   $('villa-detail-title').textContent = T('تفاصيل') + ' ' + UL() + ' ' + no + ' - ' + v.sheet;
-  $('villa-detail-tbody').innerHTML = proj().boqItems.filter(i => i.scope !== 'others' && !isParent(i) && !isSplitChild(i)).map(it => {
+  $('villa-detail-tbody').innerHTML = proj().boqItems.filter(i => i.scope !== 'others' && !hasIndependentKids(i) && !isSplitChild(i)).map(it => {
     const p = villaPct(it.id, no);
     return '<tr>' +
       '<td><span class="item-no">' + esc(it.id) + '</span></td>' +
@@ -4589,19 +4596,28 @@ function renderProd(){
   $('crew-list').innerHTML = [...new Set(proj().workLogs.map(l => l.crew).filter(Boolean))].map(c => '<option value="' + esc(c) + '">').join('');
   // البند: حقل بحث ذكي بدل القائمة الطويلة — إعادة الضبط لو تغيّر المشروع أو حُذف البند المختار
   if ($('wl-item').value && !getItem($('wl-item').value)) { $('wl-item').value = ''; $('wl-item-search').value = ''; }
+  renderWlSplitInfo();
   $('wl-villa').innerHTML = '<option value="">' + T('— بدون ') + UL() + T(' محددة —') + '</option>' + proj().villas.map(v => '<option value="' + esc(v.no) + '">' + esc(v.no) + ' (' + esc(v.sheet) + ')</option>').join('');
   const wlSubCur = $('wl-sub').value;
-  $('wl-sub').innerHTML = '<option value="">' + T('— تنفيذ ذاتي (بدون مقاول باطن) —') + '</option>' + (proj().subcontractors||[]).map(s => '<option value="' + s.id + '">🧱 ' + esc(s.name) + '</option>').join('');
+  const subOptsHtml = '<option value="">' + T('— تنفيذ ذاتي (بدون مقاول باطن) —') + '</option>' + (proj().subcontractors||[]).map(s => '<option value="' + s.id + '">🧱 ' + esc(s.name) + '</option>').join('');
+  $('wl-sub').innerHTML = subOptsHtml;
   if (wlSubCur) $('wl-sub').value = wlSubCur;
+  const leSubCur = $('le-sub').value;
+  $('le-sub').innerHTML = subOptsHtml;
+  if (leSubCur) $('le-sub').value = leSubCur;
 
   const logs = [...proj().workLogs].sort((a,b) => b.date.localeCompare(a.date) || b.id - a.id);
   $('wl-tbody').innerHTML = logs.slice(0, 60).map(l => {
     const it = getItem(l.itemId);
     const perWorker = l.workers > 0 ? l.qty / l.workers : 0;
+    const splitKids = it ? childrenOf(it.id).filter(k => k.splitAt) : [];
+    const splitBadge = splitKids.length
+      ? ' <span class="pill blue" style="font-size:9px;cursor:pointer" onclick="viewSplitInfo(\'' + esc(it.id) + '\')" data-tip="' + T('عرض أجزاء تقسيم السعر') + '">✂ ' + splitKids.length + '</span>'
+      : '';
     return '<tr>' +
       '<td style="font-family:var(--mono);font-size:12px">' + esc(l.date) + '</td>' +
       '<td style="font-size:11px;white-space:nowrap">' + crewLabel(l) + '</td>' +
-      '<td><span class="item-no">' + esc(l.itemId) + '</span> <span style="font-size:11px;color:var(--text3)">' + esc(it ? it.desc.substring(0,25) : '') + '</span></td>' +
+      '<td><span class="item-no">' + esc(l.itemId) + '</span>' + splitBadge + ' <span style="font-size:11px;color:var(--text3)">' + esc(it ? it.desc.substring(0,25) : '') + '</span></td>' +
       '<td>' + (l.villaNo ? '#' + esc(l.villaNo) : '—') + '</td>' +
       '<td style="font-size:11px">' + (l.subId && getSub(l.subId) ? '🧱 ' + esc(getSub(l.subId).name) : '<span style="color:var(--text3)">' + T('تنفيذ ذاتي') + '</span>') + '</td>' +
       '<td class="amount">' + fmtQ(l.qty) + ' ' + esc(it ? it.unit : '') + '</td>' +
@@ -4669,7 +4685,8 @@ function renderProd(){
     const it = getItem(id);
     if (!it) return '';
     const rate = d.days.size ? d.qty / d.days.size : 0;
-    const remaining = Math.max(0, it.totalQty - it.executedQty);
+    const base = qtyBase(it);
+    const remaining = Math.max(0, base.totalQty - base.executedQty);
     const eta = rate > 0 && remaining > 0 ? Math.ceil(remaining / rate) : null;
     return '<div class="sc-item" style="align-items:flex-start"><span class="sc-item-name" style="white-space:normal"><span class="item-no">' + esc(id) + '</span> ' + esc(it.desc.substring(0,35)) + '<br>' +
       '<span style="font-size:11px">' + T('معدل') + ' ' + fmtQ(rate) + ' ' + esc(it.unit) + '/' + T('يوم') + ' · ' + T('متبقي') + ' ' + fmtQ(remaining) + '</span></span>' +
@@ -4683,8 +4700,18 @@ Object.assign(I18N_EN, {
   'لا يوجد بند مطابق':'No matching item',
   '— ضمن: ':'— under: ',
   'بند إضافي — أكمل البحث لتضييق النتائج':'more item(s) — refine your search to narrow the results',
+  'هذا البند مقسَّم السعر إلى':'This item\'s price is split into',
+  'تقسيم سعر البند':'Item price split',
+  'عرض أجزاء تقسيم السعر':'View price-split parts',
+  'هذا البند غير مقسَّم السعر بعد.':'This item\'s price isn\'t split yet.',
+  'تقسيم سعر هذا البند':'Split this item\'s price',
+  'هذا مكوّن سعر تابع للبند':'This is a price component of item',
+  'الكمية والتنفيذ هنا تُطبَّق على البند الأصلي المشترك بين كل مكوّناته.':'The quantity and execution here apply to the shared original item common to all its components.',
+  'أجزاء':'parts',
+  'الكمية والتنفيذ هنا تُطبَّق على البند الأصلي وتنعكس تلقائياً على جميع أجزائه.':'The quantity and execution here apply to the original item and automatically reflect on all of its parts.',
   'اكتب اسم الفرقة / المسؤول':'Enter the crew / responsible name',
   'اكتب الكمية المنفذة':'Enter the executed quantity',
+  'الكمية المدخلة أكبر من المتبقي من هذا البند':'The entered quantity is greater than what\'s remaining on this item',
   '📴 لا يمكن التسجيل بدون اتصال':'📴 Cannot log while offline',
   'تعذر رفع الصور:':'Failed to upload photos:',
   'حذف اليومية؟':'Delete this log?',
@@ -4773,7 +4800,9 @@ function wlItemFilter(typing){
   const q = ($('wl-item-search').value || '').toLowerCase().trim();
   // لو غيّر النص بعد اختيار بند، أفرغ الاختيار المخزّن
   if (typing) $('wl-item').value = '';
-  const items = proj().boqItems.filter(i => i.scope !== 'others' && !isParent(i) && !isSplitChild(i)); // الإنتاجية تُسجّل على البنود الفرعية لا الرئيسية
+  // الإنتاجية تُسجَّل على البنود الفرعية المستقلة لا الرئيسية؛ ومكوّنات تقسيم السعر مسموحة أيضاً للاختيار
+  // (تُسجَّل للتصنيف فقط — أثر الكمية الفعلي يُطبَّق على البند الأصلي المشترك عبر qtyBase)
+  const items = proj().boqItems.filter(i => i.scope !== 'others' && !hasIndependentKids(i));
   const norm = s => String(s||'').toLowerCase();
   let list = q ? items.filter(i => norm(i.id).includes(q) || norm(i.desc).includes(q) || norm(i.divAr).includes(q) || norm(i.div).includes(q)) : items;
   wlItemActive = -1;
@@ -4795,6 +4824,57 @@ function wlItemPick(id){
   $('wl-item').value = id;
   $('wl-item-search').value = id + ' - ' + it.desc;
   $('wl-item-list').style.display = 'none';
+  renderWlSplitInfo();
+}
+// عند اختيار بند مقسَّم السعر: يُعرض تنبيه بأجزائه ليعرف المسجِّل أن الكمية هنا تنعكس على الجميع تلقائياً
+// وإن لم يكن مقسَّماً بعد وكان قابلاً للتقسيم: يُعرض زر لتقسيمه فوراً دون مغادرة تبويب الإنتاجية
+function renderWlSplitInfo(){
+  const box = $('wl-split-info');
+  if (!box) return;
+  const it = getItem($('wl-item').value);
+  // تلميح بصري بالحد الأقصى للكمية (المتبقي فعلياً) — التحقق الفعلي يبقى في addWorkLog/saveLogEdit
+  const qtyInput = $('wl-qty');
+  if (qtyInput) {
+    if (it) { const b = qtyBase(it); qtyInput.max = Math.max(0, Math.round((b.totalQty - b.executedQty) * 100) / 100); }
+    else qtyInput.removeAttribute('max');
+    qtyCapHintCheck(qtyInput, 'wl-qty-hint');
+  }
+  if (!it) { box.style.display = 'none'; box.innerHTML = ''; return; }
+  const kids = childrenOf(it.id).filter(k => k.splitAt);
+  if (kids.length) {
+    box.style.display = '';
+    box.innerHTML = '<div class="alert info" style="font-size:12px">✂ ' + T('هذا البند مقسَّم السعر إلى') + ' ' + kids.length + ' ' + T('أجزاء') + ': ' +
+      kids.map(k => '<strong>' + esc(k.id) + '</strong> — ' + esc(k.desc) + ' (' + fmtRate(k.unitRate) + ' ' + T('ر.س') + ')').join('، ') +
+      '<br><span style="color:var(--text2)">' + T('الكمية والتنفيذ هنا تُطبَّق على البند الأصلي وتنعكس تلقائياً على جميع أجزائه.') + '</span></div>';
+  } else if (canSplitItem(it)) {
+    box.style.display = '';
+    box.innerHTML = '<div class="alert" style="font-size:12px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">' +
+      '<span>' + T('هذا البند غير مقسَّم السعر بعد.') + '</span>' +
+      '<button type="button" class="mini-btn" onclick="openSplitItemModal(\'' + esc(it.id) + '\')">✂ ' + T('تقسيم سعر هذا البند') + '</button></div>';
+  } else if (isSplitChild(it)) {
+    const father = getItem(it.parentId);
+    box.style.display = '';
+    box.innerHTML = '<div class="alert info" style="font-size:12px">✂ ' + T('هذا مكوّن سعر تابع للبند') + ' <strong>' + esc(it.parentId) + '</strong>' + (father ? ' — ' + esc(father.desc) : '') +
+      '. ' + T('الكمية والتنفيذ هنا تُطبَّق على البند الأصلي المشترك بين كل مكوّناته.') + '</div>';
+  } else {
+    box.style.display = 'none'; box.innerHTML = '';
+  }
+}
+// نافذة عرض أجزاء تقسيم السعر لبند — بنفس أسلوب النوافذ الأخرى في النظام (مثل استلامات الاعتماد)
+function viewSplitInfo(id){
+  const it = getItem(id);
+  if (!it) return;
+  const kids = childrenOf(it.id).filter(k => k.splitAt);
+  if (!kids.length) return;
+  const rows = kids.map(k =>
+    '<div class="sc-item" style="align-items:flex-start"><span class="sc-item-name" style="white-space:normal"><span class="item-no">' + esc(k.id) + '</span> ' + esc(k.desc) + '</span>' +
+    '<span class="sc-item-val">' + fmtRate(k.unitRate) + ' ' + T('ر.س') + '</span></div>'
+  ).join('');
+  showPrintable('✂ ' + T('تقسيم سعر البند') + ' ' + it.id,
+    '<div style="font-family:var(--font)">' +
+    '<div style="font-size:13px;font-weight:700;margin-bottom:4px">' + esc(it.desc) + '</div>' +
+    '<div style="font-size:11px;color:var(--text2);margin-bottom:10px">' + T('الكمية والتنفيذ هنا تُطبَّق على البند الأصلي وتنعكس تلقائياً على جميع أجزائه.') + '</div>' +
+    rows + '</div>');
 }
 function wlItemBlur(){ setTimeout(() => { $('wl-item-list').style.display = 'none'; }, 160); }
 function wlItemKey(e){
@@ -4810,6 +4890,19 @@ function wlItemKey(e){
   if (opts[wlItemActive]) opts[wlItemActive].scrollIntoView({block:'nearest'});
 }
 
+function qtyCapHintCheck(input, hintId){
+  const hint = $(hintId);
+  const max = Number(input.max);
+  const val = Number(input.value);
+  if (input.max !== '' && val > max) {
+    input.classList.add('qty-cap-exceeded');
+    if (hint) { hint.style.display = 'block'; hint.textContent = '⚠ ' + T('الكمية المدخلة أكبر من المتبقي من هذا البند') + ' (' + T('متبقي') + ' ' + fmtQ(max) + ')'; }
+  } else {
+    input.classList.remove('qty-cap-exceeded');
+    if (hint) hint.style.display = 'none';
+  }
+}
+
 async function addWorkLog(){
   const itemId = $('wl-item').value;
   const it = getItem(itemId);
@@ -4818,6 +4911,10 @@ async function addWorkLog(){
   if (!it) { alert(T('اختر بند من قائمة البحث')); $('wl-item-search').focus(); return; }
   if (!crew) { alert(T('اكتب اسم الفرقة / المسؤول')); return; }
   if (!qty || qty <= 0) { alert(T('اكتب الكمية المنفذة')); return; }
+  // مكوّن تقسيم سعر: أثر الكمية يُطبَّق على البند الأصلي المشترك (qtyBase) — البند نفسه يبقى فقط للتصنيف
+  const base = qtyBase(it);
+  const remaining = Math.max(0, Math.round((base.totalQty - base.executedQty) * 100) / 100);
+  if (qty > remaining + 0.01) { alert(T('الكمية المدخلة أكبر من المتبقي من هذا البند') + ' (' + T('متبقي') + ' ' + fmtQ(remaining) + ' ' + esc(it.unit||'') + ')'); return; }
   if (offlineMode) { alert(T('📴 لا يمكن التسجيل بدون اتصال')); return; }
   let photos = [];
   if (wlPendingPhotos.length) {
@@ -4828,12 +4925,12 @@ async function addWorkLog(){
   const apply = true; // الكمية تنعكس تلقائياً على نسبة إنجاز البند — بلا خيار تعطيل
   let appliedQty = 0;
   if (apply) {
-    appliedQty = Math.min(qty, Math.max(0, it.totalQty - it.executedQty));
-    it.executedQty = Math.round((it.executedQty + appliedQty) * 100) / 100;
-    if (villaNo && it.qtyPerVilla > 0) {
-      if (!proj().villaProgress[itemId]) proj().villaProgress[itemId] = {};
-      const cur = villaPct(itemId, villaNo);
-      proj().villaProgress[itemId][villaNo] = clamp(cur + qty / it.qtyPerVilla * 100, 0, 100);
+    appliedQty = Math.min(qty, Math.max(0, base.totalQty - base.executedQty)); // طبقة حماية إضافية (والتحقق الفعلي أعلاه قبل الرفع)
+    base.executedQty = Math.round((base.executedQty + appliedQty) * 100) / 100;
+    if (villaNo && base.qtyPerVilla > 0) {
+      if (!proj().villaProgress[base.id]) proj().villaProgress[base.id] = {};
+      const cur = villaPct(base.id, villaNo);
+      proj().villaProgress[base.id][villaNo] = clamp(cur + qty / base.qtyPerVilla * 100, 0, 100);
     }
   }
   proj().workLogs.push({
@@ -4843,6 +4940,7 @@ async function addWorkLog(){
   });
   $('wl-qty').value = ''; $('wl-note').value = '';
   $('wl-item').value = ''; $('wl-item-search').value = ''; // إفراغ حقل بحث البند للتسجيل التالي
+  qtyCapHintCheck($('wl-qty'), 'wl-qty-hint');
   wlPendingPhotos = []; renderWlPhotoStrip();
   save(); renderAll();
 }
@@ -4872,12 +4970,12 @@ function applyLogDelete(id, deletePhotos){
   });
   if (l.applied && l.appliedQty > 0) {
     const it = getItem(l.itemId);
-    if (it) it.executedQty = Math.max(0, Math.round((it.executedQty - l.appliedQty) * 100) / 100);
+    const base = it ? qtyBase(it) : null;
+    if (base) base.executedQty = Math.max(0, Math.round((base.executedQty - l.appliedQty) * 100) / 100);
     if (l.villaNo) {
-      const it2 = getItem(l.itemId);
-      if (it2 && it2.qtyPerVilla > 0 && proj().villaProgress[l.itemId]) {
-        const cur = villaPct(l.itemId, l.villaNo);
-        proj().villaProgress[l.itemId][l.villaNo] = clamp(cur - l.qty / it2.qtyPerVilla * 100, 0, 100);
+      if (base && base.qtyPerVilla > 0 && proj().villaProgress[base.id]) {
+        const cur = villaPct(base.id, l.villaNo);
+        proj().villaProgress[base.id][l.villaNo] = clamp(cur - l.qty / base.qtyPerVilla * 100, 0, 100);
       }
     }
   }
@@ -4893,6 +4991,10 @@ function openLogEdit(id){
   const it = getItem(l.itemId);
   $('le-info').innerHTML = '<strong>' + esc(l.date) + ' · ' + esc(l.crew) + '</strong> — ' + T('بند') + ' ' + esc(l.itemId) + ' ' + esc(it?it.desc.substring(0,30):'');
   $('le-qty').value = l.qty;
+  if (it) { const b = qtyBase(it); const freed = l.applied ? (l.appliedQty||0) : 0; $('le-qty').max = Math.max(0, Math.round((b.totalQty - b.executedQty + freed) * 100) / 100); }
+  else $('le-qty').removeAttribute('max');
+  qtyCapHintCheck($('le-qty'), 'le-qty-hint');
+  $('le-sub').value = l.subId || '';
   $('le-note').value = l.note || '';
   $('le-reason-wrap').style.display = editsGated() ? '' : 'none';
   $('le-reason').value = '';
@@ -4904,38 +5006,48 @@ function saveLogEdit(){
   if (!l) return;
   const newQty = Number($('le-qty').value);
   if (!newQty || newQty <= 0) { alert(T('اكتب كمية صحيحة')); return; }
+  const editIt = getItem(l.itemId);
+  if (editIt) {
+    const editBase = qtyBase(editIt);
+    const freed = l.applied ? (l.appliedQty||0) : 0; // الأثر الحالي لهذه اليومية يُعاد أولاً قبل تطبيق الكمية الجديدة
+    const remaining = Math.max(0, Math.round((editBase.totalQty - editBase.executedQty + freed) * 100) / 100);
+    if (newQty > remaining + 0.01) { alert(T('الكمية المدخلة أكبر من المتبقي من هذا البند') + ' (' + T('متبقي') + ' ' + fmtQ(remaining) + ' ' + esc(editIt.unit||'') + ')'); return; }
+  }
   const newNote = $('le-note').value.trim();
+  const newSubId = Number($('le-sub').value) || null;
   if (editsGated()) {
     const reason = $('le-reason').value.trim();
     if (!reason) { alert(T('اكتب سبب التعديل ليطّلع عليه المعتمِدون')); return; }
     const it = getItem(l.itemId);
-    submitEditRequest({ type:'log_edit', logId:editingLogId, newQty, newNote, reason,
+    submitEditRequest({ type:'log_edit', logId:editingLogId, newQty, newNote, newSubId, reason,
       label:T('تعديل يومية ') + esc(l.date) + T(' · بند ') + esc(l.itemId) + T(': الكمية من ') + fmtQ(l.qty) + T(' إلى ') + fmtQ(newQty) + ' ' + (it?it.unit:'') });
     closeModal('log-edit-modal'); return;
   }
-  applyLogEdit(editingLogId, newQty, newNote);
+  applyLogEdit(editingLogId, newQty, newNote, newSubId);
   closeModal('log-edit-modal'); save(); renderAll();
 }
 // تنفيذ تعديل اليومية فعلياً (يعيد أثر الكمية القديمة ثم يطبّق الجديدة كما في الإضافة)
-function applyLogEdit(id, newQty, newNote){
+function applyLogEdit(id, newQty, newNote, newSubId){
   const l = proj().workLogs.find(x => x.id === id);
   if (!l) return;
+  if (newSubId !== undefined) l.subId = newSubId;
   const it = getItem(l.itemId);
-  if (l.applied && it) {
+  const base = it ? qtyBase(it) : null;
+  if (l.applied && base) {
     // إرجاع الأثر القديم
-    it.executedQty = Math.max(0, Math.round((it.executedQty - (l.appliedQty||0)) * 100) / 100);
-    if (l.villaNo && it.qtyPerVilla > 0 && proj().villaProgress[l.itemId]) {
-      const cur = villaPct(l.itemId, l.villaNo);
-      proj().villaProgress[l.itemId][l.villaNo] = clamp(cur - l.qty / it.qtyPerVilla * 100, 0, 100);
+    base.executedQty = Math.max(0, Math.round((base.executedQty - (l.appliedQty||0)) * 100) / 100);
+    if (l.villaNo && base.qtyPerVilla > 0 && proj().villaProgress[base.id]) {
+      const cur = villaPct(base.id, l.villaNo);
+      proj().villaProgress[base.id][l.villaNo] = clamp(cur - l.qty / base.qtyPerVilla * 100, 0, 100);
     }
     // تطبيق الكمية الجديدة
-    const applied = Math.min(newQty, Math.max(0, it.totalQty - it.executedQty));
-    it.executedQty = Math.round((it.executedQty + applied) * 100) / 100;
+    const applied = Math.min(newQty, Math.max(0, base.totalQty - base.executedQty));
+    base.executedQty = Math.round((base.executedQty + applied) * 100) / 100;
     l.appliedQty = applied;
-    if (l.villaNo && it.qtyPerVilla > 0) {
-      if (!proj().villaProgress[l.itemId]) proj().villaProgress[l.itemId] = {};
-      const cur = villaPct(l.itemId, l.villaNo);
-      proj().villaProgress[l.itemId][l.villaNo] = clamp(cur + newQty / it.qtyPerVilla * 100, 0, 100);
+    if (l.villaNo && base.qtyPerVilla > 0) {
+      if (!proj().villaProgress[base.id]) proj().villaProgress[base.id] = {};
+      const cur = villaPct(base.id, l.villaNo);
+      proj().villaProgress[base.id][l.villaNo] = clamp(cur + newQty / base.qtyPerVilla * 100, 0, 100);
     }
   }
   l.qty = newQty;
@@ -4971,7 +5083,7 @@ function approveEditRequest(id){
   if (r.clientApproved && r.pmoApproved) {
     // تطبيق التغيير المعتمَد
     if (r.type === 'log_delete') applyLogDelete(r.logId, true);
-    else if (r.type === 'log_edit') applyLogEdit(r.logId, r.newQty, r.newNote);
+    else if (r.type === 'log_edit') applyLogEdit(r.logId, r.newQty, r.newNote, r.newSubId);
     else if (r.type === 'qty_edit') {
       const it = getItem(r.itemId);
       if (it) {

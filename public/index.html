@@ -231,6 +231,12 @@
   .gallery-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
   .gallery-item { position: relative; cursor: pointer; }
   .gallery-item > .mini-btn.red { position: absolute; top: 4px; inset-inline-end: 4px; z-index: 2; }
+  .gallery-folder { cursor: pointer; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--bg3); transition: border-color .15s; }
+  .gallery-folder:hover { border-color: var(--blue); }
+  .gallery-folder-thumb { position: relative; aspect-ratio: 1; overflow: hidden; }
+  .gallery-folder-thumb img { width: 100%; height: 100%; object-fit: cover; filter: brightness(0.5); }
+  .gallery-folder-thumb::after { content: '📁'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 34px; }
+  .gallery-folder-label { padding: 6px 8px; font-size: 11px; text-align: center; }
   .gallery-item img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); }
   .gallery-cap { font-size: 9px; color: var(--text3); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 6000; align-items: center; justify-content: center; flex-direction: column; padding: 20px; }
@@ -1307,6 +1313,8 @@ Object.assign(I18N_EN, {
   'مستخلص عميل':'Client claim',
   'الموقع على الخريطة':'View on map',
   'لا توجد صور مرفقة في التقارير اليومية بعد':'No photos attached to daily reports yet',
+  'رجوع لكل الأيام':'Back to all days',
+  'صورة':'photo(s)',
   'لا توجد اعتمادات استشاري بعد':'No consultant approvals yet',
   'لا توجد مرفقات مستخلصات بعد':'No claim attachments yet',
   'حذف هذه الصورة نهائياً؟':'Delete this photo permanently?',
@@ -2540,10 +2548,13 @@ function switchTab(id){
 //  الأرشيف والمستندات (صور التقارير اليومية + اعتمادات الاستشاري + مرفقات المستخلصات)
 // ============================================================
 let arcView = 'daily';
+let arcDailyOpenDate = null; // null = عرض المجلدات حسب التاريخ، وإلا فتاريخ المجلد المفتوح حالياً
 function switchArcView(v){
   arcView = v;
   ['daily','appr','mus'].forEach(x => { $('arc-view-' + x).style.display = x === v ? '' : 'none'; $('arc-tab-' + x).classList.toggle('active', x === v); });
 }
+function openArcDailyFolder(d){ arcDailyOpenDate = d; renderArchive(); }
+function closeArcDailyFolder(){ arcDailyOpenDate = null; renderArchive(); }
 const fileIcon = url => String(url||'').toLowerCase().endsWith('.pdf') ? '📄' : '🖼';
 const mapsLink = (lat, lng) => 'https://maps.google.com/?q=' + lat + ',' + lng;
 
@@ -2563,12 +2574,33 @@ function renderArchive(){
   });
   const fp = photos.filter(x => !q || (x.date+' '+x.item+' '+x.desc+' '+x.crew+' '+x.sub).toLowerCase().includes(q));
   if ($('arc-daily-count')) $('arc-daily-count').textContent = photos.length;
-  if ($('arc-daily-grid')) $('arc-daily-grid').innerHTML = fp.length ? fp.map(x =>
+  const photoCard = x =>
     '<div class="gallery-item">' + delBtn('deleteArchivePhoto(' + x.logId + ',' + x.pIdx + ')') +
     '<img src="' + esc(x.url) + '" loading="lazy" onclick="openLightbox(\'' + esc(x.url) + '\',\'' + esc(x.date + ' · ' + x.item + ' · ' + x.crew) + '\')" alt="">' +
     '<div class="gallery-cap">🗓 ' + esc(x.date) + '<br>' + esc(x.item) + (x.crew ? ' · ' + esc(x.crew) : '') + (x.sub ? '<br>🧱 ' + esc(x.sub) : '') +
-    (x.lat != null ? '<br><a href="' + mapsLink(x.lat, x.lng) + '" target="_blank" style="color:var(--blue)">📍 ' + T('الموقع على الخريطة') + '</a>' : '') + '</div></div>'
-  ).join('') : '<div class="empty-state" style="grid-column:1/-1"><div class="icon">📷</div><p>' + T('لا توجد صور مرفقة في التقارير اليومية بعد') + '</p></div>';
+    (x.lat != null ? '<br><a href="' + mapsLink(x.lat, x.lng) + '" target="_blank" style="color:var(--blue)">📍 ' + T('الموقع على الخريطة') + '</a>' : '') + '</div></div>';
+  const dailyGrid = $('arc-daily-grid');
+  if (dailyGrid) {
+    if (q || arcDailyOpenDate) {
+      // بحث نشط أو مجلد مفتوح: تُعرض الصور مباشرة بلا تجميع بالمجلدات
+      const shown = (!q && arcDailyOpenDate) ? fp.filter(x => x.date.slice(0,10) === arcDailyOpenDate) : fp;
+      const backBar = (!q && arcDailyOpenDate)
+        ? '<div style="grid-column:1/-1;display:flex;align-items:center;gap:8px;margin-bottom:4px"><button class="mini-btn" onclick="closeArcDailyFolder()">◀ ' + T('رجوع لكل الأيام') + '</button><strong>📁 ' + esc(arcDailyOpenDate) + '</strong></div>'
+        : '';
+      dailyGrid.innerHTML = backBar + (shown.length ? shown.map(photoCard).join('') : '<div class="empty-state" style="grid-column:1/-1"><div class="icon">📷</div><p>' + T('لا توجد صور مرفقة في التقارير اليومية بعد') + '</p></div>');
+    } else {
+      // عرض افتراضي: مجلدات حسب تاريخ الالتقاط
+      const byDate = {};
+      fp.forEach(x => { const d = x.date.slice(0,10); (byDate[d] = byDate[d] || []).push(x); });
+      const dates = Object.keys(byDate).sort((a,b)=>b.localeCompare(a));
+      dailyGrid.innerHTML = dates.length ? dates.map(d => {
+        const items = byDate[d];
+        return '<div class="gallery-folder" onclick="openArcDailyFolder(\'' + d + '\')">' +
+          '<div class="gallery-folder-thumb"><img src="' + esc(items[0].url) + '" loading="lazy" alt=""></div>' +
+          '<div class="gallery-folder-label">🗓 ' + esc(d) + '<br><span style="color:var(--text3);font-size:10px">' + items.length + ' ' + T('صورة') + '</span></div></div>';
+      }).join('') : '<div class="empty-state" style="grid-column:1/-1"><div class="icon">📷</div><p>' + T('لا توجد صور مرفقة في التقارير اليومية بعد') + '</p></div>';
+    }
+  }
 
   // ---- اعتمادات الاستشاري ----
   const apprRows = [];

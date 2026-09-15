@@ -230,6 +230,7 @@
   .log-photo { width: 30px; height: 30px; border-radius: 4px; object-fit: cover; border: 1px solid var(--border); cursor: pointer; vertical-align: middle; }
   .gallery-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
   .gallery-item { position: relative; cursor: pointer; }
+  .gallery-item > .mini-btn.red { position: absolute; top: 4px; inset-inline-end: 4px; z-index: 2; }
   .gallery-item img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); }
   .gallery-cap { font-size: 9px; color: var(--text3); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 6000; align-items: center; justify-content: center; flex-direction: column; padding: 20px; }
@@ -323,6 +324,7 @@
   <div class="nav-tab" data-tab="prod" onclick="switchTab('prod')"><span data-i18n="👷 الإنتاجية">👷 الإنتاجية</span> <span class="tab-count" id="tc-prod">0</span><span class="tab-count" id="tc-prod-req" style="display:none;background:var(--red);color:#fff">0</span></div>
   <div class="nav-tab" data-tab="pricedb" onclick="switchTab('pricedb')"><span data-i18n="💲 قاعدة الأسعار">💲 قاعدة الأسعار</span> <span class="tab-count" id="tc-pricedb">0</span></div>
   <div class="nav-tab" data-tab="subs" onclick="switchTab('subs')"><span data-i18n="🧱 مقاولو الباطن">🧱 مقاولو الباطن</span> <span class="tab-count" id="tc-subs">0</span><span class="tab-count" id="tc-subs-alert" style="display:none;background:var(--red);color:#fff">0</span></div>
+  <div class="nav-tab" data-tab="archive" onclick="switchTab('archive')"><span data-i18n="📁 الأرشيف والمستندات">📁 الأرشيف والمستندات</span> <span class="tab-count" id="tc-archive">0</span></div>
 </div>
 
 <div class="main">
@@ -650,6 +652,43 @@
         <table>
           <thead><tr><th data-i18n="المستخلص">المستخلص</th><th data-i18n="مقاول الباطن">مقاول الباطن</th><th data-i18n="التاريخ">التاريخ</th><th data-i18n="بنود">بنود</th><th data-i18n="الإجمالي">الإجمالي</th><th data-i18n="محتجز+خصومات">محتجز+خصومات</th><th data-i18n="الصافي">الصافي</th><th data-i18n="المدفوع">المدفوع</th><th data-i18n="الحالة">الحالة</th><th data-i18n="إجراء">إجراء</th></tr></thead>
           <tbody id="submus-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== الأرشيف والمستندات ===================== -->
+  <div class="tab-panel" id="tab-archive">
+    <div class="filter-bar">
+      <button class="filter-btn active" id="arc-tab-daily" onclick="switchArcView('daily')"><span data-i18n="📷 ملفات التقارير اليومية">📷 ملفات التقارير اليومية</span> <span class="tab-count" id="arc-daily-count">0</span></button>
+      <button class="filter-btn" id="arc-tab-appr" onclick="switchArcView('appr')"><span data-i18n="🕵 مستندات اعتمادات الاستشاري">🕵 مستندات اعتمادات الاستشاري</span> <span class="tab-count" id="arc-appr-count">0</span></button>
+      <button class="filter-btn" id="arc-tab-mus" onclick="switchArcView('mus')"><span data-i18n="💰 مرفقات المستخلصات">💰 مرفقات المستخلصات</span> <span class="tab-count" id="arc-mus-count">0</span></button>
+    </div>
+
+    <div id="arc-view-daily">
+      <div class="alert info" style="font-size:12px" data-i18n="📷 جميع الصور والملفات المرفقة في التقارير اليومية (الإنتاجية) — مؤرشفة بتاريخ ومكان الالتقاط. اضغط أي صورة لعرضها بالحجم الكامل.">📷 جميع الصور والملفات المرفقة في التقارير اليومية (الإنتاجية) — مؤرشفة بتاريخ ومكان الالتقاط. اضغط أي صورة لعرضها بالحجم الكامل.</div>
+      <div class="filter-bar">
+        <input type="text" class="search-box" id="arc-daily-search" placeholder="🔍 بحث بالتاريخ أو البند أو الفرقة..." data-i18n-ph="🔍 بحث بالتاريخ أو البند أو الفرقة..." oninput="renderArchive()">
+      </div>
+      <div id="arc-daily-grid" class="gallery-grid"></div>
+    </div>
+
+    <div id="arc-view-appr" style="display:none">
+      <div class="alert info" style="font-size:12px" data-i18n="🕵 كل مستندات اعتمادات الاستشاري (الاستلامات الموقّعة) لكل بند — ارجع إليها في أي وقت.">🕵 كل مستندات اعتمادات الاستشاري (الاستلامات الموقّعة) لكل بند — ارجع إليها في أي وقت.</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th data-i18n="البند">البند</th><th data-i18n="التاريخ">التاريخ</th><th data-i18n="الكمية المعتمدة">الكمية المعتمدة</th><th data-i18n="الاستشاري">الاستشاري</th><th data-i18n="رقم الاستلام">رقم الاستلام</th><th data-i18n="المستندات">المستندات</th></tr></thead>
+          <tbody id="arc-appr-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="arc-view-mus" style="display:none">
+      <div class="alert info" style="font-size:12px" data-i18n="💰 مرفقات مستخلصات العميل ومستخلصات مقاولي الباطن (المستخلص المُعد + اعتمادات الاستشاري + التسويات).">💰 مرفقات مستخلصات العميل ومستخلصات مقاولي الباطن (المستخلص المُعد + اعتمادات الاستشاري + التسويات).</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th data-i18n="النوع">النوع</th><th data-i18n="المستخلص">المستخلص</th><th data-i18n="التاريخ">التاريخ</th><th data-i18n="الجهة">الجهة</th><th data-i18n="الحالة">الحالة</th><th data-i18n="المرفقات">المرفقات</th></tr></thead>
+          <tbody id="arc-mus-tbody"></tbody>
         </table>
       </div>
     </div>
@@ -1252,6 +1291,27 @@ Object.assign(I18N_EN, {
   'إجراء':'Action',
   '+ إضافة عرض':'+ Add offer',
   '🧱 مقاولو الباطن':'🧱 Subcontractors',
+  '📁 الأرشيف والمستندات':'📁 Archive & Documents',
+  '📷 ملفات التقارير اليومية':'📷 Daily report files',
+  '🕵 مستندات اعتمادات الاستشاري':'🕵 Consultant approval documents',
+  '💰 مرفقات المستخلصات':'💰 Claim attachments',
+  '📷 جميع الصور والملفات المرفقة في التقارير اليومية (الإنتاجية) — مؤرشفة بتاريخ ومكان الالتقاط. اضغط أي صورة لعرضها بالحجم الكامل.':'📷 All photos and files attached to daily reports (productivity) — archived with capture date and location. Click any photo to view it full size.',
+  '🔍 بحث بالتاريخ أو البند أو الفرقة...':'🔍 Search by date, item, or crew...',
+  '🕵 كل مستندات اعتمادات الاستشاري (الاستلامات الموقّعة) لكل بند — ارجع إليها في أي وقت.':'🕵 All consultant approval documents (signed receipts) for every item — come back to them anytime.',
+  '💰 مرفقات مستخلصات العميل ومستخلصات مقاولي الباطن (المستخلص المُعد + اعتمادات الاستشاري + التسويات).':'💰 Attachments for client claims and subcontractor claims (the prepared claim + consultant approvals + settlements).',
+  'الكمية المعتمدة':'Approved quantity',
+  'رقم الاستلام':'Receipt No.',
+  'المستندات':'Documents',
+  'النوع':'Type',
+  'الجهة':'Party',
+  'مستخلص عميل':'Client claim',
+  'الموقع على الخريطة':'View on map',
+  'لا توجد صور مرفقة في التقارير اليومية بعد':'No photos attached to daily reports yet',
+  'لا توجد اعتمادات استشاري بعد':'No consultant approvals yet',
+  'لا توجد مرفقات مستخلصات بعد':'No claim attachments yet',
+  'حذف هذه الصورة نهائياً؟':'Delete this photo permanently?',
+  'حذف هذا المستند نهائياً؟':'Delete this document permanently?',
+  'حذف هذا المرفق نهائياً؟':'Delete this attachment permanently?',
   '💡 سجّل مقاولي الباطن وبنودهم وأسعارهم المتفق عليها. عند إدخال الإنتاجية اليومية يُنسب العمل لمقاول الباطن المنفّذ، وبعد اعتماد الاستشاري للكمية تصبح مستحقة للصرف. افتح صفحة المقاول لتعميد كمياته وبناء مستخلصه تلقائياً.':'💡 Register subcontractors and their agreed items and rates. When logging daily productivity, work is attributed to the executing subcontractor, and once the consultant approves the quantity it becomes payable. Open the subcontractor\'s page to certify their quantities and automatically build their claim.',
   '+ إضافة مقاول باطن':'+ Add subcontractor',
   'المستخلص':'Claim',
@@ -1980,7 +2040,7 @@ function totals(){ return totalsFor(proj()); }
 function renderAll(){
   renderHeader(); renderProjects(); renderKPIs(); renderCharts(); renderAlerts(); renderClaimSummary();
   renderItemFilters(); renderItemsTable(); renderPlan(); renderBuilder(); renderHistory();
-  renderBlocked(); renderVillaFilters(); renderVillaGrid(); renderProd(); renderSubs(); updateTabCounts();
+  renderBlocked(); renderVillaFilters(); renderVillaGrid(); renderProd(); renderSubs(); renderArchive(); updateTabCounts();
 }
 
 function renderHeader(){
@@ -2461,6 +2521,12 @@ function updateTabCounts(){
   $('tc-prod').textContent = proj().workLogs.length;
   const preq = pendingEditRequests().length, prb = $('tc-prod-req');
   if (prb) { prb.textContent = preq; prb.style.display = (preq && canApproveEdits()) ? '' : 'none'; }
+  const p = proj();
+  const nDocs = (p.workLogs||[]).reduce((s,l)=>s+(l.photos||[]).length,0)
+    + (p.boqItems||[]).reduce((s,i)=>s+(i.approvals||[]).reduce((a,ap)=>a+((ap.docs&&ap.docs.length?ap.docs:(ap.ar?[ap.ar]:[])).length),0),0)
+    + (p.mustakhlasat||[]).reduce((s,m)=>s+(m.attachments||[]).length,0)
+    + (p.subMustakhlasat||[]).reduce((s,m)=>s+(m.docs||[]).length,0);
+  if ($('tc-archive')) $('tc-archive').textContent = nDocs;
 }
 
 function switchTab(id){
@@ -2468,6 +2534,112 @@ function switchTab(id){
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === id));
   $('tab-' + id).classList.add('active');
   if (id === 'pricedb') onOpenPricedb();
+}
+
+// ============================================================
+//  الأرشيف والمستندات (صور التقارير اليومية + اعتمادات الاستشاري + مرفقات المستخلصات)
+// ============================================================
+let arcView = 'daily';
+function switchArcView(v){
+  arcView = v;
+  ['daily','appr','mus'].forEach(x => { $('arc-view-' + x).style.display = x === v ? '' : 'none'; $('arc-tab-' + x).classList.toggle('active', x === v); });
+}
+const fileIcon = url => String(url||'').toLowerCase().endsWith('.pdf') ? '📄' : '🖼';
+const mapsLink = (lat, lng) => 'https://maps.google.com/?q=' + lat + ',' + lng;
+
+function renderArchive(){
+  const p = proj();
+  const delBtn = onclick => isAdmin() ? '<button class="mini-btn red" style="padding:1px 5px;font-size:10px" onclick="event.stopPropagation();' + onclick + '" data-tip="' + T('حذف') + '">🗑</button>' : '';
+  // ---- التقارير اليومية: كل صور اليوميات ----
+  const q = ($('arc-daily-search') && $('arc-daily-search').value || '').toLowerCase();
+  const photos = [];
+  [...(p.workLogs||[])].sort((a,b)=> (b.date||'').localeCompare(a.date||'') || b.id-a.id).forEach(l => {
+    const it = getItem(l.itemId);
+    (l.photos||[]).forEach((ph, pIdx) => photos.push({
+      url: ph.url, date: (ph.date ? ph.date.slice(0,16).replace('T',' ') : l.date), lat: ph.lat, lng: ph.lng,
+      item: l.itemId, desc: it ? it.desc : '', crew: l.crew, sub: (l.subId && getSub(l.subId)) ? getSub(l.subId).name : '',
+      logId: l.id, pIdx
+    }));
+  });
+  const fp = photos.filter(x => !q || (x.date+' '+x.item+' '+x.desc+' '+x.crew+' '+x.sub).toLowerCase().includes(q));
+  if ($('arc-daily-count')) $('arc-daily-count').textContent = photos.length;
+  if ($('arc-daily-grid')) $('arc-daily-grid').innerHTML = fp.length ? fp.map(x =>
+    '<div class="gallery-item">' + delBtn('deleteArchivePhoto(' + x.logId + ',' + x.pIdx + ')') +
+    '<img src="' + esc(x.url) + '" loading="lazy" onclick="openLightbox(\'' + esc(x.url) + '\',\'' + esc(x.date + ' · ' + x.item + ' · ' + x.crew) + '\')" alt="">' +
+    '<div class="gallery-cap">🗓 ' + esc(x.date) + '<br>' + esc(x.item) + (x.crew ? ' · ' + esc(x.crew) : '') + (x.sub ? '<br>🧱 ' + esc(x.sub) : '') +
+    (x.lat != null ? '<br><a href="' + mapsLink(x.lat, x.lng) + '" target="_blank" style="color:var(--blue)">📍 ' + T('الموقع على الخريطة') + '</a>' : '') + '</div></div>'
+  ).join('') : '<div class="empty-state" style="grid-column:1/-1"><div class="icon">📷</div><p>' + T('لا توجد صور مرفقة في التقارير اليومية بعد') + '</p></div>';
+
+  // ---- اعتمادات الاستشاري ----
+  const apprRows = [];
+  (p.boqItems||[]).forEach(it => (it.approvals||[]).forEach(a => {
+    const docs = (a.docs && a.docs.length) ? a.docs : (a.ar ? [a.ar] : []);
+    apprRows.push({ it, a, docs });
+  }));
+  if ($('arc-appr-count')) $('arc-appr-count').textContent = apprRows.reduce((s,r)=>s+r.docs.length,0);
+  if ($('arc-appr-tbody')) $('arc-appr-tbody').innerHTML = apprRows.length ? apprRows.map(r =>
+    '<tr><td><span class="item-no">' + esc(r.it.id) + '</span> <span style="font-size:11px;color:var(--text3)">' + esc((r.it.desc||'').substring(0,24)) + '</span></td>' +
+    '<td style="font-family:var(--mono);font-size:12px">' + esc(r.a.date||'—') + '</td>' +
+    '<td class="amount">' + fmtQ(r.a.qty) + ' ' + esc(r.it.unit||'') + '</td>' +
+    '<td>' + esc(r.a.consultant||'—') + '</td>' +
+    '<td>' + esc(r.a.arNo||'—') + '</td>' +
+    '<td>' + (r.docs.length ? r.docs.map((d,di) => '<span style="display:inline-flex;align-items:center;gap:3px;margin-inline-end:8px"><a href="' + esc(d.url) + '" target="_blank" style="color:var(--blue);font-size:12px">' + fileIcon(d.url) + ' ' + esc(d.name||T('ملف')) + ' ↗</a>' + delBtn('deleteArchiveApprovalDoc(\'' + esc(r.it.id) + '\',' + r.a.id + ',' + di + ')') + '</span>').join('') : '<span style="color:var(--text3)">—</span>') + '</td></tr>'
+  ).join('') : '<tr><td colspan="6"><div class="empty-state"><p>' + T('لا توجد اعتمادات استشاري بعد') + '</p></div></td></tr>';
+
+  // ---- مرفقات المستخلصات (العميل + مقاولو الباطن) ----
+  const musRows = [];
+  (p.mustakhlasat||[]).forEach(m => { if ((m.attachments||[]).length) musRows.push({ type: 'مستخلص عميل', kind: 'client', id: m.id, no: m.no, date: m.date, party: proj().info.client || '—', status: (MUS_STATUS[m.status]||{}).label || m.status, docs: m.attachments }); });
+  (p.subMustakhlasat||[]).forEach(m => { const sub = getSub(m.subId); if ((m.docs||[]).length) musRows.push({ type: 'مقاول باطن', kind: 'sub', id: m.id, no: m.no, date: m.date, party: sub ? sub.name : '—', status: (SUBMUS_STATUS[m.status]||{}).label || m.status, docs: m.docs }); });
+  if ($('arc-mus-count')) $('arc-mus-count').textContent = musRows.reduce((s,r)=>s+r.docs.length,0);
+  if ($('arc-mus-tbody')) $('arc-mus-tbody').innerHTML = musRows.length ? musRows.map(r =>
+    '<tr><td><span class="pill ' + (r.type==='مقاول باطن'?'orange':'blue') + '" style="font-size:10px">' + esc(T(r.type)) + '</span></td>' +
+    '<td><span class="item-no">' + esc(r.no) + '</span></td>' +
+    '<td style="font-family:var(--mono);font-size:12px">' + esc(r.date||'—') + '</td>' +
+    '<td>' + esc(r.party) + '</td>' +
+    '<td style="font-size:11px">' + T(r.status||'') + '</td>' +
+    '<td>' + r.docs.map((d,di) => '<span style="display:inline-flex;align-items:center;gap:3px;margin-inline-end:8px"><a href="' + esc(d.url) + '" target="_blank" style="color:var(--blue);font-size:12px">' + fileIcon(d.url) + ' ' + esc(d.name||T('ملف')) + ' ↗</a>' + delBtn('deleteArchiveMusDoc(\'' + r.kind + '\',' + r.id + ',' + di + ')') + '</span>').join('') + '</td></tr>'
+  ).join('') : '<tr><td colspan="6"><div class="empty-state"><p>' + T('لا توجد مرفقات مستخلصات بعد') + '</p></div></td></tr>';
+}
+
+// حذف عنصر واحد من الأرشيف (صورة/مستند) — لأدمن النظام فقط
+function deleteArchivePhoto(logId, pIdx){
+  if (!isAdmin()) return;
+  const l = proj().workLogs.find(x => x.id === logId);
+  if (!l || !l.photos || !l.photos[pIdx]) return;
+  if (!confirm(T('حذف هذه الصورة نهائياً؟'))) return;
+  const file = String(l.photos[pIdx].url).split('/').pop();
+  API.req('DELETE', '/api/projects/' + proj().id + '/photos/' + file).catch(()=>{});
+  l.photos.splice(pIdx, 1);
+  save(); renderArchive(); updateTabCounts();
+}
+function deleteArchiveApprovalDoc(itemId, approvalId, docIdx){
+  if (!isAdmin()) return;
+  const it = getItem(itemId);
+  if (!it) return;
+  const a = (it.approvals||[]).find(x => x.id === approvalId);
+  if (!a) return;
+  if (!confirm(T('حذف هذا المستند نهائياً؟'))) return;
+  let d;
+  if (a.docs && a.docs.length) { d = a.docs[docIdx]; a.docs.splice(docIdx, 1); }
+  else if (a.ar) { d = a.ar; a.ar = null; }
+  if (!d) return;
+  const file = String(d.url).split('/').pop();
+  API.req('DELETE', '/api/projects/' + proj().id + '/photos/' + file).catch(()=>{});
+  save(); renderArchive(); updateTabCounts();
+}
+function deleteArchiveMusDoc(kind, id, docIdx){
+  if (!isAdmin()) return;
+  const list = kind === 'sub' ? proj().subMustakhlasat : proj().mustakhlasat;
+  const m = (list||[]).find(x => x.id === id);
+  if (!m) return;
+  const arr = kind === 'sub' ? (m.docs||[]) : (m.attachments||[]);
+  const d = arr[docIdx];
+  if (!d) return;
+  if (!confirm(T('حذف هذا المرفق نهائياً؟'))) return;
+  const file = String(d.url).split('/').pop();
+  API.req('DELETE', '/api/projects/' + proj().id + '/photos/' + file).catch(()=>{});
+  arr.splice(docIdx, 1);
+  save(); renderArchive(); updateTabCounts();
 }
 
 function statusPill(st){
@@ -4740,7 +4912,8 @@ Object.assign(I18N_EN, {
 // ---- صور الموقع: ضغط بالمتصفح ثم رفع للخادم ----
 let wlPendingPhotos = []; // [{dataUrl, name}]
 
-function compressImage(file){
+// ضغط الصورة مع إمكانية طبع توقيع (تاريخ + موقع) في الأسفل
+function compressImage(file, stamp){
   return new Promise((resolve, reject) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
@@ -4750,7 +4923,9 @@ function compressImage(file){
       if (Math.max(w, h) > MAX) { const k = MAX / Math.max(w, h); w = Math.round(w*k); h = Math.round(h*k); }
       const cv = document.createElement('canvas');
       cv.width = w; cv.height = h;
-      cv.getContext('2d').drawImage(img, 0, 0, w, h);
+      const ctx = cv.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      if (stamp) drawPhotoStamp(ctx, w, h, stamp);
       URL.revokeObjectURL(url);
       resolve(cv.toDataURL('image/jpeg', 0.72));
     };
@@ -4759,12 +4934,105 @@ function compressImage(file){
   });
 }
 
+// طبع شريط التاريخ والموقع أسفل الصورة
+function drawPhotoStamp(ctx, w, h, stamp){
+  const pad = Math.max(8, Math.round(w * 0.012));
+  const fs = Math.max(13, Math.round(w * 0.026));
+  const lh = Math.round(fs * 1.4);
+  const lines = [];
+  const d = stamp.date instanceof Date ? stamp.date : new Date(stamp.date || Date.now());
+  const two = n => String(n).padStart(2, '0');
+  lines.push('🗓 ' + d.getFullYear() + '-' + two(d.getMonth()+1) + '-' + two(d.getDate()) + '  ' + two(d.getHours()) + ':' + two(d.getMinutes()));
+  if (stamp.loc && stamp.loc.lat != null) lines.push('📍 ' + Number(stamp.loc.lat).toFixed(6) + ', ' + Number(stamp.loc.lng).toFixed(6) + (stamp.loc.src === 'exif' ? '' : ''));
+  else lines.push('📍 الموقع غير متوفر');
+  if (stamp.title) lines.push('🏗 ' + stamp.title);
+  const barH = pad * 2 + lines.length * lh;
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.fillRect(0, h - barH, w, barH);
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold ' + fs + 'px sans-serif';
+  ctx.textBaseline = 'top';
+  ctx.textAlign = 'right';
+  try { ctx.direction = 'rtl'; } catch(e) {}
+  lines.forEach((ln, i) => ctx.fillText(ln, w - pad, h - barH + pad + i * lh));
+  ctx.restore();
+}
+
+// جلب موقع الجهاز مرة واحدة (لاستخدامه عند غياب موقع EXIF)
+let cachedGeo;
+function getDeviceGeo(){
+  if (cachedGeo !== undefined) return Promise.resolve(cachedGeo);
+  return new Promise(res => {
+    if (!navigator.geolocation) { cachedGeo = null; return res(null); }
+    navigator.geolocation.getCurrentPosition(
+      p => { cachedGeo = { lat: p.coords.latitude, lng: p.coords.longitude }; res(cachedGeo); },
+      () => { cachedGeo = null; res(null); },
+      { timeout: 8000, maximumAge: 120000, enableHighAccuracy: true }
+    );
+  });
+}
+
+// قراءة تاريخ والموقع من بيانات EXIF للصورة (best-effort، JPEG فقط)
+function readExif(file){
+  return new Promise(resolve => {
+    const fr = new FileReader();
+    fr.onload = () => {
+      try {
+        const dv = new DataView(fr.result);
+        if (dv.getUint16(0) !== 0xFFD8) return resolve({});
+        let off = 2; const len = dv.byteLength; let app1 = -1;
+        while (off + 4 <= len) {
+          const marker = dv.getUint16(off);
+          if ((marker & 0xFF00) !== 0xFF00) break;
+          if (marker === 0xFFE1) { app1 = off; break; }
+          off += 2 + dv.getUint16(off + 2);
+        }
+        if (app1 < 0 || dv.getUint32(app1 + 4) !== 0x45786966) return resolve({});
+        const tiff = app1 + 10;
+        const little = dv.getUint16(tiff) === 0x4949;
+        const g16 = o => dv.getUint16(o, little);
+        const g32 = o => dv.getUint32(o, little);
+        const readIFD = (dir) => { const n = g16(dir); const es = []; for (let i = 0; i < n; i++){ const e = dir + 2 + i * 12; es.push({ tag: g16(e), valOff: e + 8 }); } return es; };
+        const str = (o, n) => { let s = ''; for (let i = 0; i < n; i++){ const c = dv.getUint8(o + i); if (!c) break; s += String.fromCharCode(c); } return s; };
+        const ifd0 = tiff + g32(tiff + 4);
+        let exifPtr = null, gpsPtr = null;
+        readIFD(ifd0).forEach(e => { if (e.tag === 0x8769) exifPtr = tiff + g32(e.valOff); if (e.tag === 0x8825) gpsPtr = tiff + g32(e.valOff); });
+        let date = null, lat = null, lng = null;
+        if (exifPtr) readIFD(exifPtr).forEach(e => { if (e.tag === 0x9003 || e.tag === 0x0132) { const o = tiff + g32(e.valOff); date = str(o, 19); } });
+        if (gpsPtr) {
+          let latRef = 'N', lngRef = 'E', latV = null, lngV = null;
+          const rat = o => g32(o) / (g32(o + 4) || 1);
+          const dms = e => { const o = tiff + g32(e.valOff); return rat(o) + rat(o + 8) / 60 + rat(o + 16) / 3600; };
+          readIFD(gpsPtr).forEach(e => {
+            if (e.tag === 1) latRef = str(e.valOff, 1);
+            if (e.tag === 2) latV = dms(e);
+            if (e.tag === 3) lngRef = str(e.valOff, 1);
+            if (e.tag === 4) lngV = dms(e);
+          });
+          if (latV != null) lat = latRef === 'S' ? -latV : latV;
+          if (lngV != null) lng = lngRef === 'W' ? -lngV : lngV;
+        }
+        resolve({ date, lat, lng });
+      } catch(e) { resolve({}); }
+    };
+    fr.onerror = () => resolve({});
+    fr.readAsArrayBuffer(file.slice(0, 256 * 1024));
+  });
+}
+const parseExifDate = s => { if (!s || s.length < 19) return null; const m = s.match(/(\d{4}):(\d{2}):(\d{2})\s+(\d{2}):(\d{2}):(\d{2})/); return m ? new Date(+m[1], +m[2]-1, +m[3], +m[4], +m[5], +m[6]) : null; };
+
 async function wlPhotosPicked(input){
   const files = [...(input.files || [])].slice(0, 8 - wlPendingPhotos.length);
+  const geo = await getDeviceGeo();
   for (const f of files) {
     try {
-      const dataUrl = await compressImage(f);
-      wlPendingPhotos.push({dataUrl, name: f.name});
+      const ex = await readExif(f);
+      const date = parseExifDate(ex.date) || new Date();
+      const loc = (ex.lat != null && ex.lng != null) ? { lat: ex.lat, lng: ex.lng, src: 'exif' }
+        : (geo ? { lat: geo.lat, lng: geo.lng, src: 'device' } : null);
+      const dataUrl = await compressImage(f, { date, loc, title: proj().info.name });
+      wlPendingPhotos.push({ dataUrl, name: f.name, date: date.toISOString(), lat: loc ? loc.lat : null, lng: loc ? loc.lng : null, locSrc: loc ? loc.src : 'none' });
     } catch(e) { alert(e.message); }
   }
   input.value = '';
@@ -4789,7 +5057,7 @@ async function uploadPendingPhotos(){
   const uploaded = [];
   for (const p of wlPendingPhotos) {
     const r = await API.req('POST', '/api/projects/' + proj().id + '/photos', {dataUrl: p.dataUrl});
-    uploaded.push({url: r.url});
+    uploaded.push({ url: r.url, date: p.date || null, lat: p.lat != null ? p.lat : null, lng: p.lng != null ? p.lng : null, locSrc: p.locSrc || 'none' });
   }
   return uploaded;
 }

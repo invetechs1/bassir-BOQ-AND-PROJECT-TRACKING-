@@ -432,9 +432,6 @@ app.put('/api/projects/:id', auth, (req, res) => {
     for (const sid of storedLogs.keys()) {
       if (!incomingLogIds.has(sid)) return res.status(403).json({ error: 'pm_log_delete_needs_owner' });
     }
-    // مكوّن تقسيم سعر: أثر اليومية يُطبَّق على الكمية المنفذة للبند الأصلي المشترك، لا البند نفسه (طابق منطق الواجهة qtyBase)
-    const svcItemMap1 = new Map((data.boqItems || []).map(i => [i.id, i]));
-    const qtyBaseId1 = itemId => { const it = svcItemMap1.get(itemId); return (it && it.splitAt && it.parentId) ? it.parentId : itemId; };
     const addByItem = {};
     for (const l of incomingLogs) {
       const st = storedLogs.get(l.id);
@@ -448,8 +445,7 @@ app.put('/api/projects/:id', auth, (req, res) => {
         // لا نثق بـ appliedQty وحدها: تُقيَّد بالكمية المسجّلة فعلياً في اليومية (qty)
         // لمنع تهريب زيادة تنفيذ غير موثقة عبر يومية بكمية صغيرة و appliedQty كبيرة
         const capped = Math.min(Number(l.appliedQty) || 0, Number(l.qty) || 0);
-        const bId1 = qtyBaseId1(l.itemId);
-        addByItem[bId1] = (addByItem[bId1] || 0) + Math.max(0, capped);
+        addByItem[l.itemId] = (addByItem[l.itemId] || 0) + Math.max(0, capped);
       }
     }
     for (const it of (data.boqItems || [])) {
@@ -494,9 +490,6 @@ app.put('/api/projects/:id', auth, (req, res) => {
       if (!incomingLogIds.has(sid)) return res.status(403).json({ error: 'حذف يومية الإنتاجية يتطلب موافقة العميل ومدير المشاريع' });
     }
     // لا تعديل ليومية قائمة؛ وجمع الكميات المطبّقة من اليوميات الجديدة
-    // مكوّن تقسيم سعر: أثر اليومية يُطبَّق على الكمية المنفذة للبند الأصلي المشترك، لا البند نفسه (طابق منطق الواجهة qtyBase)
-    const svcItemMap2 = new Map((data.boqItems || []).map(i => [i.id, i]));
-    const qtyBaseId2 = itemId => { const it = svcItemMap2.get(itemId); return (it && it.splitAt && it.parentId) ? it.parentId : itemId; };
     const addByItem = {};
     for (const l of incomingLogs) {
       const s = storedLogs.get(l.id);
@@ -507,8 +500,7 @@ app.put('/api/projects/:id', auth, (req, res) => {
           return res.status(403).json({ error: 'تعديل يومية الإنتاجية يتطلب موافقة العميل ومدير المشاريع' });
         }
       } else if (l.applied) {
-        const bId2 = qtyBaseId2(l.itemId);
-        addByItem[bId2] = (addByItem[bId2] || 0) + (Number(l.appliedQty) || 0);
+        addByItem[l.itemId] = (addByItem[l.itemId] || 0) + (Number(l.appliedQty) || 0);
       }
     }
     // الكمية المنفذة لكل بند: لا تتغير إلا بمقدار اليوميات الجديدة المطبّقة؛ البنود الجديدة تبدأ بصفر

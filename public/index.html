@@ -4229,6 +4229,12 @@ function subAddItemRate(){
   if (!itemId) { alert('اختر بنداً من القائمة'); return; }
   if (!rate || rate <= 0) { alert('أدخل السعر المتفق عليه'); return; }
   if (subDraftItems.some(r => r.itemId === itemId)) { alert('البند مضاف مسبقاً'); return; }
+  // سعر مقاول الباطن لا يتجاوز سعر العقد (لا تُدفع للمقاول أكثر مما يُطالَب به العميل)
+  const boqIt = getItem(itemId);
+  if (boqIt && rate > (boqIt.unitRate || 0) + 0.01) {
+    if (editsGated()) { alert('⛔ سعر مقاول الباطن (' + fmtN(rate) + ') لا يمكن أن يتجاوز سعر العقد للبند (' + fmtN(boqIt.unitRate) + ').'); return; }
+    if (!confirm('⚠️ تنبيه: سعر مقاول الباطن (' + fmtN(rate) + ') أعلى من سعر العقد (' + fmtN(boqIt.unitRate) + ') — أي أنك ستدفع للمقاول أكثر مما تطالب به العميل. متابعة؟')) return;
+  }
   subDraftItems.push({ itemId, rate });
   $('sub-item-id').value = ''; $('sub-item-search').value = ''; $('sub-item-rate').value = '';
   renderSubDraftItems();

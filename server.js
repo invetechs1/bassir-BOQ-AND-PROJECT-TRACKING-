@@ -427,8 +427,9 @@ app.put('/api/projects/:id', auth, (req, res) => {
       const s = storedLogs.get(l.id);
       if (s) {
         if ((s.qty || 0) !== (l.qty || 0) || (s.appliedQty || 0) !== (l.appliedQty || 0) ||
-            !!s.applied !== !!l.applied || s.itemId !== l.itemId || s.date !== l.date) {
-          return res.status(403).json({ error: 'تعديل يومية الإنتاجية يتطلب موافقة العميل ومدير المشاريع' });
+            !!s.applied !== !!l.applied || s.itemId !== l.itemId || s.date !== l.date ||
+            (s.subId || null) !== (l.subId || null)) {
+          return res.status(403).json({ error: 'تعديل يومية الإنتاجية (بما فيها مقاول الباطن) يتطلب موافقة العميل ومدير المشاريع' });
         }
       } else if (l.applied) {
         addByItem[l.itemId] = (addByItem[l.itemId] || 0) + (Number(l.appliedQty) || 0);
@@ -440,6 +441,10 @@ app.put('/api/projects/:id', auth, (req, res) => {
       if (!s) {
         if ((Number(it.executedQty) || 0) > 0.01) return res.status(403).json({ error: 'البند الجديد يبدأ بكمية منفذة صفر (البند ' + it.id + ')' });
         continue;
+      }
+      // سعر العقد (سعر الوحدة) لا يعدّله مدير المشروع
+      if (Math.abs((Number(s.unitRate) || 0) - (Number(it.unitRate) || 0)) > 0.001) {
+        return res.status(403).json({ error: 'تعديل سعر العقد للبند ' + it.id + ' صلاحية الإدارة' });
       }
       const allowed = (Number(s.executedQty) || 0) + (addByItem[it.id] || 0);
       if (Math.abs((Number(it.executedQty) || 0) - allowed) > 0.02) {
@@ -473,6 +478,21 @@ app.put('/api/projects/:id', auth, (req, res) => {
       if (tot <= 0 || ex <= 0) return 0;
       return round2s(ex * Math.min(1, approvedOfItem(it) / tot));
     };
+    // سعر مقاول الباطن لا يتجاوز سعر العقد للبند نفسه (لا يُدفع للمقاول أكثر مما يُطالَب به العميل)
+    const storedSubMap = new Map((stored.subcontractors || []).map(s => [s.id, s]));
+    const storedSubRate = (subId, itemId) => { const ss = storedSubMap.get(subId); const r = ss && (ss.items || []).find(i => i.itemId === itemId); return r ? Number(r.rate || 0) : null; };
+    const subById = new Map((data.subcontractors || []).map(s => [s.id, s]));
+    for (const sub of (data.subcontractors || [])) {
+      for (const r of (sub.items || [])) {
+        const s = storedItems.get(r.itemId);
+        const cap = s ? Number(s.unitRate || 0) : null;
+        const prev = storedSubRate(sub.id, r.itemId);
+        // نمنع فقط رفع السعر الجديد فوق سعر العقد (نُبقي الأسعار القديمة كما هي)
+        if (cap != null && Number(r.rate || 0) > cap + 0.01 && Number(r.rate || 0) !== prev) {
+          return res.status(403).json({ error: 'سعر مقاول الباطن للبند ' + r.itemId + ' لا يمكن أن يتجاوز سعر العقد (' + cap + ')' });
+        }
+      }
+    }
     // كمية معمّدة تراكمياً (من المخزّن غير المرفوض) نبدأ منها ونضيف المستخلصات الجديدة أثناء الفحص
     const claimedMap = {}; // subId|itemId -> qty
     (stored.subMustakhlasat || []).filter(m => m.status !== 'rejected').forEach(m => {
@@ -482,10 +502,13 @@ app.put('/api/projects/:id', auth, (req, res) => {
     for (const m of (Array.isArray(data.subMustakhlasat) ? data.subMustakhlasat : [])) {
       const s = storedSubMus.get(m.id);
       if (s) {
-        // موجود مسبقاً: لا يغيّر حالته/اعتماده/دفعاته/صافيه
+        // موجود مسبقاً: مدير المشروع لا يغيّر أي شيء فيه (حالة/اعتماد/صافي/إجمالي/بنود/خصومات/دفعات)
         if (s.status !== m.status || s.approvedBy !== m.approvedBy || round2s(s.net) !== round2s(m.net) ||
+            round2s(s.gross || 0) !== round2s(m.gross || 0) ||
+            JSON.stringify(s.lines || []) !== JSON.stringify(m.lines || []) ||
+            JSON.stringify(s.ded || {}) !== JSON.stringify(m.ded || {}) ||
             JSON.stringify(s.payments || []) !== JSON.stringify(m.payments || [])) {
-          return res.status(403).json({ error: 'مدير المشروع لا يعتمد ولا يصرف مستخلصات مقاولي الباطن' });
+          return res.status(403).json({ error: 'مدير المشروع لا يعدّل ولا يعتمد ولا يصرف مستخلصات مقاولي الباطن' });
         }
       } else {
         // جديد: يجب أن يكون submitted وبدون دفعات
@@ -496,14 +519,38 @@ app.put('/api/projects/:id', auth, (req, res) => {
         if (!(m.docs || []).some(d => d && d.url)) {
           return res.status(400).json({ error: 'مستخلص مقاول الباطن يتطلب إرفاق المستخلص المعمول من الشركة واعتمادات الاستشاري' });
         }
-        // فحص الكميات: لا تجاوز للمؤهّل
+        // التحقق من صحة المبالغ: منع الخصومات السالبة ونسبة الحجز خارج النطاق
+        const ded = m.ded || {};
+        for (const kk of ['materials', 'utilities', 'performance', 'other']) {
+          if (Number(ded[kk] || 0) < 0) return res.status(400).json({ error: 'لا يُسمح بخصومات سالبة في مستخلص مقاول الباطن' });
+        }
+        const retR = Number(m.retRate || 0);
+        if (retR < 0 || retR > 100) return res.status(400).json({ error: 'نسبة حجز الجودة غير صحيحة' });
+        // فحص الكميات + مطابقة السعر + إعادة حساب الإجمالي والصافي على الخادم
+        const sub = subById.get(m.subId);
+        const agreedRate = itemId => { const r = sub && (sub.items || []).find(i => i.itemId === itemId); return r ? Number(r.rate || 0) : 0; };
+        let grossCalc = 0;
         for (const l of (m.lines || [])) {
           const k = m.subId + '|' + l.itemId;
           const avail = round2s(subEligible(m.subId, l.itemId) - (claimedMap[k] || 0));
           if ((Number(l.currQty) || 0) > avail + 0.02) {
             return res.status(403).json({ error: 'كمية مقاول الباطن للبند ' + l.itemId + ' تتجاوز المنفّذ المعتمد — مُنع تلقائياً' });
           }
+          if (Math.abs((Number(l.rate) || 0) - agreedRate(l.itemId)) > 0.01) {
+            return res.status(400).json({ error: 'سعر البند ' + l.itemId + ' لا يطابق السعر المتفق مع مقاول الباطن' });
+          }
+          grossCalc += (Number(l.currQty) || 0) * agreedRate(l.itemId);
           claimedMap[k] = (claimedMap[k] || 0) + (Number(l.currQty) || 0);
+        }
+        grossCalc = round2s(grossCalc);
+        const dedTot = round2s(Number(ded.materials || 0) + Number(ded.utilities || 0) + Number(ded.performance || 0) + Number(ded.other || 0));
+        const retCalc = round2s(grossCalc * retR / 100);
+        const netCalc = round2s(grossCalc - retCalc - dedTot);
+        if (Math.abs(round2s(m.gross || 0) - grossCalc) > 0.02) {
+          return res.status(400).json({ error: 'إجمالي مستخلص مقاول الباطن لا يطابق (الكمية × السعر المتفق)' });
+        }
+        if (Math.abs(round2s(m.net || 0) - netCalc) > 0.02) {
+          return res.status(400).json({ error: 'صافي مستخلص مقاول الباطن غير صحيح (لا يطابق الإجمالي ناقص الحجز والخصومات)' });
         }
       }
     }

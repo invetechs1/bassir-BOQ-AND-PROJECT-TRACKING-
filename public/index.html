@@ -3446,7 +3446,7 @@ function openItemModal(id, opts){
   const presetParent = it ? (it.parentId || '') : (opts.parentId || '');
   const parItem = presetParent ? getItem(presetParent) : null;
   $('item-modal-title').textContent = it ? T('تعديل بند ') + it.id : (parItem ? T('إضافة بند فرعي تحت ') + parItem.id : T('إضافة بند جديد'));
-  $('im-delete-btn').style.display = it ? '' : 'none';
+  $('im-delete-btn').style.display = (it && !editsGated()) ? '' : 'none'; // مدير المشروع (pm) لا يحذف بنوداً
   // قائمة البنود الرئيسية المؤهلة: أي بند ليس فرعياً بنفسه وليس هو البند الحالي وليس من فروع البند الحالي
   const kidIds = it ? new Set(childrenOf(it.id).map(k=>k.id)) : new Set();
   const parentOpts = proj().boqItems.filter(c => (!it || c.id !== it.id) && !isChild(c) && !kidIds.has(c.id));
@@ -3549,7 +3549,7 @@ function saveItem(){
 }
 
 function deleteItem(){
-  if (!editingItemId) return;
+  if (!editingItemId || editsGated()) return;
   const it = getItem(editingItemId);
   const kids = childrenOf(editingItemId);
   // كل فرع (سواء ناتج عن تقسيم بند أو بند فرعي مستقل) له كميته وتنفيذه واعتماده الخاصة —
@@ -3574,9 +3574,8 @@ function deleteItem(){
 //  قيد: بند لا يُقسَّم سعرياً وله بالفعل بنود فرعية مستقلة، ولا يُضاف له بند فرعي مستقل بعد تقسيم سعره —
 //  الطريقتان لا تُخلطان على نفس البند لتفادي ازدواج/التباس في حساب القيمة الإجمالية.
 // ============================================================
-// تقسيم بند يغيّر الكمية الكلية لأكثر من بند دفعة واحدة (كإعادة هيكلة مالية) — مدير المشروع (pm) لا يملك هذه الصلاحية
-// مباشرة، تماماً كتعديل السعر/الكمية الكلية؛ يطلبها من مالك الشركة أو مدير المشاريع (pmo)
-function canSplitItem(it){ return it.scope !== 'others' && !it.parentId && !isParent(it) && !editsGated(); }
+// التقسيم مجرد إعادة توزيع بلا تغيير في المجاميع (يتحقق الخادم من ذلك) — متاح لمدير المشروع (pm) أيضاً، أما الحذف فلا
+function canSplitItem(it){ return it.scope !== 'others' && !it.parentId && !isParent(it); }
 
 let splitItemId = null;
 function openSplitItemModal(id){

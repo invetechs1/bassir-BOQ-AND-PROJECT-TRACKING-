@@ -405,7 +405,41 @@ app.put('/api/projects/:id', auth, (req, res) => {
 
   // اعتماد كميات الاستشاري: أي زيادة في الكمية المعتمدة يجب أن تُقابلها استلامات (approvals) بمرفق موقّع
   const storedItems = new Map((stored.boqItems || []).map(i => [i.id, i]));
+
+  // تقسيم بند إلى أجزاء مستقلة: مجرد إعادة توزيع للكمية/التنفيذ/الاعتماد/المرفوع الحاليين على الأجزاء بلا تغيير المجموع،
+  // وسعر الوحدة يتوزّع بمجموع مساوٍ لسعر البند الأصلي — لا أثر مالي، فيُسمح لمدير المشروع (pm) به.
+  // أي تقسيم لا يحافظ على المجاميع بالضبط لا يُعتبر صالحاً وتسري عليه الرقابة المعتادة.
+  const splitIds = new Set();
+  {
+    const near = (a, b) => Math.abs((Number(a) || 0) - (Number(b) || 0)) < 0.05;
+    const incomingAll = data.boqItems || [];
+    for (const parentStored of (stored.boqItems || [])) {
+      if (parentStored.parentId) continue;
+      const parentNew = incomingAll.find(i => i.id === parentStored.id);
+      if (!parentNew) continue;
+      const kids = incomingAll.filter(i => i.parentId === parentStored.id && i.splitAt);
+      if (kids.length < 2) continue;
+      // كل جزء إما جديد أو جزء قديم لم يُرحَّل بعد (بلا كمية خاصة به)
+      const kidsOk = kids.every(k => { const sk = storedItems.get(k.id); return !sk || (sk.parentId === parentStored.id && sk.totalQty === undefined); });
+      if (!kidsOk) continue;
+      const sum = f => kids.reduce((s, k) => s + (Number(f(k)) || 0), 0);
+      const stApproved = parentStored.approvedQty !== undefined ? parentStored.approvedQty : (parentStored.executedQty || 0);
+      const parentZeroed = near(parentNew.totalQty, 0) && near(parentNew.executedQty, 0) && near(parentNew.approvedQty, 0) && near(parentNew.claimedQty, 0);
+      if (parentZeroed &&
+          near(parentNew.unitRate, parentStored.unitRate) &&
+          near(sum(k => k.unitRate), parentStored.unitRate) &&
+          near(sum(k => k.totalQty), parentStored.totalQty) &&
+          near(sum(k => k.executedQty), parentStored.executedQty) &&
+          near(sum(k => k.approvedQty), stApproved) &&
+          near(sum(k => k.claimedQty), parentStored.claimedQty)) {
+        splitIds.add(parentStored.id);
+        kids.forEach(k => splitIds.add(k.id));
+      }
+    }
+  }
+
   for (const it of (data.boqItems || [])) {
+    if (splitIds.has(it.id)) continue;
     const prev = storedItems.get(it.id);
     // ترحيل: البنود القديمة بدون approvedQty تُعامل كمعتمدة بمقدار المنفذ سابقاً (لا تتطلب استلاماً)
     const prevApproved = prev ? (prev.approvedQty !== undefined ? prev.approvedQty : (prev.executedQty || 0)) : 0;
@@ -449,6 +483,7 @@ app.put('/api/projects/:id', auth, (req, res) => {
       }
     }
     for (const it of (data.boqItems || [])) {
+      if (splitIds.has(it.id)) continue; // تقسيم صالح يحافظ على المجاميع
       const st = storedItems.get(it.id);
       if (!st) {
         // بند جديد (بما فيه بند فرعي parentId يشير لبند قائم — مسموح لمدير المشروع دون موافقة، يبدأ بكمية منفذة صفر
@@ -505,6 +540,7 @@ app.put('/api/projects/:id', auth, (req, res) => {
     }
     // الكمية المنفذة لكل بند: لا تتغير إلا بمقدار اليوميات الجديدة المطبّقة؛ البنود الجديدة تبدأ بصفر
     for (const it of (data.boqItems || [])) {
+      if (splitIds.has(it.id)) continue; // تقسيم صالح يحافظ على المجاميع
       const s = storedItems.get(it.id);
       if (!s) {
         if ((Number(it.executedQty) || 0) > 0.01) return res.status(403).json({ error: 'البند الجديد يبدأ بكمية منفذة صفر (البند ' + it.id + ')' });

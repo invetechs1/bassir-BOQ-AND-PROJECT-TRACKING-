@@ -614,6 +614,21 @@ app.put('/api/projects/:id', auth, (req, res) => {
     }
   }
 
+  // تعديل/حذف بند قائم في جدول الكميات: للأدمن وحده — يُفرض هنا حتى لو تجاوز الواجهة.
+  // الإضافة والاستيراد (بنود جديدة) والتقسيم الصالح (يحافظ على المجاميع) متاحة لغير الأدمن،
+  // والكمية المنفذة والاعتمادات والمطالبات والعوائق تتغير عبر تبويباتها وتبقى خارج هذا الفحص.
+  if (!isAdmin(req.user)) {
+    const DEF_FIELDS = ['div', 'divAr', 'desc', 'unit', 'qtyPerVilla', 'totalQty', 'unitRate', 'scope', 'parentId', 'splitAt'];
+    const defOf = it => JSON.stringify([...DEF_FIELDS.map(f => it[f] ?? null), it.predecessors || []]);
+    const incomingById = new Map((data.boqItems || []).map(i => [i.id, i]));
+    for (const st of (stored.boqItems || [])) {
+      const it = incomingById.get(st.id);
+      if (!it) return res.status(403).json({ error: 'boq_admin_only', itemId: st.id });
+      if (splitIds.has(st.id)) continue; // تقسيم صالح: الأصل يُصفَّر كميته والأجزاء تحمل المجاميع
+      if (defOf(st) !== defOf(it)) return res.status(403).json({ error: 'boq_admin_only', itemId: st.id });
+    }
+  }
+
   const p = { ...data, managerUserId, companyId, id, version: stored.version + 1 };
   saveProject(p);
   res.json({ version: p.version });

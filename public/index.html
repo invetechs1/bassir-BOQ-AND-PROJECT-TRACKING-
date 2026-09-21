@@ -1478,6 +1478,7 @@ const ERR_CODES = {
   integration_edit_denied: {ar:'تعديل التكامل صلاحية أدمن النظام أو عميل الشركة', en:'Editing the integration is restricted to the system admin or the company\'s client'},
   integration_url_required: {ar:'لم يتم إدخال رابط API', en:'No API URL was entered'},
   integration_test_failed: {ar:'تعذر الاتصال بالتكامل', en:'Could not connect to the integration'},
+  boq_admin_only: {ar:'تعديل جدول الكميات لأدمن النظام فقط', en:'Only the system admin can edit the BOQ'},
   pm_item_delete_needs_owner: {ar:'حذف بند من جدول الكميات يتطلب موافقة مالك الشركة', en:'Deleting a BoQ item requires the company owner\'s approval'},
   pm_log_delete_needs_owner: {ar:'حذف يومية الإنتاجية يتطلب موافقة مالك الشركة', en:'Deleting a work log requires the company owner\'s approval'},
   pm_log_edit_needs_owner: {ar:'تعديل يومية الإنتاجية يتطلب موافقة مالك الشركة', en:'Editing a work log requires the company owner\'s approval'},
@@ -3093,7 +3094,7 @@ function renderItemsTable(){
         '<td class="amount tight ' + (g.net>1?'claimable':'muted') + '">' + (g.net>1?fmtN(g.net):'—') + '</td>' +
         '<td><span class="pill blue" style="font-size:10px">' + T('بند رئيسي') + '</span></td>' +
         '<td class="tight">—</td>' +
-        '<td style="white-space:nowrap"><button class="mini-btn" onclick="openItemModal(\'' + esc(it.id) + '\')">✏️ ' + T('تعديل') + '</button></td>' +
+        '<td style="white-space:nowrap">' + (isAdmin() ? '<button class="mini-btn" onclick="openItemModal(\'' + esc(it.id) + '\')">✏️ ' + T('تعديل') + '</button>' : '') + '</td>' +
         '</tr>';
     }
     const it2 = it, st = statusOf(it2), net = netClaimable(it2);
@@ -3123,7 +3124,7 @@ function renderItemsTable(){
       '<td class="amount tight ' + (net>1?'claimable':'muted') + '">' + (net>1?fmtN(net):'—') + '</td>' +
       '<td>' + statusPill(st) + '</td>' +
       '<td class="tight">' + depHtml + '</td>' +
-      '<td style="white-space:nowrap"><button class="mini-btn" onclick="openItemModal(\'' + esc(it2.id) + '\')">✏️ ' + T('تعديل') + '</button>' +
+      '<td style="white-space:nowrap">' + (isAdmin() ? '<button class="mini-btn" onclick="openItemModal(\'' + esc(it2.id) + '\')">✏️ ' + T('تعديل') + '</button>' : '') +
       (!indent && canSplitItem(it2) ? ' <button class="mini-btn" onclick="openSplitItemModal(\'' + esc(it2.id) + '\')" data-tip="' + T('تقسيم البند إلى أجزاء مستقلة (كمية وسعر)') + '">✂ ' + T('تقسيم الجدول') + '</button>' : '') +
       (it2.scope !== 'others' && (availQty(it2) > 0.01 || pendingApprovalQty(it2) > 0.01)
         ? ' <button class="mini-btn green" onclick="itemToMustakhlas(\'' + esc(it2.id) + '\')" data-tip="' + T('نقل إلى مستخلص') + '">📤</button>' : '') + '</td>' +
@@ -3440,6 +3441,7 @@ function deleteApproval(id, approvalId){
 let editingItemId = null;
 
 function openItemModal(id, opts){
+  if (id && !isAdmin()) return; // تعديل بند قائم لأدمن النظام فقط (الإضافة متاحة)
   opts = opts || {};
   editingItemId = id;
   const it = id ? getItem(id) : null;
@@ -3498,6 +3500,7 @@ function imRateHint(){
 }
 
 function saveItem(){
+  if (editingItemId && !isAdmin()) return;
   const id = $('im-id').value.trim();
   if (!id || !$('im-desc').value.trim() || !$('im-qty').value || !$('im-rate').value) { alert(T('أكمل الحقول الإلزامية: رقم البند، الوصف، الكمية، السعر')); return; }
   if (!editingItemId && getItem(id)) { alert(T('رقم البند موجود مسبقاً')); return; }
@@ -3549,7 +3552,7 @@ function saveItem(){
 }
 
 function deleteItem(){
-  if (!editingItemId || editsGated()) return;
+  if (!editingItemId || !isAdmin()) return;
   const it = getItem(editingItemId);
   const kids = childrenOf(editingItemId);
   // كل فرع (سواء ناتج عن تقسيم بند أو بند فرعي مستقل) له كميته وتنفيذه واعتماده الخاصة —

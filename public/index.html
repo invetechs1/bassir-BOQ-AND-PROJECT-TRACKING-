@@ -97,7 +97,7 @@
   .amount.claimable { color: var(--green-bright); font-weight: 600; }
   .amount.blocked { color: var(--red); }
   .amount.muted { color: var(--text3); }
-  .desc-text { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .desc-text { max-width: clamp(100px, 16vw, 260px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .summary-row td { font-weight: 700; font-family: var(--mono); background: var(--bg3); }
 
   .prog-bar { width: 70px; height: 6px; background: var(--bg4); border-radius: 3px; overflow: hidden; display: inline-block; vertical-align: middle; }
@@ -105,8 +105,13 @@
   .prog-fill.green { background: var(--green); } .prog-fill.amber { background: var(--amber); }
   .prog-fill.red { background: var(--red); } .prog-fill.teal { background: var(--teal); }
 
-  .blocker-box { display: inline-block; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; font-size: 11px; color: var(--red); background: var(--red-dim); padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(248,81,73,0.2); }
-  .prereq-box { display: inline-block; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; font-size: 11px; color: var(--orange); background: var(--orange-dim); padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(240,136,62,0.2); }
+  .blocker-box { display: inline-block; max-width: clamp(70px, 8vw, 120px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; font-size: 11px; color: var(--red); background: var(--red-dim); padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(248,81,73,0.2); }
+  .prereq-box { display: inline-block; max-width: clamp(70px, 8vw, 120px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; font-size: 11px; color: var(--orange); background: var(--orange-dim); padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(240,136,62,0.2); }
+  /* عمود الإجراءات (تعديل/تقسيم/نقل): يلتف الأزرار على أكثر من سطر بدل توسيع الجدول أفقياً */
+  .actions-cell { white-space: normal; }
+  .actions-wrap { display: flex; flex-wrap: wrap; gap: 4px; max-width: 130px; }
+  .boq-prog { width: 44px; }
+  .boq-qty-input { width: 70px; }
   .chain { font-family: var(--mono); font-size: 11px; color: var(--text2); direction: ltr; text-align: right; }
   .chain b { color: var(--orange); font-weight: 600; }
 
@@ -244,6 +249,26 @@
   #lightbox img { max-width: 95vw; max-height: 82vh; border-radius: 8px; }
   #lightbox-cap { color: var(--text2); font-size: 13px; margin-top: 10px; text-align: center; }
 
+  /* ===== شاشات متوسطة: تصغير تدريجي لجدول جدول الكميات (وبقية الجداول) قبل حجم الجوال ===== */
+  @media (max-width: 1500px) {
+    th { padding: 8px 9px; font-size: 10px; }
+    td { padding: 6px 9px; font-size: 12px; }
+    .tight { padding-left: 4px; padding-right: 4px; }
+    .mini-btn { padding: 3px 6px; font-size: 10px; }
+    .actions-wrap { max-width: 110px; }
+    .boq-prog { width: 34px; }
+  }
+  @media (max-width: 1150px) {
+    th { padding: 7px 6px; font-size: 9.5px; }
+    td { padding: 5px 6px; font-size: 11px; }
+    .item-no, .amount { font-size: 11px; }
+    .pill { padding: 2px 7px; font-size: 10px; }
+    .prog-bar { width: 34px; }
+    .mini-btn { padding: 2px 5px; font-size: 9.5px; }
+    .actions-wrap { max-width: 90px; gap: 3px; }
+    .boq-prog { width: 26px; }
+  }
+
   /* ===== MOBILE ===== */
   @media (max-width: 700px) {
     .main { padding: 12px; }
@@ -255,6 +280,8 @@
     .kpi-value { font-size: 16px; }
     th, td { padding: 6px 8px; font-size: 12px; }
     .desc-text { max-width: 150px; }
+    .actions-wrap { max-width: 80px; gap: 3px; }
+    .boq-prog { width: 24px; }
     .bar-label { width: 90px; font-size: 11px; }
     .bar-amount { width: 90px; font-size: 10px; }
     .invoice-sidebar { position: static; }
@@ -1922,7 +1949,11 @@ function groupAgg(parent){
   const kids = childrenOf(parent.id);
   const a = kids.reduce((s,k)=>s+amt(k),0);
   const wpct = f => a>0 ? kids.reduce((s,k)=>s + f(k)*amt(k),0)/a : 0;
-  return { count:kids.length, amt:a, rateSum:kids.reduce((s,k)=>s+(k.unitRate||0),0),
+  // تقسيم سعر (✂ تقسيم الجدول): كل الأجزاء تحمل نفس الكمية والوحدة — تُعرض على رأس المجموعة بدل "—".
+  // بند فرعي عادي (➕ بند فرعي) قد تختلف كمياته/وحداته بين الفروع، فتبقى غير معروضة في هذه الحالة.
+  const commonQty = kids.length && kids.every(k => k.splitAt) && kids.every(k => Math.abs((k.totalQty||0) - (kids[0].totalQty||0)) < 0.01) ? kids[0].totalQty : null;
+  const commonUnit = kids.length && kids.every(k => (k.unit||'') === (kids[0].unit||'')) ? kids[0].unit : null;
+  return { count:kids.length, amt:a, rateSum:kids.reduce((s,k)=>s+(k.unitRate||0),0), commonQty, commonUnit,
     execPct:wpct(itemPct), approvedPct:wpct(approvedPct), claimedPct:wpct(claimedPct),
     net:kids.reduce((s,k)=>s+netClaimable(k),0), pending:kids.reduce((s,k)=>s+pendingApprovalValue(k),0) };
 }
@@ -3084,17 +3115,17 @@ function renderItemsTable(){
       return '<tr style="background:var(--panel2,rgba(127,127,127,0.06))">' +
         '<td class="sticky-col"><button class="group-toggle" onclick="toggleGroup(\'' + esc(it.id) + '\')" data-tip="' + T('عرض/إخفاء البنود الفرعية') + '" style="background:none;border:none;color:inherit;cursor:pointer;font-size:13px;padding:0 4px 0 0">' + (expanded?'▾':'▸') + '</button><span class="item-no">' + esc(it.id) + '</span><br><span style="font-size:10px;color:var(--text3)">' + esc(it.div) + '</span></td>' +
         '<td><div class="desc-text" style="font-weight:700;max-width:195px" data-tip="' + T('بند رئيسي مقسّم إلى ') + g.count + T(' بند فرعي') + '">📁 ' + esc(it.desc) + ' <span class="pill blue" style="font-size:9px">' + g.count + ' ' + T('فرعي') + '</span></div><span style="font-size:10px;color:var(--text3)">' + esc(it.divAr||'') + '</span></td>' +
-        '<td class="tight"><span style="color:var(--text3)">—</span></td>' +
-        '<td class="amount tight muted">—</td>' +
-        '<td class="amount tight muted" data-tip="' + T('مجموع أسعار البنود الفرعية') + '">' + fmtN(g.rateSum) + '</td>' +
+        '<td class="tight">' + (g.commonUnit ? '<span class="pill gray" style="font-size:10px">' + esc(g.commonUnit) + '</span>' : '<span style="color:var(--text3)">—</span>') + '</td>' +
+        '<td class="amount tight muted">' + (g.commonQty !== null ? fmtQ(g.commonQty) : '—') + '</td>' +
+        '<td class="amount tight muted" data-tip="' + T('مجموع أسعار البنود الفرعية') + '">' + fmtRate(g.rateSum) + '</td>' +
         '<td class="amount tight">' + fmtN(g.amt) + '</td>' +
-        '<td class="tight"><span style="display:inline-flex;align-items:center;gap:5px"><span style="font-family:var(--mono);font-size:10px;color:var(--text2)">' + (g.execPct*100).toFixed(1) + '%</span><span class="prog-bar" style="width:44px"><span class="prog-fill ' + stColor + '" style="width:' + (g.execPct*100) + '%;display:block"></span></span></span></td>' +
+        '<td class="tight"><span style="display:inline-flex;align-items:center;gap:5px"><span style="font-family:var(--mono);font-size:10px;color:var(--text2)">' + (g.execPct*100).toFixed(1) + '%</span><span class="prog-bar boq-prog"><span class="prog-fill ' + stColor + '" style="width:' + (g.execPct*100) + '%;display:block"></span></span></span></td>' +
         '<td class="tight">' + (g.pending>1 ? '<span style="font-size:11px;color:var(--orange)">🕵 ' + T('بانتظار') + ' ' + fmtN(g.pending) + '</span>' : '<span style="color:var(--text3)">—</span>') + '</td>' +
         '<td class="amount tight" style="color:var(--teal)">' + (g.claimedPct*100).toFixed(0) + '%</td>' +
         '<td class="amount tight ' + (g.net>1?'claimable':'muted') + '">' + (g.net>1?fmtN(g.net):'—') + '</td>' +
         '<td><span class="pill blue" style="font-size:10px">' + T('بند رئيسي') + '</span></td>' +
         '<td class="tight">—</td>' +
-        '<td style="white-space:nowrap">' + (isAdmin() ? '<button class="mini-btn" onclick="openItemModal(\'' + esc(it.id) + '\')">✏️ ' + T('تعديل') + '</button>' : '') + '</td>' +
+        '<td class="actions-cell"><div class="actions-wrap">' + (isAdmin() ? '<button class="mini-btn" onclick="openItemModal(\'' + esc(it.id) + '\')">✏️ ' + T('تعديل') + '</button>' : '') + '</div></td>' +
         '</tr>';
     }
     const it2 = it, st = statusOf(it2), net = netClaimable(it2);
@@ -3112,22 +3143,22 @@ function renderItemsTable(){
       '<td><div class="desc-text" style="max-width:195px" data-tip="' + esc(it2.desc) + '">' + esc(it2.desc) + '</div><span style="font-size:10px;color:var(--text3)">' + esc(it2.divAr||'') + '</span></td>' +
       '<td class="tight"><span class="pill gray" style="font-size:10px">' + esc(it2.unit) + '</span></td>' +
       '<td class="amount tight muted">' + fmtQ(qtyBase(it2).totalQty) + '</td>' +
-      '<td class="amount tight muted">' + fmtN(it2.unitRate) + '</td>' +
+      '<td class="amount tight muted">' + fmtRate(it2.unitRate) + '</td>' +
       '<td class="amount tight">' + fmtN(amt(it2)) + '</td>' +
       '<td class="tight">' + (it2.scope==='others' ? '<span style="color:var(--text3)">—</span>' :
         ('<span style="display:inline-flex;flex-direction:column;gap:3px;align-items:flex-start">' +
-        (isAdmin() ? '<input type="number" class="qty-input" style="width:70px" min="0" max="' + it2.totalQty + '" step="any" value="' + (Math.round((it2.executedQty||0)*100)/100) + '" onchange="setItemQty(\'' + esc(it2.id) + '\', this.value)" data-tip="' + T('أدخل الكمية المنفذة (من أصل ') + fmtQ(it2.totalQty) + ' ' + esc(it2.unit) + T(') — العميل يحاسب بالكميات') + '">' : '') +
-        '<span style="display:inline-flex;align-items:center;gap:5px"><span style="font-family:var(--mono);font-size:10px;color:var(--text2)">' + (itemPct(it2)*100).toFixed(1) + '%</span><span class="prog-bar" style="width:44px"><span class="prog-fill ' + (itemPct(it2)>=DONE?'green':itemPct(it2)>0?'amber':'red') + '" style="width:' + (itemPct(it2)*100) + '%;display:block"></span></span></span>' +
+        (isAdmin() ? '<input type="number" class="qty-input boq-qty-input" min="0" max="' + it2.totalQty + '" step="any" value="' + (Math.round((it2.executedQty||0)*100)/100) + '" onchange="setItemQty(\'' + esc(it2.id) + '\', this.value)" data-tip="' + T('أدخل الكمية المنفذة (من أصل ') + fmtQ(it2.totalQty) + ' ' + esc(it2.unit) + T(') — العميل يحاسب بالكميات') + '">' : '') +
+        '<span style="display:inline-flex;align-items:center;gap:5px"><span style="font-family:var(--mono);font-size:10px;color:var(--text2)">' + (itemPct(it2)*100).toFixed(1) + '%</span><span class="prog-bar boq-prog"><span class="prog-fill ' + (itemPct(it2)>=DONE?'green':itemPct(it2)>0?'amber':'red') + '" style="width:' + (itemPct(it2)*100) + '%;display:block"></span></span></span>' +
         '</span>')) + '</td>' +
       '<td class="tight">' + approvalCell(it2) + '</td>' +
       '<td class="amount tight" style="color:var(--teal)">' + (claimedPct(it2)*100).toFixed(0) + '%</td>' +
       '<td class="amount tight ' + (net>1?'claimable':'muted') + '">' + (net>1?fmtN(net):'—') + '</td>' +
       '<td>' + statusPill(st) + '</td>' +
       '<td class="tight">' + depHtml + '</td>' +
-      '<td style="white-space:nowrap">' + (isAdmin() ? '<button class="mini-btn" onclick="openItemModal(\'' + esc(it2.id) + '\')">✏️ ' + T('تعديل') + '</button>' : '') +
-      (!indent && canSplitItem(it2) ? ' <button class="mini-btn" onclick="openSplitItemModal(\'' + esc(it2.id) + '\')" data-tip="' + T('تقسيم البند إلى أجزاء مستقلة (كمية وسعر)') + '">✂ ' + T('تقسيم الجدول') + '</button>' : '') +
+      '<td class="actions-cell"><div class="actions-wrap">' + (isAdmin() ? '<button class="mini-btn" onclick="openItemModal(\'' + esc(it2.id) + '\')">✏️ ' + T('تعديل') + '</button>' : '') +
+      (!indent && canSplitItem(it2) ? ' <button class="mini-btn" onclick="openSplitItemModal(\'' + esc(it2.id) + '\')" data-tip="' + T('تقسيم سعر البند إلى أجزاء مستقلة — الكمية تبقى كاملة لكل جزء') + '">✂ ' + T('تقسيم الجدول') + '</button>' : '') +
       (it2.scope !== 'others' && (availQty(it2) > 0.01 || pendingApprovalQty(it2) > 0.01)
-        ? ' <button class="mini-btn green" onclick="itemToMustakhlas(\'' + esc(it2.id) + '\')" data-tip="' + T('نقل إلى مستخلص') + '">📤</button>' : '') + '</td>' +
+        ? ' <button class="mini-btn green" onclick="itemToMustakhlas(\'' + esc(it2.id) + '\')" data-tip="' + T('نقل إلى مستخلص') + '">📤</button>' : '') + '</div></td>' +
       '</tr>';
   }).join('') || '<tr><td colspan="13"><div class="empty-state"><p>' + T('لا توجد بنود مطابقة') + '</p></div></td></tr>';
 
@@ -3495,8 +3526,8 @@ function imRateHint(){
   const diff = Math.round((sum - (par.unitRate||0)) * 100) / 100;
   const cmp = Math.abs(diff) < 0.01
     ? '<span style="color:var(--green)">✓ ' + T('مطابق لسعر البند الرئيسي') + '</span>'
-    : (diff > 0 ? '<span style="color:var(--amber)">' + T('أعلى بـ ') + fmtN(diff) + '</span>' : '<span style="color:var(--amber)">' + T('أقل بـ ') + fmtN(-diff) + '</span>');
-  hint.innerHTML = T('مجموع أسعار الفروع = ') + '<strong>' + fmtN(sum) + '</strong> ' + T('مقابل سعر البند الرئيسي') + ' <strong>' + fmtN(par.unitRate||0) + '</strong> — ' + cmp;
+    : (diff > 0 ? '<span style="color:var(--amber)">' + T('أعلى بـ ') + fmtRate(diff) + '</span>' : '<span style="color:var(--amber)">' + T('أقل بـ ') + fmtRate(-diff) + '</span>');
+  hint.innerHTML = T('مجموع أسعار الفروع = ') + '<strong>' + fmtRate(sum) + '</strong> ' + T('مقابل سعر البند الرئيسي') + ' <strong>' + fmtRate(par.unitRate||0) + '</strong> — ' + cmp;
 }
 
 function saveItem(){
@@ -3555,13 +3586,46 @@ function deleteItem(){
   if (!editingItemId || !isAdmin()) return;
   const it = getItem(editingItemId);
   const kids = childrenOf(editingItemId);
+  const isLastSplitPart = !!(it.parentId && it.splitAt && childrenOf(it.parentId).length === 1);
   // كل فرع (سواء ناتج عن تقسيم بند أو بند فرعي مستقل) له كميته وتنفيذه واعتماده الخاصة —
   // حذف البند الرئيسي (رأس تجميع فقط) لا يحذف فروعه أبداً، بل يفك ارتباطها لتصبح بنوداً مستقلة
   if (kids.length) {
     if (!confirm(T('هذا بند رئيسي وله ') + kids.length + T(' بند فرعي. سيصبح كل فرعٍ بنداً مستقلاً. متابعة؟'))) return;
   }
+  if (isLastSplitPart) {
+    if (!confirm(T('هذا آخر جزء متبقٍ من تقسيم السعر. حذفه يلغي التقسيم ويعيد البند الرئيسي ') + it.parentId + T(' بنداً عادياً بكامل هذه القيمة. متابعة؟'))) return;
+  }
   if (it.claimedQty > 0 && !confirm(T('هذا البند مرفوع في مستخلصات سابقة. متأكد من حذفه؟'))) return;
   if (!confirm(T('حذف البند ') + editingItemId + T(' نهائياً؟'))) return;
+
+  // حذف جزء من تقسيم سعر (✂ تقسيم الجدول): إعادة توزيع سعره على الأجزاء الباقية بلا أثر مالي على قيمة البند —
+  // الأجزاء الباقية تمتص سعر الجزء المحذوف بنفس نسبة أسعارها الحالية؛ إن كان آخر جزء متبقٍ يعود البند الرئيسي
+  // بنداً عادياً بقيم هذا الجزء (كانت مطابقة أصلاً لقيم البند الأصلي)، فيختفي رأس المجموعة تلقائياً.
+  if (it.parentId && it.splitAt) {
+    const parent = getItem(it.parentId);
+    const siblings = childrenOf(it.parentId).filter(s => s.id !== it.id);
+    if (parent) {
+      if (siblings.length) {
+        const remainingRateSum = siblings.reduce((s,k) => s + (k.unitRate||0), 0);
+        let used = 0;
+        siblings.forEach((s, i) => {
+          if (i < siblings.length - 1) {
+            const share = remainingRateSum > 0 ? (s.unitRate||0) / remainingRateSum : 1 / siblings.length;
+            const r = Math.round(parent.unitRate * share * 100) / 100;
+            s.unitRate = r; used = Math.round((used + r) * 100) / 100;
+          } else {
+            s.unitRate = Math.round((parent.unitRate - used) * 100) / 100; // الجزء الأخير يمتص فارق التقريب لضبط المجموع بالضبط
+          }
+        });
+      } else {
+        parent.totalQty = it.totalQty; parent.executedQty = it.executedQty;
+        parent.approvedQty = it.approvedQty; parent.claimedQty = it.claimedQty; parent.qtyPerVilla = it.qtyPerVilla;
+        parent.approvals = it.approvals || [];
+        if (proj().villaProgress[it.id]) proj().villaProgress[parent.id] = proj().villaProgress[it.id];
+      }
+    }
+  }
+
   proj().boqItems = proj().boqItems.filter(i => i.id !== editingItemId);
   // فك ارتباط الفروع لتصبح بنوداً مستقلة
   proj().boqItems.forEach(i => { if (i.parentId === editingItemId) i.parentId = null; });
@@ -3572,8 +3636,9 @@ function deleteItem(){
 
 // ============================================================
 //  تقسيم سعر البند إلى مكوّنات (منفصل عن "➕ بند فرعي" أعلاه):
-//  الكمية والتنفيذ يبقيان بالكامل على البند الأصلي (نفس الشغل الفعلي) — فقط سعر الوحدة
-//  يتوزّع على 2-4 مكوّنات، ولكل مكوّن اعتماده الخاص من الاستشاري (استلام منفصل ممكن لكل جزء).
+//  الكمية (والتنفيذ/الاعتماد/المرفوع) تُنسخ كاملة كما هي على كل مكوّن — نفس الشغل الفعلي مكرراً على كل جزء،
+//  فقط سعر الوحدة يتوزّع على 2-4 مكوّنات بحيث يبقى مجموع قيمة الأجزاء = قيمة البند الأصلي تماماً،
+//  ولكل مكوّن اعتماده الخاص من الاستشاري (استلام منفصل ممكن لكل جزء). البند الأصلي يتحوّل إلى رأس تجميع فارغ.
 //  قيد: بند لا يُقسَّم سعرياً وله بالفعل بنود فرعية مستقلة، ولا يُضاف له بند فرعي مستقل بعد تقسيم سعره —
 //  الطريقتان لا تُخلطان على نفس البند لتفادي ازدواج/التباس في حساب القيمة الإجمالية.
 // ============================================================
@@ -3587,7 +3652,7 @@ function openSplitItemModal(id){
   splitItemId = id;
   $('split-item-info').innerHTML = '<strong>' + esc(it.id) + '</strong> — ' + esc(it.desc) + '<br>' +
     T('الكمية:') + ' ' + fmtQ(it.totalQty) + ' ' + esc(it.unit) + ' · ' + T('سعر الوحدة:') + ' ' + fmtRate(it.unitRate) +
-    '<br><span style="font-size:11px;color:var(--text2)">' + T('الكمية والسعر يتوزّعان معاً على الأجزاء — لكل جزء كميته وتنفيذه واعتماده ومطالبته الخاصة والمستقلة عن باقي الأجزاء. أي تقدّم منفَّذ حالياً على البند يتوزّع تلقائياً بنفس نسبة توزيع الكمية.') + '</span>';
+    '<br><span style="font-size:11px;color:var(--text2)">' + T('السعر فقط هو ما يتوزّع على الأجزاء — كل جزء يحمل كمية البند الأصلي كاملةً (نفس الشغل الفعلي) وله اعتماده ومطالبته الخاصة والمستقلة عن باقي الأجزاء.') + '</span>';
   $('split-count').value = '2';
   renderSplitRows();
   $('split-item-modal').classList.add('open');
@@ -3598,21 +3663,17 @@ function renderSplitRows(){
   if (!it) return;
   const n = Number($('split-count').value) || 2;
   const baseRate = Math.floor((it.unitRate / n) * 100) / 100;
-  const baseQty = Math.floor(((it.totalQty||0) / n) * 100) / 100;
   const rows = [];
-  let usedRate = 0, usedQty = 0;
+  let usedRate = 0;
   for (let i = 0; i < n; i++) {
     const rate = i < n - 1 ? baseRate : Math.round((it.unitRate - usedRate) * 100) / 100;
-    const qty = i < n - 1 ? baseQty : Math.round(((it.totalQty||0) - usedQty) * 100) / 100;
     usedRate = Math.round((usedRate + rate) * 100) / 100;
-    usedQty = Math.round((usedQty + qty) * 100) / 100;
-    rows.push({ id: it.id + '-' + String.fromCharCode(65 + i), desc: it.desc + ' (' + (i+1) + '/' + n + ')', rate, qty });
+    rows.push({ id: it.id + '-' + String.fromCharCode(65 + i), desc: it.desc + ' (' + (i+1) + '/' + n + ')', rate });
   }
   $('split-rows').innerHTML = rows.map((r, i) =>
-    '<div class="f-grid" style="grid-template-columns:1fr 2fr 1fr 1fr;gap:8px;align-items:end;border:1px solid var(--border);border-radius:8px;padding:8px">' +
+    '<div class="f-grid" style="grid-template-columns:1fr 2fr 1fr;gap:8px;align-items:end;border:1px solid var(--border);border-radius:8px;padding:8px">' +
     '<div class="f-field"><label>' + T('رقم الجزء') + ' ' + (i+1) + '</label><input type="text" id="split-id-' + i + '" value="' + esc(r.id) + '"></div>' +
     '<div class="f-field"><label>' + T('الوصف') + '</label><input type="text" id="split-desc-' + i + '" value="' + esc(r.desc) + '"></div>' +
-    '<div class="f-field"><label>' + T('الكمية') + '</label><input type="number" id="split-qty-' + i + '" min="0" step="any" value="' + r.qty + '" oninput="splitRowsRecalc()"></div>' +
     '<div class="f-field"><label>' + T('سعر الوحدة') + '</label><input type="number" id="split-rate-' + i + '" min="0" step="0.01" value="' + r.rate + '" oninput="splitRowsRecalc()"></div>' +
     '</div>'
   ).join('');
@@ -3623,23 +3684,19 @@ function splitRowsRecalc(){
   const it = getItem(splitItemId);
   if (!it) return;
   const n = Number($('split-count').value) || 2;
-  let rateSum = 0, qtySum = 0;
-  for (let i = 0; i < n; i++) { rateSum += Number($('split-rate-' + i).value) || 0; qtySum += Number($('split-qty-' + i).value) || 0; }
-  rateSum = Math.round(rateSum * 100) / 100; qtySum = Math.round(qtySum * 100) / 100;
+  let rateSum = 0;
+  for (let i = 0; i < n; i++) { rateSum += Number($('split-rate-' + i).value) || 0; }
+  rateSum = Math.round(rateSum * 100) / 100;
   const rateRemaining = Math.round((it.unitRate - rateSum) * 100) / 100;
-  const qtyRemaining = Math.round(((it.totalQty||0) - qtySum) * 100) / 100;
   const box = $('split-remaining');
-  const rateOk = Math.abs(rateRemaining) < 0.01, qtyOk = Math.abs(qtyRemaining) < 0.01;
-  if (rateOk && qtyOk) {
+  const rateOk = Math.abs(rateRemaining) < 0.01;
+  if (rateOk) {
     box.style.color = 'var(--green-bright)';
-    box.textContent = '✅ ' + T('المجموع مطابق للكمية وسعر الوحدة') + ' (' + fmtQ(it.totalQty) + ' ' + esc(it.unit) + ' · ' + fmtRate(it.unitRate) + ')';
+    box.textContent = '✅ ' + T('مجموع الأسعار مطابق لسعر الوحدة') + ' (' + fmtRate(it.unitRate) + ') — ' + T('الكمية') + ' ' + fmtQ(it.totalQty) + ' ' + esc(it.unit) + ' ' + T('تبقى كاملة لكل جزء');
     $('split-confirm-btn').disabled = false;
   } else {
     box.style.color = 'var(--red)';
-    const parts = [];
-    if (!qtyOk) parts.push((qtyRemaining > 0 ? '⚠️ ' + T('متبقٍ من الكمية') : '⚠️ ' + T('زيادة في الكمية')) + ' ' + fmtQ(Math.abs(qtyRemaining)) + ' ' + esc(it.unit));
-    if (!rateOk) parts.push((rateRemaining > 0 ? '⚠️ ' + T('متبقٍ من السعر') : '⚠️ ' + T('زيادة في السعر')) + ' ' + fmtRate(Math.abs(rateRemaining)));
-    box.textContent = parts.join(' — ') + ' — ' + T('يجب أن يساوي مجموع كميات وأسعار الأجزاء كمية وسعر وحدة البند الأصلي.');
+    box.textContent = (rateRemaining > 0 ? '⚠️ ' + T('متبقٍ من السعر') : '⚠️ ' + T('زيادة في السعر')) + ' ' + fmtRate(Math.abs(rateRemaining)) + ' — ' + T('يجب أن يساوي مجموع أسعار الأجزاء سعر وحدة البند الأصلي بالضبط.');
     $('split-confirm-btn').disabled = true;
   }
 }
@@ -3654,18 +3711,15 @@ function confirmSplitItem(){
     const id = $('split-id-' + i).value.trim();
     const desc = $('split-desc-' + i).value.trim();
     const rate = Number($('split-rate-' + i).value) || 0;
-    const qty = Number($('split-qty-' + i).value) || 0;
     if (!id || !desc) { alert(T('أكمل رقم ووصف كل جزء')); return; }
     if (rate <= 0) { alert(T('سعر كل جزء يجب أن يكون أكبر من صفر')); return; }
-    if (qty <= 0) { alert(T('كمية كل جزء يجب أن تكون أكبر من صفر')); return; }
     if (seenIds.has(id) || (getItem(id) && id !== it.id)) { alert(T('رقم البند') + ' "' + id + '" ' + T('مكرر أو مستخدم في بند آخر')); return; }
     seenIds.add(id);
-    children.push({ id, desc, unitRate: Math.round(rate*100)/100, totalQty: Math.round(qty*100)/100 });
+    // الكمية تبقى كاملة كما في البند الأصلي لكل جزء — لا تُقسَّم
+    children.push({ id, desc, unitRate: Math.round(rate*100)/100, totalQty: it.totalQty||0 });
   }
   const rateSum = Math.round(children.reduce((s,c) => s + c.unitRate, 0) * 100) / 100;
   if (Math.abs(rateSum - it.unitRate) > 0.01) { alert(T('مجموع أسعار الأجزاء يجب أن يساوي سعر وحدة البند الأصلي بالضبط')); return; }
-  const qtySum = Math.round(children.reduce((s,c) => s + c.totalQty, 0) * 100) / 100;
-  if (Math.abs(qtySum - (it.totalQty||0)) > 0.01) { alert(T('مجموع كميات الأجزاء يجب أن يساوي كمية البند الأصلي بالضبط')); return; }
   closeModal('split-item-modal');
   applyItemSplit(it.id, children);
   expandedGroups.add(it.id); collapsedGroups.delete(it.id);
@@ -3673,8 +3727,8 @@ function confirmSplitItem(){
   alert('✅ ' + T('تم تقسيم البند إلى') + ' ' + n + ' ' + T('أجزاء.'));
 }
 
-// تنفيذ التقسيم: كل جزء يصبح بنداً فرعياً مستقلاً بكميته وسعره الخاصين. أي تقدّم منفَّذ/معتمد/مرفوع سابقاً
-// على البند الأصلي يتوزّع على الأجزاء بنفس نسبة توزيع الكمية بينها (حفاظاً على المجموع الكلي كما هو).
+// تنفيذ التقسيم: كل جزء يصبح بنداً فرعياً مستقلاً بسعره الخاص، لكن كميته (والمنفَّذ/المعتمد/المرفوع وكمية الفيلا)
+// تبقى مطابقة تماماً لكمية البند الأصلي — نفس الشغل الفعلي، فقط السعر هو ما يتوزّع بين الأجزاء.
 // البند الأصلي يتحوّل إلى مجرد رأس تجميع (كمية/تنفيذ صفر) — القيم الحقيقية صارت على الأجزاء.
 function applyItemSplit(parentId, children){
   const parent = getItem(parentId);
@@ -3685,22 +3739,11 @@ function applyItemSplit(parentId, children){
   const totalClaim = parent.claimedQty || 0;
   const totalVilla = parent.qtyPerVilla || 0;
   const parentVillaProg = proj().villaProgress[parentId];
-  let usedExec = 0, usedAppr = 0, usedClaim = 0, usedVilla = 0;
-  children.forEach((c, i) => {
-    const ratio = totalQty > 0 ? c.totalQty / totalQty : 1 / children.length;
-    const isLast = i === children.length - 1;
-    const exec = isLast ? Math.round((totalExec - usedExec) * 100) / 100 : Math.round(totalExec * ratio * 100) / 100;
-    const appr = isLast ? Math.round((totalAppr - usedAppr) * 100) / 100 : Math.round(totalAppr * ratio * 100) / 100;
-    const claim = isLast ? Math.round((totalClaim - usedClaim) * 100) / 100 : Math.round(totalClaim * ratio * 100) / 100;
-    const villa = isLast ? Math.round((totalVilla - usedVilla) * 100) / 100 : Math.round(totalVilla * ratio * 100) / 100;
-    usedExec = Math.round((usedExec + exec) * 100) / 100;
-    usedAppr = Math.round((usedAppr + appr) * 100) / 100;
-    usedClaim = Math.round((usedClaim + claim) * 100) / 100;
-    usedVilla = Math.round((usedVilla + villa) * 100) / 100;
+  children.forEach(c => {
     proj().boqItems.push({
-      id: c.id, desc: c.desc, unitRate: c.unitRate, totalQty: c.totalQty,
-      div: parent.div, divAr: parent.divAr, unit: parent.unit, scope: parent.scope, qtyPerVilla: villa,
-      executedQty: Math.max(0, exec), approvedQty: Math.max(0, appr), claimedQty: Math.max(0, claim), approvals: [],
+      id: c.id, desc: c.desc, unitRate: c.unitRate, totalQty,
+      div: parent.div, divAr: parent.divAr, unit: parent.unit, scope: parent.scope, qtyPerVilla: totalVilla,
+      executedQty: totalExec, approvedQty: totalAppr, claimedQty: totalClaim, approvals: [],
       parentId: parentId, splitAt: new Date().toISOString()
     });
     if (parentVillaProg) proj().villaProgress[c.id] = { ...parentVillaProg };
@@ -3714,25 +3757,22 @@ Object.assign(I18N_EN, {
   '✂ تقسيم البند':'✂ Split price',
   'الكمية:':'Quantity:',
   'سعر الوحدة:':'Unit price:',
-  'الكمية والسعر يتوزّعان معاً على الأجزاء — لكل جزء كميته وتنفيذه واعتماده ومطالبته الخاصة والمستقلة عن باقي الأجزاء. أي تقدّم منفَّذ حالياً على البند يتوزّع تلقائياً بنفس نسبة توزيع الكمية.':'Both quantity and price are split across the parts — each part has its own independent quantity, execution, approval, and claiming, separate from the other parts. Any progress already executed on the item is distributed automatically in the same ratio as the quantity split.',
+  'السعر فقط هو ما يتوزّع على الأجزاء — كل جزء يحمل كمية البند الأصلي كاملةً (نفس الشغل الفعلي) وله اعتماده ومطالبته الخاصة والمستقلة عن باقي الأجزاء.':'Only the price is split across the parts — each part carries the original item\'s full quantity (the same actual work), with its own independent approval and claiming, separate from the other parts.',
   'رقم الجزء':'Part no.',
   'الوصف':'Description',
   'الكمية':'Quantity',
-  'المجموع مطابق للكمية وسعر الوحدة':'The totals match the quantity and unit price',
-  'متبقٍ من الكمية':'Remaining quantity',
-  'زيادة في الكمية':'Excess quantity',
+  'مجموع الأسعار مطابق لسعر الوحدة':'The prices add up to the unit price',
+  'تبقى كاملة لكل جزء':'stays full for every part',
   'متبقٍ من السعر':'Remaining price',
   'زيادة في السعر':'Excess price',
-  'يجب أن يساوي مجموع كميات وأسعار الأجزاء كمية وسعر وحدة البند الأصلي.':'The parts\' quantities and prices must add up exactly to the original item\'s quantity and unit price.',
+  'يجب أن يساوي مجموع أسعار الأجزاء سعر وحدة البند الأصلي بالضبط.':'The parts\' prices must add up exactly to the original item\'s unit price.',
   'أكمل رقم ووصف كل جزء':'Fill in the number and description for every part',
   'سعر كل جزء يجب أن يكون أكبر من صفر':'Each part\'s price must be greater than zero',
-  'كمية كل جزء يجب أن تكون أكبر من صفر':'Each part\'s quantity must be greater than zero',
   'مكرر أو مستخدم في بند آخر':'is duplicated or already used by another item',
   'مجموع أسعار الأجزاء يجب أن يساوي سعر وحدة البند الأصلي بالضبط':'The parts\' prices must add up exactly to the original item\'s unit price',
-  'مجموع كميات الأجزاء يجب أن يساوي كمية البند الأصلي بالضبط':'The parts\' quantities must add up exactly to the original item\'s quantity',
   'تم تقسيم البند إلى':'The item was split into',
   'أجزاء.':'parts.',
-  'تقسيم البند إلى أجزاء مستقلة (كمية وسعر)':'Split the item into independent parts (quantity and price)',
+  'تقسيم سعر البند إلى أجزاء مستقلة — الكمية تبقى كاملة لكل جزء':'Split the item\'s price into independent parts — the quantity stays full for every part',
   'تعديل بند':'Edit item',
   'تعديل بند ':'Edit item ',
   'إضافة بند فرعي تحت ':'Add sub-item under ',

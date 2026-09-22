@@ -406,9 +406,9 @@ app.put('/api/projects/:id', auth, (req, res) => {
   // اعتماد كميات الاستشاري: أي زيادة في الكمية المعتمدة يجب أن تُقابلها استلامات (approvals) بمرفق موقّع
   const storedItems = new Map((stored.boqItems || []).map(i => [i.id, i]));
 
-  // تقسيم بند إلى أجزاء مستقلة: مجرد إعادة توزيع للكمية/التنفيذ/الاعتماد/المرفوع الحاليين على الأجزاء بلا تغيير المجموع،
-  // وسعر الوحدة يتوزّع بمجموع مساوٍ لسعر البند الأصلي — لا أثر مالي، فيُسمح لمدير المشروع (pm) به.
-  // أي تقسيم لا يحافظ على المجاميع بالضبط لا يُعتبر صالحاً وتسري عليه الرقابة المعتادة.
+  // تقسيم بند إلى أجزاء مستقلة (تقسيم سعر): كل جزء يحمل كمية البند الأصلي كاملةً (نفس الشغل الفعلي)،
+  // وسعر الوحدة فقط يتوزّع بمجموع مساوٍ لسعر البند الأصلي — لا أثر مالي، فيُسمح لمدير المشروع (pm) به.
+  // أي تقسيم لا يحافظ على ذلك بالضبط لا يُعتبر صالحاً وتسري عليه الرقابة المعتادة.
   const splitIds = new Set();
   {
     const near = (a, b) => Math.abs((Number(a) || 0) - (Number(b) || 0)) < 0.05;
@@ -422,18 +422,43 @@ app.put('/api/projects/:id', auth, (req, res) => {
       // كل جزء إما جديد أو جزء قديم لم يُرحَّل بعد (بلا كمية خاصة به)
       const kidsOk = kids.every(k => { const sk = storedItems.get(k.id); return !sk || (sk.parentId === parentStored.id && sk.totalQty === undefined); });
       if (!kidsOk) continue;
-      const sum = f => kids.reduce((s, k) => s + (Number(f(k)) || 0), 0);
+      const sumRate = kids.reduce((s, k) => s + (Number(k.unitRate) || 0), 0);
       const stApproved = parentStored.approvedQty !== undefined ? parentStored.approvedQty : (parentStored.executedQty || 0);
       const parentZeroed = near(parentNew.totalQty, 0) && near(parentNew.executedQty, 0) && near(parentNew.approvedQty, 0) && near(parentNew.claimedQty, 0);
       if (parentZeroed &&
           near(parentNew.unitRate, parentStored.unitRate) &&
-          near(sum(k => k.unitRate), parentStored.unitRate) &&
-          near(sum(k => k.totalQty), parentStored.totalQty) &&
-          near(sum(k => k.executedQty), parentStored.executedQty) &&
-          near(sum(k => k.approvedQty), stApproved) &&
-          near(sum(k => k.claimedQty), parentStored.claimedQty)) {
+          near(sumRate, parentStored.unitRate) &&
+          kids.every(k => near(k.totalQty, parentStored.totalQty)) &&
+          kids.every(k => near(k.executedQty, parentStored.executedQty)) &&
+          kids.every(k => near(k.approvedQty, stApproved)) &&
+          kids.every(k => near(k.claimedQty, parentStored.claimedQty))) {
         splitIds.add(parentStored.id);
         kids.forEach(k => splitIds.add(k.id));
+      }
+    }
+  }
+
+  // دمج عكسي: حذف آخر جزء متبقٍ من تقسيم سعر (متاح للأدمن فقط عبر الواجهة) يعيد قيمه إلى البند الرئيسي
+  // (يصبح بنداً عادياً من جديد) — لا أثر مالي (القيم كانت مطابقة أصلاً لآخر جزء)، فيُعفى من شرط استلام الاستشاري.
+  {
+    const near = (a, b) => Math.abs((Number(a) || 0) - (Number(b) || 0)) < 0.05;
+    const incomingAll = data.boqItems || [];
+    for (const parentStored of (stored.boqItems || [])) {
+      if (parentStored.parentId) continue;
+      if (splitIds.has(parentStored.id)) continue;
+      const parentNew = incomingAll.find(i => i.id === parentStored.id);
+      if (!parentNew) continue;
+      const storedKids = (stored.boqItems || []).filter(i => i.parentId === parentStored.id && i.splitAt);
+      if (storedKids.length !== 1) continue;
+      const incomingKids = incomingAll.filter(i => i.parentId === parentStored.id);
+      if (incomingKids.length !== 0) continue;
+      const lastKid = storedKids[0];
+      if (near(parentNew.unitRate, parentStored.unitRate) &&
+          near(parentNew.totalQty, lastKid.totalQty) &&
+          near(parentNew.executedQty, lastKid.executedQty) &&
+          near(parentNew.approvedQty, lastKid.approvedQty !== undefined ? lastKid.approvedQty : lastKid.executedQty) &&
+          near(parentNew.claimedQty, lastKid.claimedQty)) {
+        splitIds.add(parentStored.id);
       }
     }
   }

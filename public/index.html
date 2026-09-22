@@ -448,7 +448,7 @@
 
     <!-- عرض: مستخلص جديد -->
     <div id="inv-view-new">
-    <div class="alert info" data-i18n="💡 الكميات المقترحة = المنفذ − المرفوع سابقاً (المستخلص الجاري). عدّل كمية المطالبة لكل بند إذا حاب، ثم احفظ المستخلص ليتم تسجيله وخصمه من الرصيد القابل للرفع.">💡 الكميات المقترحة = المنفذ − المرفوع سابقاً (المستخلص الجاري). عدّل كمية المطالبة لكل بند إذا حاب، ثم احفظ المستخلص ليتم تسجيله وخصمه من الرصيد القابل للرفع.</div>
+    <div class="alert info" data-i18n="💡 الكمية المقترحة = المعتمد من الاستشاري. يمكن رفع كمية المطالبة فوق المعتمد بلا سقف — الزيادة تظهر في عمود «الكمية المعلّقة» ولا تغيّر الكمية المعتمدة نفسها. لا يمكن أن تقل كمية المطالبة عن المعتمد.">💡 الكمية المقترحة = المعتمد من الاستشاري. يمكن رفع كمية المطالبة فوق المعتمد بلا سقف — الزيادة تظهر في عمود «الكمية المعلّقة» ولا تغيّر الكمية المعتمدة نفسها. لا يمكن أن تقل كمية المطالبة عن المعتمد.</div>
     <div class="two-col">
       <div>
         <div class="filter-bar">
@@ -458,7 +458,7 @@
         <div class="table-wrap">
           <table>
             <thead>
-              <tr><th>✓</th><th data-i18n="البند">البند</th><th data-i18n="الوصف">الوصف</th><th data-i18n="الوحدة">الوحدة</th><th data-i18n="السعر">السعر</th><th data-i18n="معتمد">معتمد</th><th data-i18n="مرفوع سابقاً">مرفوع سابقاً</th><th data-i18n="كمية المطالبة الآن">كمية المطالبة الآن</th><th data-i18n="قيمة المطالبة">قيمة المطالبة</th></tr>
+              <tr><th>✓</th><th data-i18n="البند">البند</th><th data-i18n="الوصف">الوصف</th><th data-i18n="الوحدة">الوحدة</th><th data-i18n="السعر">السعر</th><th data-i18n="معتمد">معتمد</th><th data-i18n="الكمية المعلّقة">الكمية المعلّقة</th><th data-i18n="مرفوع سابقاً">مرفوع سابقاً</th><th data-i18n="كمية المطالبة الآن">كمية المطالبة الآن</th><th data-i18n="قيمة المطالبة">قيمة المطالبة</th></tr>
             </thead>
             <tbody id="mb-tbody"></tbody>
           </table>
@@ -468,10 +468,11 @@
         <div class="invoice-sidebar">
           <div class="card-title" style="color:var(--green-bright)"><span data-i18n="💰 ملخص المستخلص">💰 ملخص المستخلص</span> <span class="pill green" id="mb-count">0 بند</span></div>
           <div class="f-grid" style="grid-template-columns:1fr 1fr;">
-            <div class="f-field"><label data-i18n="تاريخ المستخلص">تاريخ المستخلص</label><input type="date" id="mb-date"></div>
-            <div class="f-field"><label data-i18n="ملاحظات">ملاحظات</label><input type="text" id="mb-notes" placeholder="اختياري" data-i18n-ph="اختياري"></div>
-            <div class="f-field"><label data-i18n="محتجز ضمان %">محتجز ضمان %</label><input type="number" id="mb-ret" min="0" max="100" step="0.5"></div>
-            <div class="f-field"><label data-i18n="استرداد دفعة مقدمة %">استرداد دفعة مقدمة %</label><input type="number" id="mb-adv" min="0" max="100" step="0.5"></div>
+            <div class="f-field"><label data-i18n="تاريخ المستخلص">تاريخ المستخلص</label><input type="date" id="mb-date" oninput="mbSaveDraft()"></div>
+            <div class="f-field"><label data-i18n="رقم المستخلص">رقم المستخلص</label><input type="text" id="mb-no" data-i18n-ph="تلقائي إن تُرك فارغاً" placeholder="تلقائي إن تُرك فارغاً" oninput="mbSaveDraft()"></div>
+            <div class="f-field"><label data-i18n="ملاحظات">ملاحظات</label><input type="text" id="mb-notes" placeholder="اختياري" data-i18n-ph="اختياري" oninput="mbSaveDraft()"></div>
+            <div class="f-field"><label data-i18n="محتجز ضمان %">محتجز ضمان %</label><input type="number" id="mb-ret" min="0" max="100" step="0.5" oninput="mbSaveDraft()"></div>
+            <div class="f-field"><label data-i18n="استرداد دفعة مقدمة %">استرداد دفعة مقدمة %</label><input type="number" id="mb-adv" min="0" max="100" step="0.5" oninput="mbSaveDraft()"></div>
             <div class="f-field full">
               <label data-i18n="📎 مرفقات المستخلص * (ملفات المستخلص كاملة + استلامات الاستشاري — PDF أو صور)">📎 مرفقات المستخلص * (ملفات المستخلص كاملة + استلامات الاستشاري — PDF أو صور)</label>
               <input type="file" id="mb-files" accept="image/*,.pdf,application/pdf" multiple onchange="mbFilesPicked(this)">
@@ -1727,9 +1728,12 @@ function nextSeq(){
 }
 
 function switchProject(id){
+  const changed = Number(id) !== state.currentProjectId;
   state.currentProjectId = Number(id);
   localStorage.setItem('azoom_proj', String(state.currentProjectId));
-  mbSel = {};
+  // تفريغ مسودة المستخلص عند التبديل الفعلي لمشروع آخر فقط — إعادة اختيار المشروع نفسه لا تمسح مسودته
+  // (renderBuilder يعيد تحميل مسودة المشروع الجديد المحفوظة تلقائياً بما أن mbRatesProjectId سيختلف عنه)
+  if (changed) mbSel = {};
   closeVillaDetail();
   renderAll();
 }
@@ -1918,9 +1922,12 @@ document.addEventListener('wheel', e => {
   if (document.activeElement && document.activeElement.tagName === 'INPUT' && document.activeElement.type === 'number') document.activeElement.blur();
 }, { passive: true });
 
-// مزامنة دورية: لو عدّل مستخدم آخر مشروعاً، حدّث تلقائياً
+// مزامنة دورية: لو عدّل مستخدم آخر مشروعاً، حدّث تلقائياً — لكن ليس أثناء تركيز المستخدم على حقل إدخال حالياً
+// (إعادة بناء الجدول بالكامل بينما حقل مركَّز عليه قيد التعديل قد تُفشل الـ DOM أو تُفقد ما كُتب للتو ولم يُحفظ بعد)
 setInterval(async () => {
   if (!API.token || !state || dirtyProjects.size) return;
+  const activeTag = document.activeElement && document.activeElement.tagName;
+  if (activeTag === 'INPUT' || activeTag === 'TEXTAREA' || activeTag === 'SELECT') return;
   try {
     const v = await API.req('GET', '/api/state/versions');
     const changed = v.length !== state.projects.length ||
@@ -3147,7 +3154,7 @@ function renderItemsTable(){
       '<td class="amount tight">' + fmtN(amt(it2)) + '</td>' +
       '<td class="tight">' + (it2.scope==='others' ? '<span style="color:var(--text3)">—</span>' :
         ('<span style="display:inline-flex;flex-direction:column;gap:3px;align-items:flex-start">' +
-        (isAdmin() ? '<input type="number" class="qty-input boq-qty-input" min="0" max="' + it2.totalQty + '" step="any" value="' + (Math.round((it2.executedQty||0)*100)/100) + '" onchange="setItemQty(\'' + esc(it2.id) + '\', this.value)" data-tip="' + T('أدخل الكمية المنفذة (من أصل ') + fmtQ(it2.totalQty) + ' ' + esc(it2.unit) + T(') — العميل يحاسب بالكميات') + '">' : '') +
+        (isAdmin() ? '<input type="number" class="qty-input boq-qty-input" min="' + (it2.approvedQty||0) + '" max="' + it2.totalQty + '" step="any" value="' + (Math.round((it2.executedQty||0)*100)/100) + '" onchange="setItemQty(\'' + esc(it2.id) + '\', this.value)" data-tip="' + T('أدخل الكمية المنفذة (من أصل ') + fmtQ(it2.totalQty) + ' ' + esc(it2.unit) + T(') — لا تقل عن المعتمد من الاستشاري') + '">' : '') +
         '<span style="display:inline-flex;align-items:center;gap:5px"><span style="font-family:var(--mono);font-size:10px;color:var(--text2)">' + (itemPct(it2)*100).toFixed(1) + '%</span><span class="prog-bar boq-prog"><span class="prog-fill ' + (itemPct(it2)>=DONE?'green':itemPct(it2)>0?'amber':'red') + '" style="width:' + (itemPct(it2)*100) + '%;display:block"></span></span></span>' +
         '</span>')) + '</td>' +
       '<td class="tight">' + approvalCell(it2) + '</td>' +
@@ -3214,10 +3221,14 @@ function setItemQty(id, val){
   if (!isAdmin()) return;
   const it = getItem(id);
   if (!it) return;
-  const newVal = Math.round(clamp(val, 0, it.totalQty) * 100) / 100;
+  // الكمية المنفذة لا تقل عن الكمية المعتمدة من الاستشاري — المعتمد أثبت فعلاً بمرفق موقّع فلا يجوز التراجع عنه من هنا.
+  // أي زيادة فوق المعتمد تبقى "بانتظار الاعتماد" (pendingApprovalQty) حتى يعتمدها الاستشاري صراحة عبر استلام جديد.
+  const floor = it.approvedQty || 0;
+  const newVal = Math.round(clamp(val, floor, it.totalQty) * 100) / 100;
   it.executedQty = newVal;
-  // المعتمد لا يتجاوز المنفذ (لو خفّض المنفذ تحت المعتمد يُقلّص المعتمد)
-  if ((it.approvedQty||0) > it.executedQty) it.approvedQty = it.executedQty;
+  if (Number(val) < floor - 0.001) {
+    alert(T('لا يمكن أن تقل الكمية المنفذة عن الكمية المعتمدة من الاستشاري (') + fmtQ(floor) + T(') — التراجع عن كمية معتمدة يتطلب إجراءً منفصلاً.'));
+  }
   if (it.executedQty < it.claimedQty) {
     alert(T('تنبيه: الكمية المنفذة (') + fmtQ(it.executedQty) + T(') أصبحت أقل من الكمية المرفوعة بمستخلصات سابقة (') + fmtQ(it.claimedQty) + ').');
   }
@@ -3231,7 +3242,10 @@ Object.assign(I18N_EN, {
   'تنبيه: الكمية المنفذة (':'Note: the executed quantity (',
   ') أصبحت أقل من الكمية المرفوعة بمستخلصات سابقة (':') is now less than the quantity already claimed in previous claims (',
   'أدخل الكمية المنفذة (من أصل':'Enter the executed quantity (out of',
-  '— العميل يحاسب بالكميات':'— client accounts by quantities'
+  '— العميل يحاسب بالكميات':'— client accounts by quantities',
+  '— لا تقل عن المعتمد من الاستشاري':'— cannot be less than the consultant-approved quantity',
+  'لا يمكن أن تقل الكمية المنفذة عن الكمية المعتمدة من الاستشاري (':'The executed quantity cannot be less than the consultant-approved quantity (',
+  ') — التراجع عن كمية معتمدة يتطلب إجراءً منفصلاً.':') — reducing an approved quantity requires a separate process.'
 });
 
 // ============================================================
@@ -3586,6 +3600,23 @@ function deleteItem(){
   if (!editingItemId || !isAdmin()) return;
   const it = getItem(editingItemId);
   const kids = childrenOf(editingItemId);
+
+  // حذف رأس مجموعة له جزء تقسيم سعر واحد فقط متبقٍ: مطابق تماماً لحذف ذلك الجزء نفسه من نموذجه —
+  // يبقي البند الرئيسي بنفس رقمه الأصلي حاملاً كامل القيمة، بدل فكّ ارتباط الجزء إلى بند مستقل
+  // بمعرّف مشتق (مثل "9.1-A") يلتبس لاحقاً بأنه بلا أصل ولا يظهر تحت رقمه الأصلي في أي تقرير.
+  if (kids.length === 1 && kids[0].splitAt) {
+    if (!confirm(T('هذا آخر جزء متبقٍ من تقسيم سعر البند ') + editingItemId + T('. حذفه يلغي التقسيم ويُبقي البند ') + editingItemId + T(' بنداً عادياً بكامل هذه القيمة. متابعة؟'))) return;
+    const child = kids[0];
+    it.totalQty = child.totalQty; it.executedQty = child.executedQty;
+    it.approvedQty = child.approvedQty; it.claimedQty = child.claimedQty; it.qtyPerVilla = child.qtyPerVilla;
+    it.approvals = child.approvals || [];
+    if (proj().villaProgress[child.id]) proj().villaProgress[it.id] = proj().villaProgress[child.id];
+    proj().boqItems = proj().boqItems.filter(i => i.id !== child.id);
+    delete proj().villaProgress[child.id];
+    closeModal('item-modal'); save(); renderAll();
+    return;
+  }
+
   const isLastSplitPart = !!(it.parentId && it.splitAt && childrenOf(it.parentId).length === 1);
   // كل فرع (سواء ناتج عن تقسيم بند أو بند فرعي مستقل) له كميته وتنفيذه واعتماده الخاصة —
   // حذف البند الرئيسي (رأس تجميع فقط) لا يحذف فروعه أبداً، بل يفك ارتباطها لتصبح بنوداً مستقلة
@@ -3805,20 +3836,49 @@ let mbSel = {}; // itemId -> qty
 
 function claimableItems(){ return proj().boqItems.filter(i => i.scope !== 'others' && !isParent(i) && availQty(i) > 0.01); }
 
-let mbRatesProjectId = null; // آخر مشروع زُامنت له حقول محتجز الضمان / الدفعة المقدمة
+// مسودة المستخلص غير المحفوظة: تُحفظ في localStorage (لكل مشروع) حتى لا تُفقد عند تحديث الصفحة أو إغلاقها بالخطأ —
+// تُمسح فور حفظ المستخلص فعلياً أو عند "إلغاء التحديد". لا علاقة لها بالخادم — مسودة محلية للمتصفح فقط.
+const mbDraftKey = () => 'azoom_mus_draft_' + proj().id;
+function mbSaveDraft(){
+  try {
+    localStorage.setItem(mbDraftKey(), JSON.stringify({
+      sel: mbSel, notes: $('mb-notes').value, no: $('mb-no').value,
+      date: $('mb-date').value, ret: $('mb-ret').value, adv: $('mb-adv').value
+    }));
+  } catch(e) {}
+}
+function mbClearDraft(){ try { localStorage.removeItem(mbDraftKey()); } catch(e) {} }
+function mbLoadDraft(){
+  try {
+    const d = JSON.parse(localStorage.getItem(mbDraftKey()));
+    if (!d) return;
+    mbSel = d.sel || {};
+    if (d.notes) $('mb-notes').value = d.notes;
+    if (d.no) $('mb-no').value = d.no;
+    if (d.date) $('mb-date').value = d.date;
+    if (d.ret !== undefined) $('mb-ret').value = d.ret;
+    if (d.adv !== undefined) $('mb-adv').value = d.adv;
+  } catch(e) {}
+}
+
+let mbRatesProjectId = null; // آخر مشروع زُامنت له حقول محتجز الضمان / الدفعة المقدمة (واستُعيدت له المسودة المحفوظة إن وُجدت)
 function renderBuilder(){
   if (!$('mb-date').value) $('mb-date').value = todayStr();
+  $('mb-no').placeholder = mbAutoNo();
   // زامن حقول النسب مع المشروع الحالي عند أول عرض أو عند تبديل المشروع
   // (وليس فقط عند كون الحقل فارغاً — وإلا تبقى نسب مشروع سابق عالقة بعد التبديل)
   if (mbRatesProjectId !== proj().id) {
     $('mb-ret').value = proj().info.retentionRate;
     $('mb-adv').value = proj().info.advanceRate;
+    mbLoadDraft(); // يستبدل النسب أعلاه بما في المسودة المحفوظة إن وُجدت لهذا المشروع
     mbRatesProjectId = proj().id;
   }
   const list = claimableItems();
   $('mb-tbody').innerHTML = list.map(it => {
     const sel = mbSel[it.id] !== undefined;
-    const qty = sel ? mbSel[it.id] : availQty(it);
+    const floor = approvedOf(it);
+    const qty = sel ? mbSel[it.id] : floor;
+    const pending = Math.max(0, round2(qty - floor)); // زيادة كمية المطالبة فوق المعتمد = بانتظار اعتماد الاستشاري، ولا تُغيّر المعتمد نفسه
     return '<tr style="' + (sel?'background:var(--green-dim)':'') + '">' +
       '<td><input type="checkbox" class="item-check"' + (sel?' checked':'') + ' onchange="mbToggle(\'' + esc(it.id) + '\', this.checked)"></td>' +
       '<td><span class="item-no">' + esc(it.id) + '</span></td>' +
@@ -3826,28 +3886,35 @@ function renderBuilder(){
       '<td>' + esc(it.unit) + '</td>' +
       '<td class="amount muted">' + fmtRate(it.unitRate) + '</td>' +
       '<td class="amount" style="color:var(--green)">' + fmtQ(approvedOf(it)) + '</td>' +
+      '<td class="amount' + (pending>0.001?'':' muted') + '" style="' + (pending>0.001?'color:var(--orange)':'') + '">' + (pending>0.001 ? fmtQ(pending) : '—') + '</td>' +
       '<td class="amount muted">' + fmtQ(it.claimedQty) + '</td>' +
-      '<td><input type="number" class="qty-input" min="0" max="' + availQty(it) + '" step="0.1" value="' + (Math.round(qty*100)/100) + '"' + (sel?'':' disabled') + ' onchange="mbQty(\'' + esc(it.id) + '\', this.value)"></td>' +
+      // لا سقف أعلى للكمية — بند مكتمل التنفيذ والاعتماد (منفذ = معتمد = الكمية الكلية) يجب أن يبقى قابلاً لرفع كمية مطالبة أعلى (بانتظار اعتماد إضافي)
+      '<td><input type="number" class="qty-input" min="' + floor + '" step="0.1" value="' + (Math.round(qty*100)/100) + '" onchange="mbQty(\'' + esc(it.id) + '\', this.value)" data-tip="' + T('التعديل هنا يُحدّد البند تلقائياً للمستخلص — لا يمكن أن تقل عن الكمية المعتمدة') + ' (' + fmtQ(floor) + ')">' + '</td>' +
       '<td class="amount claimable">' + (sel ? fmtN(qty * it.unitRate) : '—') + '</td>' +
       '</tr>';
-  }).join('') || '<tr><td colspan="9"><div class="empty-state"><p>' + T('لا توجد كميات معتمدة غير مرفوعة — اعتمد الكميات من الاستشاري أولاً (بمرفق الاستلام)') + '</p></div></td></tr>';
+  }).join('') || '<tr><td colspan="10"><div class="empty-state"><p>' + T('لا توجد كميات معتمدة غير مرفوعة — اعتمد الكميات من الاستشاري أولاً (بمرفق الاستلام)') + '</p></div></td></tr>';
   renderMbTotals();
 }
-Object.assign(I18N_EN, { 'لا توجد كميات معتمدة غير مرفوعة — اعتمد الكميات من الاستشاري أولاً (بمرفق الاستلام)':'No approved quantities left unclaimed — get consultant approval first (with a receipt attachment)' });
+Object.assign(I18N_EN, {
+  'لا توجد كميات معتمدة غير مرفوعة — اعتمد الكميات من الاستشاري أولاً (بمرفق الاستلام)':'No approved quantities left unclaimed — get consultant approval first (with a receipt attachment)',
+  'لا يمكن أن تقل عن الكمية المعتمدة':'Cannot be less than the approved quantity',
+  'التعديل هنا يُحدّد البند تلقائياً للمستخلص — لا يمكن أن تقل عن الكمية المعتمدة':'Editing this selects the item for the claim automatically — cannot be less than the approved quantity'
+});
 
 function mbToggle(id, on){
   const it = getItem(id);
-  if (on) mbSel[id] = availQty(it); else delete mbSel[id];
-  renderBuilder();
+  if (on) mbSel[id] = approvedOf(it); else delete mbSel[id];
+  renderBuilder(); mbSaveDraft();
 }
 function mbQty(id, val){
   const it = getItem(id);
-  mbSel[id] = clamp(val, 0, availQty(it));
-  renderBuilder();
+  // بلا سقف أعلى — أي زيادة فوق المعتمد تُحسب كمية معلّقة (Pending)، حتى لو كان البند مكتمل التنفيذ 100% أصلاً
+  mbSel[id] = Math.round(Math.max(approvedOf(it), Number(val) || 0) * 100) / 100;
+  renderBuilder(); mbSaveDraft();
 }
-function mbSelectAll(){ claimableItems().forEach(it => { mbSel[it.id] = availQty(it); }); renderBuilder(); }
-function mbClear(){ mbSel = {}; renderBuilder(); }
-function mbAddItem(id){ const it = getItem(id); if (it && availQty(it) > 0.01) { mbSel[id] = availQty(it); } switchTab('invoice'); switchInvView('new'); renderBuilder(); }
+function mbSelectAll(){ claimableItems().forEach(it => { mbSel[it.id] = approvedOf(it); }); renderBuilder(); mbSaveDraft(); }
+function mbClear(){ mbSel = {}; renderBuilder(); mbClearDraft(); }
+function mbAddItem(id){ const it = getItem(id); if (it && availQty(it) > 0.01) { mbSel[id] = availQty(it); } switchTab('invoice'); switchInvView('new'); renderBuilder(); mbSaveDraft(); }
 
 // زر "📤 مستخلص" في جدول الكميات: لو الكمية غير مستلمة بعد → نافذة رفع الاستلام أولاً ثم التحويل للمستخلص
 function itemToMustakhlas(id){
@@ -3948,10 +4015,15 @@ async function uploadMbFiles(){
   return uploaded;
 }
 
+// رقم المستخلص التلقائي المقترح — يُستخدم كنص placeholder وكقيمة افتراضية إن تُرك حقل الرقم فارغاً
+function mbAutoNo(){ return 'MUS-' + String(proj().mustakhlasat.length + 1).padStart(3,'0'); }
+
 async function saveMustakhlas(){
   const c = mbCompute();
   if (!c.lines.length) { alert(T('حدّد بنود أولاً')); return; }
   if (offlineMode) { alert(T('📴 لا يمكن الرفع بدون اتصال')); return; }
+  const typedNo = $('mb-no').value.trim();
+  if (typedNo && proj().mustakhlasat.some(m => m.no === typedNo)) { alert(T('رقم المستخلص') + ' "' + typedNo + '" ' + T('مستخدم مسبقاً — اختر رقماً آخر')); return; }
   if (!mbPendingFiles.length && state.me.role === 'pm' &&
       !confirm(T('⚠️ لم ترفق ملفات المستخلص واستلامات الاستشاري — مدير المشاريع يحتاجها للاعتماد. متابعة بدون مرفقات؟'))) return;
   if (!confirm(T('رفع المستخلص بقيمة') + ' ' + money(c.gross) + T(' للمراجعة والاعتماد؟ سيتم خصم الكميات من الرصيد القابل للرفع.'))) return;
@@ -3960,24 +4032,29 @@ async function saveMustakhlas(){
     try { attachments = await uploadMbFiles(); }
     catch(e) { alert(T('تعذر رفع المرفقات:') + ' ' + e.message); return; }
   }
-  const no = 'MUS-' + String(proj().mustakhlasat.length + 1).padStart(3,'0');
+  const no = typedNo || mbAutoNo();
   const rec = {id: nextSeq(), no, date: $('mb-date').value || todayStr(), status:'submitted',
     lines:c.lines, gross:c.gross, vatRate:c.vatRate, retRate:c.retRate, advRate:c.advRate,
     vat:c.vat, retention:c.retention, advance:c.advance, net:c.net, notes:$('mb-notes').value.trim(),
     payments:[], by: currentUser().name, attachments};
   c.lines.forEach(l => { const it = getItem(l.itemId); if (it) it.claimedQty = Math.min(it.totalQty, it.claimedQty + l.currQty); });
   proj().mustakhlasat.push(rec);
-  mbSel = {}; $('mb-notes').value = '';
+  mbSel = {}; $('mb-notes').value = ''; $('mb-no').value = '';
   mbPendingFiles = []; renderMbFilesList();
+  mbClearDraft();
   save(); renderAll(); switchInvView('history'); showDoc(rec);
   if (state.me.role === 'pm') setTimeout(() => alert(T('✅ تم رفع المستخلص للمراجعة — سيظهر لمدير المشاريع لاعتماده وإصدار الفاتورة.')), 300);
 }
-Object.assign(I18N_EN, { '✅ تم رفع المستخلص للمراجعة — سيظهر لمدير المشاريع لاعتماده وإصدار الفاتورة.':'✅ The claim was submitted for review — it will appear to the project manager for approval and invoicing.' });
+Object.assign(I18N_EN, {
+  '✅ تم رفع المستخلص للمراجعة — سيظهر لمدير المشاريع لاعتماده وإصدار الفاتورة.':'✅ The claim was submitted for review — it will appear to the project manager for approval and invoicing.',
+  'مستخدم مسبقاً — اختر رقماً آخر':'is already used — choose another number'
+});
 
 function previewMustakhlas(){
   const c = mbCompute();
   if (!c.lines.length) { alert(T('حدّد بنود أولاً')); return; }
-  showDoc({no:T('(معاينة - غير محفوظ)'), date:$('mb-date').value||todayStr(), status:'preview', ...c, notes:$('mb-notes').value.trim()});
+  const previewNo = $('mb-no').value.trim() || mbAutoNo() + ' — ' + T('(معاينة - غير محفوظ)');
+  showDoc({no:previewNo, date:$('mb-date').value||todayStr(), status:'preview', ...c, notes:$('mb-notes').value.trim()});
 }
 Object.assign(I18N_EN, {
   'القيمة محسوبة بسعر الوحدة فقط (غير شامل الضريبة) — تُضاف ضريبة القيمة المضافة أدناه في المطالبة':'The value is calculated at the unit price only (excluding VAT) — VAT is added below in the claim',
@@ -4582,13 +4659,31 @@ function dlCSV(name, rows){
   URL.revokeObjectURL(a.href);
 }
 
+// يصدّر كل بنود جدول الكميات بلا استثناء — بما فيها البنود الرئيسية (رؤوس التجميع)، بقيمها المجمَّعة من فروعها
+// (تماماً كما تُعرض في الجدول)، وليس فقط "البنود القابلة للتصرف" التي كانت تُستبعد منها البنود الرئيسية سابقاً.
 function exportItemsCSV(){
   const rows = [['رقم البند','القسم','الوصف','الوحدة','الكمية الكلية','سعر الوحدة','الإجمالي','الكمية المنفذة','المعتمد من الاستشاري','بانتظار الاعتماد','الكمية المرفوعة','صافي المطالبة','الحالة','العائق / يعتمد على'].map(T)];
-  actionableItems().forEach(it => {
+  // بادئة "↳" لرقم البند الفرعي — نفس رمز الإزاحة المستخدم في الجدول على الشاشة، ليتضح الترابط الهرمي حتى في ملف مسطّح كـ CSV
+  const rowFor = (it, indent) => {
     const st = T(STATUS_META[statusOf(it)].label);
     const dep = it.blocker && it.blocker.active ? it.blocker.reason : (it.predecessors||[]).join(' + ');
-    rows.push([it.id, it.div + ' ' + (it.divAr||''), it.desc, it.unit, it.totalQty, it.unitRate, amt(it),
-      it.executedQty, approvedOf(it), pendingApprovalQty(it), it.claimedQty, Math.round(netClaimable(it)), st, dep]);
+    return [(indent ? '↳ ' : '') + it.id, it.div + ' ' + (it.divAr||''), it.desc, it.unit, it.totalQty, it.unitRate, amt(it),
+      it.executedQty, approvedOf(it), pendingApprovalQty(it), it.claimedQty, Math.round(netClaimable(it)), st, dep];
+  };
+  proj().boqItems.filter(it => !isChild(it)).forEach(t => {
+    if (isParent(t)) {
+      const kids = childrenOf(t.id);
+      const g = groupAgg(t);
+      rows.push([t.id, t.div + ' ' + (t.divAr||''), t.desc, g.commonUnit || t.unit,
+        g.commonQty !== null ? g.commonQty : kids.reduce((s,k) => s + (k.totalQty||0), 0),
+        g.rateSum, g.amt,
+        kids.reduce((s,k) => s + (k.executedQty||0), 0), kids.reduce((s,k) => s + approvedOf(k), 0),
+        kids.reduce((s,k) => s + pendingApprovalQty(k), 0), kids.reduce((s,k) => s + (k.claimedQty||0), 0),
+        Math.round(g.net), T('بند رئيسي'), '—']);
+      kids.forEach(k => rows.push(rowFor(k, true)));
+    } else {
+      rows.push(rowFor(t, false));
+    }
   });
   dlCSV('BOQ-' + todayStr() + '.csv', rows);
 }
@@ -6776,7 +6871,7 @@ Object.assign(I18N_EN, {
   'صافي للمطالبة':'Net claimable',
   '🧾 إعداد مستخلص جديد':'🧾 Prepare New Claim',
   '📚 المستخلصات السابقة':'📚 Previous Claims',
-  '💡 الكميات المقترحة = المنفذ − المرفوع سابقاً (المستخلص الجاري). عدّل كمية المطالبة لكل بند إذا حاب، ثم احفظ المستخلص ليتم تسجيله وخصمه من الرصيد القابل للرفع.':'💡 Suggested quantities = Executed − Previously claimed (current claim). Adjust each item\'s claim quantity if you like, then save the claim to record it and deduct it from the claimable balance.',
+  '💡 الكمية المقترحة = المعتمد من الاستشاري. يمكن رفع كمية المطالبة فوق المعتمد بلا سقف — الزيادة تظهر في عمود «الكمية المعلّقة» ولا تغيّر الكمية المعتمدة نفسها. لا يمكن أن تقل كمية المطالبة عن المعتمد.':'💡 Suggested quantity = consultant-approved quantity. You can raise the claim quantity above approved with no upper limit — the excess appears in the "Pending Qty" column and does not change the approved quantity itself. The claim quantity cannot be less than approved.',
   '✅ تحديد كل الجاهز':'✅ Select All Ready',
   'إلغاء التحديد':'Clear Selection',
   'مرفوع سابقاً':'Previously claimed',
@@ -6784,6 +6879,9 @@ Object.assign(I18N_EN, {
   'قيمة المطالبة':'Claim value',
   '💰 ملخص المستخلص':'💰 Claim Summary',
   'تاريخ المستخلص':'Claim date',
+  'رقم المستخلص':'Claim number',
+  'الكمية المعلّقة':'Pending Qty',
+  'تلقائي إن تُرك فارغاً':'Automatic if left blank',
   'محتجز ضمان %':'Retention %',
   'استرداد دفعة مقدمة %':'Advance recovery %',
   '💾 حفظ ورفع المستخلص':'💾 Save & Submit Claim',

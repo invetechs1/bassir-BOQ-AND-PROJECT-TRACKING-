@@ -448,7 +448,7 @@
 
     <!-- عرض: مستخلص جديد -->
     <div id="inv-view-new">
-    <div class="alert info" data-i18n="💡 الكمية المقترحة = المعتمد من الاستشاري. يمكن رفع كمية المطالبة فوق المعتمد بلا سقف — الزيادة تظهر في عمود «الكمية المعلّقة» ولا تغيّر الكمية المعتمدة نفسها. لا يمكن أن تقل كمية المطالبة عن المعتمد.">💡 الكمية المقترحة = المعتمد من الاستشاري. يمكن رفع كمية المطالبة فوق المعتمد بلا سقف — الزيادة تظهر في عمود «الكمية المعلّقة» ولا تغيّر الكمية المعتمدة نفسها. لا يمكن أن تقل كمية المطالبة عن المعتمد.</div>
+    <div class="alert info" data-i18n="💡 الكمية المقترحة = المعتمد − المرفوع سابقاً (المتاح للمطالبة الآن). كمية المطالبة يجب أن تكون أكبر من صفر ولا تتجاوز هذا المتاح. عمود «الكمية المعلّقة» يعرض المتاح لكل بند، ويتحدّث تلقائياً بعد حفظ المستخلص (= المعتمد − المرفوع بعد الحفظ).">💡 الكمية المقترحة = المعتمد − المرفوع سابقاً (المتاح للمطالبة الآن). كمية المطالبة يجب أن تكون أكبر من صفر ولا تتجاوز هذا المتاح. عمود «الكمية المعلّقة» يعرض المتاح لكل بند، ويتحدّث تلقائياً بعد حفظ المستخلص (= المعتمد − المرفوع بعد الحفظ).</div>
     <div class="two-col">
       <div>
         <div class="filter-bar">
@@ -3876,9 +3876,8 @@ function renderBuilder(){
   const list = claimableItems();
   $('mb-tbody').innerHTML = list.map(it => {
     const sel = mbSel[it.id] !== undefined;
-    const floor = approvedOf(it);
-    const qty = sel ? mbSel[it.id] : floor;
-    const pending = Math.max(0, round2(qty - floor)); // زيادة كمية المطالبة فوق المعتمد = بانتظار اعتماد الاستشاري، ولا تُغيّر المعتمد نفسه
+    const avail = availQty(it); // المتاح للمطالبة الآن = المعتمد − المرفوع سابقاً؛ سقف كمية المطالبة ومصدر «الكمية المعلّقة» معاً
+    const qty = sel ? mbSel[it.id] : avail;
     return '<tr style="' + (sel?'background:var(--green-dim)':'') + '">' +
       '<td><input type="checkbox" class="item-check"' + (sel?' checked':'') + ' onchange="mbToggle(\'' + esc(it.id) + '\', this.checked)"></td>' +
       '<td><span class="item-no">' + esc(it.id) + '</span></td>' +
@@ -3886,10 +3885,10 @@ function renderBuilder(){
       '<td>' + esc(it.unit) + '</td>' +
       '<td class="amount muted">' + fmtRate(it.unitRate) + '</td>' +
       '<td class="amount" style="color:var(--green)">' + fmtQ(approvedOf(it)) + '</td>' +
-      '<td class="amount' + (pending>0.001?'':' muted') + '" style="' + (pending>0.001?'color:var(--orange)':'') + '">' + (pending>0.001 ? fmtQ(pending) : '—') + '</td>' +
+      '<td class="amount" style="color:var(--orange)">' + fmtQ(avail) + '</td>' +
       '<td class="amount muted">' + fmtQ(it.claimedQty) + '</td>' +
-      // لا سقف أعلى للكمية — بند مكتمل التنفيذ والاعتماد (منفذ = معتمد = الكمية الكلية) يجب أن يبقى قابلاً لرفع كمية مطالبة أعلى (بانتظار اعتماد إضافي)
-      '<td><input type="number" class="qty-input" min="' + floor + '" step="0.1" value="' + (Math.round(qty*100)/100) + '" onchange="mbQty(\'' + esc(it.id) + '\', this.value)" data-tip="' + T('التعديل هنا يُحدّد البند تلقائياً للمستخلص — لا يمكن أن تقل عن الكمية المعتمدة') + ' (' + fmtQ(floor) + ')">' + '</td>' +
+      // كمية المطالبة: أكبر من صفر ولا تتجاوز المتاح (المعتمد − المرفوع سابقاً) — يُفرض في mbQty() عند التغيير
+      '<td><input type="number" class="qty-input" min="0.01" max="' + avail + '" step="0.1" value="' + (Math.round(qty*100)/100) + '" onchange="mbQty(\'' + esc(it.id) + '\', this.value)" data-tip="' + T('أكبر من صفر ولا تتجاوز الكمية المتاحة للمطالبة') + ' (' + fmtQ(avail) + ')">' + '</td>' +
       '<td class="amount claimable">' + (sel ? fmtN(qty * it.unitRate) : '—') + '</td>' +
       '</tr>';
   }).join('') || '<tr><td colspan="10"><div class="empty-state"><p>' + T('لا توجد كميات معتمدة غير مرفوعة — اعتمد الكميات من الاستشاري أولاً (بمرفق الاستلام)') + '</p></div></td></tr>';
@@ -3897,22 +3896,26 @@ function renderBuilder(){
 }
 Object.assign(I18N_EN, {
   'لا توجد كميات معتمدة غير مرفوعة — اعتمد الكميات من الاستشاري أولاً (بمرفق الاستلام)':'No approved quantities left unclaimed — get consultant approval first (with a receipt attachment)',
-  'لا يمكن أن تقل عن الكمية المعتمدة':'Cannot be less than the approved quantity',
-  'التعديل هنا يُحدّد البند تلقائياً للمستخلص — لا يمكن أن تقل عن الكمية المعتمدة':'Editing this selects the item for the claim automatically — cannot be less than the approved quantity'
+  'أكبر من صفر ولا تتجاوز الكمية المتاحة للمطالبة':'Greater than zero and cannot exceed the quantity available to claim',
+  'كمية المطالبة يجب أن تكون أكبر من صفر':'The claim quantity must be greater than zero',
+  'كمية المطالبة لا يمكن أن تتجاوز الكمية المتاحة للمطالبة (':'The claim quantity cannot exceed the quantity available to claim ('
 });
 
 function mbToggle(id, on){
   const it = getItem(id);
-  if (on) mbSel[id] = approvedOf(it); else delete mbSel[id];
+  if (on) mbSel[id] = availQty(it); else delete mbSel[id];
   renderBuilder(); mbSaveDraft();
 }
 function mbQty(id, val){
   const it = getItem(id);
-  // بلا سقف أعلى — أي زيادة فوق المعتمد تُحسب كمية معلّقة (Pending)، حتى لو كان البند مكتمل التنفيذ 100% أصلاً
-  mbSel[id] = Math.round(Math.max(approvedOf(it), Number(val) || 0) * 100) / 100;
+  const avail = availQty(it);
+  const v = Math.round((Number(val) || 0) * 100) / 100;
+  if (v <= 0) { alert(T('كمية المطالبة يجب أن تكون أكبر من صفر')); renderBuilder(); return; }
+  if (v > avail + 0.001) { alert(T('كمية المطالبة لا يمكن أن تتجاوز الكمية المتاحة للمطالبة (') + fmtQ(avail) + ')'); }
+  mbSel[id] = Math.min(avail, v);
   renderBuilder(); mbSaveDraft();
 }
-function mbSelectAll(){ claimableItems().forEach(it => { mbSel[it.id] = approvedOf(it); }); renderBuilder(); mbSaveDraft(); }
+function mbSelectAll(){ claimableItems().forEach(it => { mbSel[it.id] = availQty(it); }); renderBuilder(); mbSaveDraft(); }
 function mbClear(){ mbSel = {}; renderBuilder(); mbClearDraft(); }
 function mbAddItem(id){ const it = getItem(id); if (it && availQty(it) > 0.01) { mbSel[id] = availQty(it); } switchTab('invoice'); switchInvView('new'); renderBuilder(); mbSaveDraft(); }
 
@@ -6871,7 +6874,7 @@ Object.assign(I18N_EN, {
   'صافي للمطالبة':'Net claimable',
   '🧾 إعداد مستخلص جديد':'🧾 Prepare New Claim',
   '📚 المستخلصات السابقة':'📚 Previous Claims',
-  '💡 الكمية المقترحة = المعتمد من الاستشاري. يمكن رفع كمية المطالبة فوق المعتمد بلا سقف — الزيادة تظهر في عمود «الكمية المعلّقة» ولا تغيّر الكمية المعتمدة نفسها. لا يمكن أن تقل كمية المطالبة عن المعتمد.':'💡 Suggested quantity = consultant-approved quantity. You can raise the claim quantity above approved with no upper limit — the excess appears in the "Pending Qty" column and does not change the approved quantity itself. The claim quantity cannot be less than approved.',
+  '💡 الكمية المقترحة = المعتمد − المرفوع سابقاً (المتاح للمطالبة الآن). كمية المطالبة يجب أن تكون أكبر من صفر ولا تتجاوز هذا المتاح. عمود «الكمية المعلّقة» يعرض المتاح لكل بند، ويتحدّث تلقائياً بعد حفظ المستخلص (= المعتمد − المرفوع بعد الحفظ).':'💡 Suggested quantity = Approved − Previously claimed (the quantity available to claim now). The claim quantity must be greater than zero and cannot exceed this available amount. The "Pending Qty" column shows the available amount for each item, and updates automatically after the claim is saved (= Approved − Claimed after saving).',
   '✅ تحديد كل الجاهز':'✅ Select All Ready',
   'إلغاء التحديد':'Clear Selection',
   'مرفوع سابقاً':'Previously claimed',

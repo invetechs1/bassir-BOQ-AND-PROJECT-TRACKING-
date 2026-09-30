@@ -1122,6 +1122,25 @@
   <div class="modal wide">
     <div class="modal-title"><span id="sub-detail-title" data-i18n="صفحة مقاول الباطن">صفحة مقاول الباطن</span><span class="modal-close" onclick="closeModal('sub-detail-modal')">✕</span></div>
     <div class="alert info" style="font-size:12px" data-i18n="الكمية المؤهلة = ما نفّذه هذا المقاول (من يومياته) بحدود ما اعتمده الاستشاري. عمّد كمية كل بند (لا تتجاوز المتاح) ثم ابنِ المستخلص.">الكمية المؤهلة = ما نفّذه هذا المقاول (من يومياته) بحدود ما اعتمده الاستشاري. عمّد كمية كل بند (لا تتجاوز المتاح) ثم ابنِ المستخلص.</div>
+
+    <!-- الدفعات المقدمة: يضيفها مدير المشروع أو الأدمن، ويعتمدها/يرفضها الأدمن فقط -->
+    <div class="divider"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+      <div class="card-title" style="font-size:13px;margin:0" data-i18n="💵 الدفعات المقدمة">💵 الدفعات المقدمة</div>
+      <button class="btn btn-amber" id="sd-adv-add-btn" onclick="openSdAdvForm()" data-i18n="+ إضافة دفعة مقدمة">+ إضافة دفعة مقدمة</button>
+    </div>
+    <div id="sd-adv-form" class="f-grid" style="display:none;grid-template-columns:2fr 1fr 1fr auto;align-items:end;margin-top:8px">
+      <div class="f-field"><label data-i18n="الوصف">الوصف</label><input type="text" id="sd-adv-desc" placeholder="مثال: دفعة مقدمة لشراء مواد"></div>
+      <div class="f-field"><label data-i18n="الكمية">الكمية</label><input type="number" id="sd-adv-qty" min="0" step="any"></div>
+      <div class="f-field"><label data-i18n="المبلغ (ر.س)">المبلغ (ر.س)</label><input type="number" id="sd-adv-amount" min="0" step="0.01"></div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-green" onclick="saveSdAdvance()" data-i18n="حفظ">حفظ</button>
+        <button class="btn btn-ghost" onclick="closeSdAdvForm()" data-i18n="إلغاء">إلغاء</button>
+      </div>
+    </div>
+    <div id="sd-adv-table" style="margin-top:8px"></div>
+    <div class="divider"></div>
+
     <div class="table-wrap">
       <table>
         <thead><tr><th data-i18n="البند">البند</th><th data-i18n="الوحدة">الوحدة</th><th data-i18n="سعر المقاول">سعر المقاول</th><th data-i18n="نفّذه">نفّذه</th><th data-i18n="مؤهل (معتمد)">مؤهل (معتمد)</th><th data-i18n="سبق تعميده">سبق تعميده</th><th data-i18n="متاح للتعميد">متاح للتعميد</th><th data-i18n="تعميد الآن">تعميد الآن</th><th data-i18n="القيمة">القيمة</th></tr></thead>
@@ -3244,6 +3263,7 @@ Object.assign(I18N_EN, {
   'أدخل الكمية المنفذة (من أصل':'Enter the executed quantity (out of',
   '— العميل يحاسب بالكميات':'— client accounts by quantities',
   '— لا تقل عن المعتمد من الاستشاري':'— cannot be less than the consultant-approved quantity',
+  ') — لا تقل عن المعتمد من الاستشاري':') — cannot be less than the consultant-approved quantity',
   'لا يمكن أن تقل الكمية المنفذة عن الكمية المعتمدة من الاستشاري (':'The executed quantity cannot be less than the consultant-approved quantity (',
   ') — التراجع عن كمية معتمدة يتطلب إجراءً منفصلاً.':') — reducing an approved quantity requires a separate process.'
 });
@@ -3800,6 +3820,10 @@ Object.assign(I18N_EN, {
   'أكمل رقم ووصف كل جزء':'Fill in the number and description for every part',
   'سعر كل جزء يجب أن يكون أكبر من صفر':'Each part\'s price must be greater than zero',
   'مكرر أو مستخدم في بند آخر':'is duplicated or already used by another item',
+  'هذا آخر جزء متبقٍ من تقسيم سعر البند ':'This is the last remaining part of the split of item ',
+  '. حذفه يلغي التقسيم ويُبقي البند ':'. Deleting it cancels the split and keeps item ',
+  ' بنداً عادياً بكامل هذه القيمة. متابعة؟':' as a normal item with this full value. Continue?',
+  'هذا آخر جزء متبقٍ من تقسيم السعر. حذفه يلغي التقسيم ويعيد البند الرئيسي ':'This is the last remaining part of the split. Deleting it cancels the split and turns main item ',
   'مجموع أسعار الأجزاء يجب أن يساوي سعر وحدة البند الأصلي بالضبط':'The parts\' prices must add up exactly to the original item\'s unit price',
   'تم تقسيم البند إلى':'The item was split into',
   'أجزاء.':'parts.',
@@ -5898,7 +5922,10 @@ function openSubDetail(id){
   ['sd-materials','sd-utilities','sd-performance','sd-other'].forEach(k => $(k).value = 0);
   $('sd-date').value = todayStr();
   $('sd-files-list').innerHTML = '';
+  $('sd-adv-add-btn').style.display = (state.me.role === 'pm' || isAdmin()) ? '' : 'none';
+  closeSdAdvForm();
   renderSubDetail();
+  renderSdAdvances();
   $('sub-detail-modal').classList.add('open');
 }
 function renderSubDetail(){
@@ -5940,6 +5967,87 @@ function recordSubAlert(subId, itemId, attempted, max){
   proj().subAlerts.push({ id: nextSeq(), subId, subName: s?s.name:'', itemId, attempted: round2(attempted), max: round2(max), by: currentUser().name, at: new Date().toISOString().slice(0,16).replace('T',' ') });
   save();
 }
+
+// ============================================================
+//  الدفعات المقدمة لمقاول الباطن (Advance Payments)
+//  الإضافة: مدير المشروع أو الأدمن فقط · الاعتماد/الرفض: الأدمن فقط · تبدأ بحالة "بانتظار الاعتماد"
+// ============================================================
+const ADV_STATUS = {
+  pending:  { label: '⏳ بانتظار الاعتماد', color: 'amber' },
+  approved: { label: '✅ معتمدة', color: 'green' },
+  rejected: { label: '↩ مرفوضة', color: 'red' }
+};
+const canAddSubAdvance = () => state.me.role === 'pm' || isAdmin();
+function openSdAdvForm(){
+  if (!canAddSubAdvance()) return;
+  $('sd-adv-desc').value = ''; $('sd-adv-qty').value = ''; $('sd-adv-amount').value = '';
+  $('sd-adv-form').style.display = '';
+  $('sd-adv-desc').focus();
+}
+function closeSdAdvForm(){
+  $('sd-adv-form').style.display = 'none';
+}
+function saveSdAdvance(){
+  if (!canAddSubAdvance()) return;
+  const description = $('sd-adv-desc').value.trim();
+  const quantity = Number($('sd-adv-qty').value) || 0;
+  const amount = Number($('sd-adv-amount').value) || 0;
+  if (!description) { alert(T('اكتب وصف الدفعة المقدمة')); return; }
+  if (amount <= 0) { alert(T('اكتب مبلغ الدفعة المقدمة')); return; }
+  proj().subAdvances = proj().subAdvances || [];
+  proj().subAdvances.push({
+    id: nextSeq(), subId: sdSubId, description, quantity: round2(quantity), amount: round2(amount),
+    status: 'pending', date: todayStr(), by: currentUser().name
+  });
+  closeSdAdvForm();
+  save(); renderSdAdvances();
+}
+function decideSdAdvance(id, status){
+  if (!isAdmin()) return;
+  const a = (proj().subAdvances||[]).find(x => x.id === id);
+  if (!a || a.status !== 'pending') return;
+  a.status = status; a.decidedBy = currentUser().name; a.decidedAt = new Date().toISOString().slice(0,16).replace('T',' ');
+  save(); renderSdAdvances();
+}
+function deleteSdAdvance(id){
+  if (!isAdmin()) return;
+  if (!confirm(T('حذف هذه الدفعة المقدمة نهائياً؟'))) return;
+  proj().subAdvances = (proj().subAdvances||[]).filter(a => a.id !== id);
+  save(); renderSdAdvances();
+}
+function renderSdAdvances(){
+  const box = $('sd-adv-table'); if (!box) return;
+  const list = (proj().subAdvances||[]).filter(a => a.subId === sdSubId).sort((a,b) => b.id - a.id);
+  if (!list.length) { box.innerHTML = '<div class="empty-state" style="padding:10px"><p>' + T('لا توجد دفعات مقدمة مسجّلة لهذا المقاول') + '</p></div>'; return; }
+  box.innerHTML = '<div class="table-wrap"><table><thead><tr>' +
+    '<th>' + T('الوصف') + '</th><th>' + T('الكمية') + '</th><th>' + T('المبلغ (ر.س)') + '</th><th>' + T('الحالة') + '</th><th>' + T('بواسطة') + '</th><th>' + T('إجراء') + '</th>' +
+    '</tr></thead><tbody>' + list.map(a => {
+      const st = ADV_STATUS[a.status] || ADV_STATUS.pending;
+      const actions = isAdmin()
+        ? ((a.status === 'pending' ? '<button class="mini-btn green" onclick="decideSdAdvance(' + a.id + ',\'approved\')" data-tip="' + T('اعتماد') + '">✅</button> <button class="mini-btn red" onclick="decideSdAdvance(' + a.id + ',\'rejected\')" data-tip="' + T('رفض') + '">↩</button> ' : '') +
+           '<button class="mini-btn red" onclick="deleteSdAdvance(' + a.id + ')" data-tip="' + T('حذف') + '">🗑</button>')
+        : '<span style="color:var(--text3);font-size:11px">—</span>';
+      return '<tr>' +
+        '<td>' + esc(a.description) + '<br><span style="font-size:10px;color:var(--text3)">' + esc(a.date||'') + ' · ' + esc(a.by||'') + '</span></td>' +
+        '<td class="amount">' + (a.quantity ? fmtQ(a.quantity) : '<span style="color:var(--text3)">—</span>') + '</td>' +
+        '<td class="amount">' + money(a.amount) + '</td>' +
+        '<td><span class="pill ' + st.color + '" style="font-size:10px">' + T(st.label) + '</span>' + (a.status !== 'pending' && a.decidedBy ? '<br><span style="font-size:10px;color:var(--text3)">' + esc(a.decidedBy) + '</span>' : '') + '</td>' +
+        '<td style="font-size:11px;color:var(--text3)">' + esc(a.by||'—') + '</td>' +
+        '<td style="white-space:nowrap">' + actions + '</td>' +
+        '</tr>';
+    }).join('') + '</tbody></table></div>';
+}
+Object.assign(I18N_EN, {
+  '💵 الدفعات المقدمة':'💵 Advance Payments',
+  '+ إضافة دفعة مقدمة':'+ Add advance payment',
+  'اكتب وصف الدفعة المقدمة':'Enter a description for the advance payment',
+  'اكتب مبلغ الدفعة المقدمة':'Enter an amount for the advance payment',
+  'لا توجد دفعات مقدمة مسجّلة لهذا المقاول':'No advance payments recorded for this subcontractor yet',
+  'حذف هذه الدفعة المقدمة نهائياً؟':'Delete this advance payment permanently?',
+  '✅ معتمدة':'✅ Approved',
+  '↩ مرفوضة':'↩ Rejected',
+  'حفظ':'Save'
+});
 function subMusComputeDraft(){
   const s = getSub(sdSubId); const lines = [];
   Object.entries(sdSel).forEach(([id, q]) => {

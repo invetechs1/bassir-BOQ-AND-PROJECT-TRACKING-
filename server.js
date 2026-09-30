@@ -654,6 +654,37 @@ app.put('/api/projects/:id', auth, (req, res) => {
     }
   }
 
+  // الدفعات المقدمة لمقاول الباطن: الإضافة لمدير المشروع أو الأدمن فقط، والاعتماد/الرفض/الحذف للأدمن فقط،
+  // وبيانات الدفعة (الوصف/الكمية/المبلغ/البند/التاريخ/مُنشئها) لا تتغيّر بعد إنشائها مهما كانت الصلاحية —
+  // يُفرض هنا حتى لو تجاوز الواجهة (طلب مباشر للـ API)
+  {
+    const storedAdv = new Map((stored.subAdvances || []).map(a => [a.id, a]));
+    const incomingAdv = Array.isArray(data.subAdvances) ? data.subAdvances : [];
+    const incomingAdvIds = new Set(incomingAdv.map(a => a.id));
+    for (const sid of storedAdv.keys()) {
+      if (!incomingAdvIds.has(sid) && !isAdmin(req.user)) return res.status(403).json({ error: 'sub_advance_delete_admin_only' });
+    }
+    const coreOf = a => JSON.stringify([a.subId, a.description, Number(a.quantity) || 0, Number(a.amount) || 0, a.date, a.by]);
+    for (const a of incomingAdv) {
+      const s = storedAdv.get(a.id);
+      if (s) {
+        if (coreOf(s) !== coreOf(a)) return res.status(403).json({ error: 'sub_advance_immutable_fields' });
+        if (s.status !== a.status || (s.decidedBy || null) !== (a.decidedBy || null) || (s.decidedAt || null) !== (a.decidedAt || null)) {
+          if (!isAdmin(req.user)) return res.status(403).json({ error: 'sub_advance_decide_admin_only' });
+          if (s.status !== 'pending') return res.status(403).json({ error: 'sub_advance_already_decided' });
+          if (!['approved', 'rejected'].includes(a.status)) return res.status(403).json({ error: 'sub_advance_invalid_status' });
+        }
+      } else {
+        if (req.user.role !== 'pm' && !isAdmin(req.user)) return res.status(403).json({ error: 'sub_advance_add_forbidden' });
+        if (a.status !== 'pending' || a.decidedBy || a.decidedAt) return res.status(403).json({ error: 'sub_advance_must_start_pending' });
+        if (!a.description || !String(a.description).trim()) return res.status(400).json({ error: 'sub_advance_description_required' });
+        if (!(Number(a.amount) > 0)) return res.status(400).json({ error: 'sub_advance_amount_required' });
+        if (Number(a.quantity) < 0) return res.status(400).json({ error: 'sub_advance_quantity_invalid' });
+        if (!(data.subcontractors || []).some(sc => sc.id === a.subId)) return res.status(400).json({ error: 'sub_advance_unknown_subcontractor' });
+      }
+    }
+  }
+
   const p = { ...data, managerUserId, companyId, id, version: stored.version + 1 };
   saveProject(p);
   res.json({ version: p.version });

@@ -5943,11 +5943,24 @@ function renderSubDetail(){
       '<td class="amount" style="color:var(--blue)">' + fmtQ(elig) + '</td>' +
       '<td class="amount muted">' + fmtQ(claimed) + '</td>' +
       '<td class="amount ' + (avail>0.01?'claimable':'muted') + '">' + fmtQ(avail) + '</td>' +
-      '<td><input type="number" class="qty-input" min="0" max="' + avail + '" step="any" value="' + val + '" placeholder="0" oninput="sdSetQty(\'' + esc(id) + '\', this.value)" style="width:90px"></td>' +
-      '<td class="amount">' + fmtN(round2((Number(val)||0)*rate)) + '</td>' +
+      // oninput: حدّ أحمر فوري فقط (بلا نص، بلا إعادة رسم) أثناء الكتابة — onchange: الفرض الفعلي (قصّ + alert + تسجيل) عند الخروج من الحقل فقط.
+      // رسالة الخطأ تظهر في نافذة الـ alert فقط عند الخروج من الحقل، وليس أثناء الكتابة، حتى لا تنقطع الكتابة ولا يتحرك تخطيط الجدول.
+      '<td><input type="number" class="qty-input" id="sd-qty-' + esc(id) + '" min="0" max="' + avail + '" step="any" value="' + val + '" placeholder="0" oninput="sdLiveWarn(\'' + esc(id) + '\', this.value, ' + avail + ')" onchange="sdSetQty(\'' + esc(id) + '\', this.value)" style="width:90px"></td>' +
+      '<td class="amount" id="sd-val-' + esc(id) + '">' + fmtN(round2((Number(val)||0)*rate)) + '</td>' +
       '</tr>';
   }).join('') || '<tr><td colspan="9"><div class="empty-state"><p>' + T('لا بنود لهذا المقاول — أضف بنوده وأسعاره من «تعديل»') + '</p></div></td></tr>';
   renderSubMusTotals();
+}
+// تحذير فوري أثناء الكتابة (بلا إعادة رسم ولا alert) — لون الحقل + رسالة صغيرة تحت الحقل + تحديث عمود القيمة حياً.
+// الفرض الفعلي (القصّ عند المتاح + alert + تسجيل الإنذار) يبقى في sdSetQty عند الخروج من الحقل فقط.
+function sdLiveWarn(id, val, avail){
+  const s = getSub(sdSubId); if (!s) return;
+  const rate = subRate(s, id);
+  const q = Number(val) || 0;
+  const inputEl = $('sd-qty-' + id), valEl = $('sd-val-' + id);
+  // حدّ أحمر فوري فقط — لا رسالة نصية هنا؛ رسالة الخطأ الكاملة تظهر في alert عند الخروج من الحقل (sdSetQty) فقط
+  if (inputEl) inputEl.style.borderColor = q > avail + 0.001 ? 'var(--red)' : '';
+  if (valEl) valEl.textContent = fmtN(round2(q * rate)); // القيمة حسب ما هو مكتوب حالياً — القصّ الفعلي يحدث عند الخروج من الحقل (sdSetQty)
 }
 function sdSetQty(id, val){
   const s = getSub(sdSubId); const avail = subAvailQty(sdSubId, id);
@@ -5955,7 +5968,7 @@ function sdSetQty(id, val){
   if (q > avail + 0.001) {
     // منع التلاعب: تجاوز المتاح (المنفذ المعتمد) — إنذار + تسجيل
     recordSubAlert(sdSubId, id, q, avail);
-    alert(T('⛔ إنذار: لا يمكن تعميد كمية (') + fmtQ(q) + T(') أكبر من المتاح فعلاً (') + fmtQ(avail) + T(') لهذا المقاول في البند ') + id + T('. تم إبلاغ الإدارة.'));
+    alert(T('⛔ الكمية المدخلة (') + fmtQ(q) + T(') أكبر من المتاح للتعميد على البند ') + id + ' (' + fmtQ(avail) + T('). تم تصحيحها تلقائياً إلى ') + fmtQ(avail) + T(' — وسُجِّلت هذه المحاولة.'));
     q = avail;
   }
   if (q <= 0) delete sdSel[id]; else sdSel[id] = q;
@@ -6182,10 +6195,10 @@ function deleteSubMus(id){
 Object.assign(I18N_EN, {
   'تعميد الكميات وبناء المستخلص':'Allocate quantities and build a claim',
   'لا بنود لهذا المقاول — أضف بنوده وأسعاره من «تعديل»':'No items for this subcontractor — add their items and rates from "Edit"',
-  '⛔ إنذار: لا يمكن تعميد كمية (':'⛔ Alert: cannot allocate a quantity (',
-  ') أكبر من المتاح فعلاً (':') greater than what is actually available (',
-  ') لهذا المقاول في البند ':') for this subcontractor on item ',
-  '. تم إبلاغ الإدارة.':'. Admin has been notified.',
+  '⛔ الكمية المدخلة (':'⛔ The quantity entered (',
+  ') أكبر من المتاح للتعميد على البند ':') is more than what\'s available to certify for item ',
+  '). تم تصحيحها تلقائياً إلى ':'). It has been corrected to ',
+  ' — وسُجِّلت هذه المحاولة.':' — this attempt has been logged.',
   'حجز جودة':'Quality retention',
   'مواد':'Materials',
   'كهرباء وماء':'Electricity & water',

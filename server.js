@@ -31,6 +31,7 @@ const PRICEDB_DIR = path.join(DATA_DIR, 'pricedb');
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
 const COMPANIES_FILE = path.join(DATA_DIR, 'companies.json');
 const INTEGRATIONS_FILE = path.join(DATA_DIR, 'integrations.json');
+const WHATSAPP_FILE = path.join(DATA_DIR, 'whatsapp.json');
 const META_FILE = path.join(DATA_DIR, 'meta.json');
 const SECRET_FILE = path.join(DATA_DIR, '.jwt-secret');
 
@@ -84,6 +85,74 @@ function setIntegrationStatus(companyId, status) {
   all[companyId].bassir.lastAt = new Date().toISOString();
   saveIntegrations(all);
 }
+
+// ---------- تذكير واتساب يومي لمدراء المشاريع (بوابة UltraMsg برقم الشركة) ----------
+function loadWhatsapp() {
+  return readJSON(WHATSAPP_FILE, { enabled: false, provider: 'ultramsg', base: 'https://api.ultramsg.com', instanceId: '', token: '', senderNumber: '0558338548', hour: 15, lastRunDay: '', lastStatus: '', log: [] });
+}
+function saveWhatsapp(o) { writeJSON(WHATSAPP_FILE, o); }
+function redactWhatsapp(c) {
+  return { enabled: !!c.enabled, provider: c.provider || 'ultramsg', base: c.base || 'https://api.ultramsg.com', instanceId: c.instanceId || '', tokenSet: !!c.token, senderNumber: c.senderNumber || '', hour: (c.hour != null ? c.hour : 15), lastStatus: c.lastStatus || '', lastRunDay: c.lastRunDay || '', log: (c.log || []).slice(-30) };
+}
+// توحيد الرقم لصيغة دولية بدون + (السعودية 966 افتراضياً)
+function normalizePhone(p) {
+  let d = String(p || '').replace(/[^0-9]/g, '');
+  if (!d) return '';
+  if (d.startsWith('00')) d = d.slice(2);
+  if (d.startsWith('0')) d = '966' + d.slice(1);
+  else if (!d.startsWith('966') && d.length <= 9) d = '966' + d;
+  return d;
+}
+function reminderBody(projectName) {
+  return 'تذكير 📋\nهل قمت برفع وتحديث الإنتاجية اليومية لمشروعك' + (projectName ? '؛ ' + projectName : '') + '؟\n\nمع تحيات الإدارة التقنية لشركة بصير — ذراع شركة عزوم التقني';
+}
+async function sendWhatsappMessage(cfg, to, body) {
+  const num = normalizePhone(to);
+  if (!num) return { ok: false, error: 'رقم غير صالح', to };
+  if (!cfg.instanceId || !cfg.token) return { ok: false, error: 'إعداد UltraMsg ناقص', to: num };
+  const url = (cfg.base || 'https://api.ultramsg.com').replace(/\/+$/, '') + '/' + encodeURIComponent(cfg.instanceId) + '/messages/chat';
+  const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 15000);
+  try {
+    const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: cfg.token, to: num, body }), signal: ctrl.signal });
+    clearTimeout(t);
+    let d = {}; try { d = await r.json(); } catch (e) { /* */ }
+    const ok = r.ok && (d.sent === true || d.sent === 'true' || d.message === 'ok' || (d.id && !d.error));
+    return { ok: !!ok, status: r.status, resp: d, to: num };
+  } catch (e) { clearTimeout(t); return { ok: false, error: (e && e.message) || 'خطأ', to: num }; }
+}
+// إرسال التذكير لكل مدير مشروع لديه رقم
+async function runDailyReminders(reason) {
+  const cfg = loadWhatsapp();
+  if (!cfg.enabled) return { ok: false, error: 'التذكير غير مُفعّل' };
+  if (!cfg.instanceId || !cfg.token) return { ok: false, error: 'إعداد UltraMsg ناقص' };
+  const byId = new Map(loadUsers().map(u => [u.id, u]));
+  const results = [];
+  for (const p of listProjects()) {
+    const mgr = p.managerUserId ? byId.get(p.managerUserId) : null;
+    if (!mgr || !mgr.phone) continue;
+    const r = await sendWhatsappMessage(cfg, mgr.phone, reminderBody(p.info && p.info.name));
+    results.push({ project: (p.info && p.info.name) || '', name: mgr.name, to: r.to, ok: r.ok, status: r.status || null, error: r.error || null, at: new Date().toISOString() });
+  }
+  const fresh = loadWhatsapp();
+  fresh.lastStatus = reason + ': ' + results.filter(x => x.ok).length + '/' + results.length + ' أُرسلت @ ' + new Date().toISOString();
+  fresh.log = [...(fresh.log || []), ...results].slice(-100);
+  saveWhatsapp(fresh);
+  return { ok: true, sent: results.filter(x => x.ok).length, total: results.length, results };
+}
+// المجدوِل: كل دقيقة يفحص توقيت الرياض (UTC+3، بلا توقيت صيفي) ويُرسل مرة واحدة يومياً عند الساعة المحددة
+setInterval(() => {
+  try {
+    const cfg = loadWhatsapp();
+    if (!cfg.enabled) return;
+    const hour = cfg.hour != null ? Number(cfg.hour) : 15;
+    const riyadh = new Date(Date.now() + 3 * 3600 * 1000);
+    const day = riyadh.toISOString().slice(0, 10);
+    if (riyadh.getUTCHours() === hour && cfg.lastRunDay !== day) {
+      const fresh = loadWhatsapp(); fresh.lastRunDay = day; saveWhatsapp(fresh); // حجز اليوم أولاً لمنع التكرار
+      runDailyReminders('المجدول اليومي');
+    }
+  } catch (e) { /* لا يوقف الخادم */ }
+}, 60 * 1000);
 
 // إرسال المستخلص المُنشأ إلى Bassir ERP (إن كان التكامل مفعّلاً). لا يوقف حفظ المستخلص عند الفشل.
 async function pushMustakhlasToBassir(companyId, project, mus) {
@@ -174,7 +243,7 @@ function listProjects() {
 function loadProject(id) { return readJSON(projectFile(id), null); }
 function saveProject(p) { writeJSON(projectFile(p.id), p); }
 
-const sanitizeUser = u => ({ id: u.id, username: u.username, name: u.name, role: u.role, companyId: u.companyId ?? null });
+const sanitizeUser = u => ({ id: u.id, username: u.username, name: u.name, role: u.role, companyId: u.companyId ?? null, phone: u.phone || '' });
 
 // ---------- قاعدة بيانات الأسعار والعروض (لكل شركة) ----------
 function pricedbFile(companyId) { return path.join(PRICEDB_DIR, companyId + '.json'); }
@@ -601,7 +670,7 @@ app.post('/api/users', auth, (req, res) => {
   }
   const users = loadUsers();
   if (users.some(u => u.username === un)) return res.status(400).json({ error: 'اسم المستخدم موجود مسبقاً' });
-  const u = { id: nextId(), username: un, name: String(name).trim(), role: newRole, companyId: newCompanyId, hash: bcrypt.hashSync(String(password), 10) };
+  const u = { id: nextId(), username: un, name: String(name).trim(), role: newRole, companyId: newCompanyId, phone: String((req.body && req.body.phone) || '').trim(), hash: bcrypt.hashSync(String(password), 10) };
   users.push(u);
   saveUsers(users);
   res.json(sanitizeUser(u));
@@ -615,6 +684,7 @@ app.put('/api/users/:id', auth, (req, res) => {
   if (!canManageUser(req.user, u)) return res.status(403).json({ error: 'لا تملك صلاحية على هذا المستخدم' });
   const { name, role, password } = req.body || {};
   if (name) u.name = String(name).trim();
+  if (req.body && req.body.phone !== undefined) u.phone = String(req.body.phone || '').trim();
   if (role && ROLES.includes(role)) {
     const allowed = isAdmin(req.user) ? ROLES : ['pmo','pm'];
     if (!allowed.includes(role)) return res.status(403).json({ error: 'لا يمكنك منح هذا الدور' });
@@ -791,6 +861,41 @@ app.post('/api/integration/test', auth, async (req, res) => {
     setIntegrationStatus(companyId, 'فشل الاختبار: ' + (e && e.message ? e.message : 'خطأ'));
     res.status(502).json({ error: 'تعذر الاتصال: ' + (e && e.message ? e.message : 'خطأ') });
   }
+});
+
+// ---------- إعداد تذكير الواتساب اليومي ----------
+app.get('/api/whatsapp', auth, (req, res) => {
+  if (!['admin', 'client', 'pmo'].includes(req.user.role)) return res.status(403).json({ error: 'صلاحية الإدارة' });
+  res.json({ config: redactWhatsapp(loadWhatsapp()), canEdit: ['admin', 'client'].includes(req.user.role) });
+});
+app.put('/api/whatsapp', auth, (req, res) => {
+  if (!['admin', 'client'].includes(req.user.role)) return res.status(403).json({ error: 'تعديل الإعداد صلاحية أدمن النظام أو العميل' });
+  const b = req.body || {}; const c = loadWhatsapp();
+  c.enabled = !!b.enabled;
+  if (b.instanceId !== undefined) c.instanceId = String(b.instanceId || '').trim();
+  if (b.senderNumber !== undefined) c.senderNumber = String(b.senderNumber || '').trim();
+  if (b.base !== undefined) c.base = String(b.base || 'https://api.ultramsg.com').trim() || 'https://api.ultramsg.com';
+  if (b.hour !== undefined) c.hour = Math.max(0, Math.min(23, Number(b.hour) || 15));
+  if (typeof b.token === 'string' && b.token.length) c.token = b.token; // يُحدّث فقط عند إرسال توكن جديد
+  if (b.clearToken) c.token = '';
+  saveWhatsapp(c);
+  res.json({ ok: true, config: redactWhatsapp(c) });
+});
+app.post('/api/whatsapp/test', auth, async (req, res) => {
+  if (!['admin', 'client'].includes(req.user.role)) return res.status(403).json({ error: 'صلاحية الإدارة' });
+  const cfg = loadWhatsapp();
+  if (!cfg.instanceId || !cfg.token) return res.status(400).json({ error: 'أكمل إعداد UltraMsg (المعرف والتوكن)' });
+  const to = (req.body && req.body.to) || cfg.senderNumber;
+  const r = await sendWhatsappMessage(cfg, to, 'رسالة تجريبية من نظام بصير ✅\n\n' + reminderBody('(تجربة)'));
+  const fresh = loadWhatsapp();
+  fresh.lastStatus = 'اختبار: ' + (r.ok ? 'نجح' : 'فشل — ' + (r.error || ('HTTP ' + r.status))) + ' @ ' + new Date().toISOString();
+  saveWhatsapp(fresh);
+  res.json(r);
+});
+app.post('/api/whatsapp/run-now', auth, async (req, res) => {
+  if (!['admin', 'client'].includes(req.user.role)) return res.status(403).json({ error: 'صلاحية الإدارة' });
+  const r = await runDailyReminders('تشغيل يدوي');
+  res.json(r);
 });
 
 // ---------- نسخ احتياطي واستعادة ----------

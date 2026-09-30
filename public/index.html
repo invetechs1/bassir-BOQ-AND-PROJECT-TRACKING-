@@ -329,6 +329,7 @@
       <button class="btn btn-ghost" id="btn-users-manage" onclick="openUsersManage()">👥 إدارة المستخدمين</button>
       <button class="btn btn-ghost" id="btn-companies" onclick="openCompanies()">🏢 إدارة الشركات</button>
       <button class="btn btn-ghost" id="btn-integration" onclick="openIntegration()">🔗 ربط Bassir ERP</button>
+      <button class="btn btn-ghost" id="btn-whatsapp" onclick="openWhatsapp()">💬 تذكير الواتساب اليومي</button>
     </div>
     <div id="pm-notice"></div>
     <div class="status-cards" id="projects-grid"></div>
@@ -882,6 +883,7 @@
       <div class="f-field"><label>اسم المستخدم للدخول *</label><input type="text" id="us-username" placeholder="khaled" autocomplete="off"></div>
       <div class="f-field"><label>الدور</label><select id="us-role" onchange="usRoleChanged()"></select></div>
       <div class="f-field" id="us-company-wrap"><label>🏢 الشركة</label><select id="us-company"></select></div>
+      <div class="f-field"><label>📱 جوال واتساب (لتذكير الإنتاجية)</label><input type="text" id="us-phone" placeholder="05xxxxxxxx" dir="ltr" style="text-align:left"></div>
       <div class="f-field"><label>كلمة المرور *</label><input type="text" id="us-pin" placeholder="4 أحرف على الأقل" autocomplete="off"></div>
     </div>
     <div class="alert info" style="margin-top:10px;font-size:11px">💡 <strong>العميل</strong>: يشوف مشاريع شركته بكامل الصلاحيات · <strong>مدير المشاريع</strong>: يشوف كل مشاريع شركته · <strong>مدير المشروع</strong>: مشروعه المعيّن له فقط.</div>
@@ -1000,6 +1002,38 @@
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn btn-green" onclick="saveIntegration()">💾 حفظ الإعدادات</button>
       <button class="btn btn-ghost" onclick="testIntegration()">🔌 اختبار الاتصال</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="whatsapp-modal">
+  <div class="modal">
+    <div class="modal-title"><span>💬 تذكير الإنتاجية اليومي (واتساب)</span><span class="modal-close" onclick="closeModal('whatsapp-modal')">✕</span></div>
+    <div class="alert info" style="font-size:12px">
+      يرسل النظام تلقائياً رسالة واتساب لكل <strong>مدير مشروع</strong> (حسب رقمه في شاشة المستخدمين) في الوقت المحدد يومياً:
+      <div style="margin-top:6px;padding:8px;background:var(--bg2);border-radius:6px;white-space:pre-line">هل قمت برفع وتحديث الإنتاجية اليومية لمشروعك؟
+
+مع تحيات الإدارة التقنية لشركة بصير — ذراع شركة عزوم التقني</div>
+    </div>
+    <label class="switch-row" style="display:flex;align-items:center;gap:8px;margin:6px 0 12px;cursor:pointer">
+      <input type="checkbox" id="wa-enabled" style="width:18px;height:18px">
+      <span>تفعيل التذكير اليومي</span>
+    </label>
+    <div class="f-grid" style="grid-template-columns:1fr 1fr">
+      <div class="f-field"><label>وقت الإرسال (توقيت الرياض)</label>
+        <select id="wa-hour"></select></div>
+      <div class="f-field"><label>رقم الإرسال (واتساب الشركة)</label><input type="text" id="wa-sender" dir="ltr" style="text-align:left" placeholder="0558338548"></div>
+    </div>
+    <div class="alert warning" style="font-size:11px">قناة الإرسال: <strong>UltraMsg</strong> — اربط رقمك في ultramsg.com (مسح QR مرة واحدة) وأدخل معرّف الـInstance والتوكن:</div>
+    <div class="f-grid" style="grid-template-columns:1fr 1fr">
+      <div class="f-field"><label>Instance ID</label><input type="text" id="wa-instance" dir="ltr" style="text-align:left" placeholder="instance12345"></div>
+      <div class="f-field"><label>Token</label><input type="password" id="wa-token" dir="ltr" style="text-align:left" autocomplete="off"><span id="wa-token-hint" style="font-size:11px;color:var(--text2)"></span></div>
+    </div>
+    <div id="wa-status" style="font-size:12px;margin:10px 0"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-green" onclick="saveWhatsapp()">💾 حفظ</button>
+      <button class="btn btn-ghost" onclick="testWhatsapp()">🔌 إرسال رسالة تجريبية لرقمك</button>
+      <button class="btn btn-ghost" onclick="runWhatsappNow()">📤 إرسال التذكير الآن (تجربة)</button>
     </div>
   </div>
 </div>
@@ -1660,6 +1694,7 @@ function renderProjects(){
   $('btn-users-manage').style.display = isManagerial() ? '' : 'none';
   $('btn-companies').style.display = isAdmin() ? '' : 'none';
   $('btn-integration').style.display = isManagerial() ? '' : 'none';
+  $('btn-whatsapp').style.display = isManagerial() ? '' : 'none';
   const roleNotices = {
     client:'⭐ أنت العميل (مالك الشركة) — تظهر لك مشاريع شركتك ولديك كامل الصلاحيات عليها.',
     pmo:'👔 أنت مدير المشاريع — تظهر لك جميع مشاريع شركتك للعمل عليها.',
@@ -1825,8 +1860,9 @@ function renderUsersList(){
       (ROLE_ICONS[u.role]||'👤') + ' <strong style="color:var(--text)">' + esc(u.name) + '</strong> — ' + (ROLE_LABELS[u.role]||u.role) +
       (co ? ' · 🏢 ' + esc(co) : '') +
       ' <span style="font-family:var(--mono);font-size:10px;color:var(--text3)">(' + esc(u.username) + ')</span>' +
-      (projects.length ? '<br><span style="font-size:11px">يدير: ' + projects.map(p => esc(p.info.name)).join('، ') + '</span>' : '') + '</span>' +
-      '<span>' + (manageable ? '<button class="mini-btn" onclick="resetUserPassword(' + u.id + ')">🔑 كلمة المرور</button> ' : '') +
+      (projects.length ? '<br><span style="font-size:11px">يدير: ' + projects.map(p => esc(p.info.name)).join('، ') + '</span>' : '') +
+      '<br><span style="font-size:11px;color:' + (u.phone?'var(--text2)':'var(--text3)') + '">📱 ' + (u.phone ? esc(u.phone) : 'لا يوجد رقم واتساب') + '</span></span>' +
+      '<span>' + (manageable ? '<button class="mini-btn" onclick="editUserPhone(' + u.id + ')">📱 الجوال</button> <button class="mini-btn" onclick="resetUserPassword(' + u.id + ')">🔑 كلمة المرور</button> ' : '') +
       (u.id === state.me.id ? '<span class="pill blue" style="font-size:9px">أنت</span>'
         : manageable ? '<button class="mini-btn red" onclick="deleteUser(' + u.id + ')">🗑</button>' : '') + '</span></div>';
   }).join('');
@@ -1838,13 +1874,25 @@ async function addUser(){
   const password = $('us-pin').value.trim();
   if (!name || !username || !password) { alert('أكمل: الاسم، اسم المستخدم، كلمة المرور'); return; }
   const role = $('us-role').value;
-  const body = {username, name, role, password};
+  const body = {username, name, role, password, phone: $('us-phone').value.trim()};
   if (isAdmin() && role !== 'admin') body.companyId = Number($('us-company').value) || null;
   try {
     const u = await API.req('POST', '/api/users', body);
     state.users.push(u);
-    $('us-name').value = ''; $('us-username').value = ''; $('us-pin').value = '';
+    $('us-name').value = ''; $('us-username').value = ''; $('us-pin').value = ''; $('us-phone').value = '';
     renderUsersList(); renderAll();
+  } catch(e) { alert(e.message); }
+}
+
+// تعديل رقم واتساب لمستخدم قائم
+async function editUserPhone(id){
+  const u = state.users.find(x => x.id === id); if (!u) return;
+  const phone = prompt('رقم واتساب لـ «' + u.name + '» (لاستقبال تذكير الإنتاجية):', u.phone || '');
+  if (phone === null) return;
+  try {
+    await API.req('PUT', '/api/users/' + id, { phone: phone.trim() });
+    u.phone = phone.trim();
+    renderUsersList();
   } catch(e) { alert(e.message); }
 }
 
@@ -1964,6 +2012,57 @@ async function testIntegration(){
       ? '<span style="color:var(--success,#2e7d32)">✅ نجح الاتصال (HTTP ' + r.status + ')</span>'
       : '<span style="color:var(--danger)">⚠️ استجابة غير متوقعة (HTTP ' + r.status + ')</span>';
   } catch(e){ $('int-status').innerHTML = '<span style="color:var(--danger)">❌ تعذر الاتصال: ' + esc(e.message) + '</span>'; }
+}
+
+// ---------- تذكير الواتساب اليومي ----------
+async function openWhatsapp(){
+  if (!isManagerial()) { alert('إعداد التذكير صلاحية أدمن النظام أو العميل'); return; }
+  const sel = $('wa-hour');
+  if (!sel.options.length) sel.innerHTML = Array.from({length:24}, (_,i)=>'<option value="'+i+'">'+String(i).padStart(2,'0')+':00</option>').join('');
+  $('whatsapp-modal').classList.add('open');
+  $('wa-status').innerHTML = '<span style="color:var(--text2)">جارٍ التحميل…</span>';
+  try {
+    const r = await API.req('GET', '/api/whatsapp');
+    const c = r.config || {};
+    $('wa-enabled').checked = !!c.enabled;
+    $('wa-hour').value = c.hour != null ? c.hour : 15;
+    $('wa-sender').value = c.senderNumber || '0558338548';
+    $('wa-instance').value = c.instanceId || '';
+    $('wa-token').value = '';
+    $('wa-token').placeholder = c.tokenSet ? '•••••••• (محفوظ — اتركه فارغاً للإبقاء عليه)' : 'أدخل التوكن';
+    $('wa-token-hint').textContent = c.tokenSet ? '🔒 يوجد توكن محفوظ.' : 'لا يوجد توكن محفوظ بعد.';
+    const canEdit = r.canEdit !== false;
+    ['wa-enabled','wa-hour','wa-sender','wa-instance','wa-token'].forEach(id => { $(id).disabled = !canEdit; });
+    $('wa-status').innerHTML = c.lastStatus ? '<span style="color:var(--text2)">آخر حالة: ' + esc(c.lastStatus) + '</span>' : '<span style="color:var(--text2)">لم يُرسل أي تذكير بعد.</span>';
+  } catch(e){ $('wa-status').innerHTML = '<span style="color:var(--danger)">تعذر التحميل: ' + esc(e.message) + '</span>'; }
+}
+async function saveWhatsapp(){
+  const body = { enabled: $('wa-enabled').checked, hour: Number($('wa-hour').value), senderNumber: $('wa-sender').value.trim(), instanceId: $('wa-instance').value.trim() };
+  const tok = $('wa-token').value; if (tok) body.token = tok;
+  try {
+    await API.req('PUT', '/api/whatsapp', body);
+    $('wa-status').innerHTML = '<span style="color:var(--success,#2e7d32)">✅ تم الحفظ</span>';
+    openWhatsapp();
+  } catch(e){ $('wa-status').innerHTML = '<span style="color:var(--danger)">فشل الحفظ: ' + esc(e.message) + '</span>'; }
+}
+async function testWhatsapp(){
+  $('wa-status').innerHTML = '<span style="color:var(--text2)">جارٍ إرسال رسالة تجريبية…</span>';
+  try {
+    const r = await API.req('POST', '/api/whatsapp/test', { to: $('wa-sender').value.trim() });
+    $('wa-status').innerHTML = r.ok
+      ? '<span style="color:var(--success,#2e7d32)">✅ أُرسلت الرسالة التجريبية إلى ' + esc(r.to||'') + '</span>'
+      : '<span style="color:var(--danger)">❌ تعذر الإرسال: ' + esc(r.error || ('HTTP ' + r.status)) + '</span>';
+  } catch(e){ $('wa-status').innerHTML = '<span style="color:var(--danger)">❌ ' + esc(e.message) + '</span>'; }
+}
+async function runWhatsappNow(){
+  if (!confirm('إرسال تذكير الإنتاجية الآن لكل مدراء المشاريع الذين لديهم رقم واتساب؟')) return;
+  $('wa-status').innerHTML = '<span style="color:var(--text2)">جارٍ الإرسال…</span>';
+  try {
+    const r = await API.req('POST', '/api/whatsapp/run-now');
+    $('wa-status').innerHTML = r.ok
+      ? '<span style="color:var(--success,#2e7d32)">✅ أُرسلت ' + r.sent + ' من ' + r.total + ' رسالة</span>'
+      : '<span style="color:var(--danger)">❌ ' + esc(r.error || 'تعذر الإرسال') + '</span>';
+  } catch(e){ $('wa-status').innerHTML = '<span style="color:var(--danger)">❌ ' + esc(e.message) + '</span>'; }
 }
 
 async function resetUserPassword(id){

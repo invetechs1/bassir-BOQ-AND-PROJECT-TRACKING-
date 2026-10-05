@@ -176,7 +176,17 @@ function listProjects() {
 function loadProject(id) { return readJSON(projectFile(id), null); }
 function saveProject(p) { writeJSON(projectFile(p.id), p); }
 
-const sanitizeUser = u => ({ id: u.id, username: u.username, name: u.name, role: u.role, companyId: u.companyId ?? null });
+const sanitizeUser = u => ({ id: u.id, username: u.username, name: u.name, role: u.role, companyId: u.companyId ?? null, phone: u.phone || '' });
+
+// رقم هاتف بصيغة E.164 (لإرسال واتساب عبر Twilio) — يقبل بادئة 00 أو + أو بلا بادئة، ويُطبَّع إلى +
+function normalizePhone(raw) {
+  let s = String(raw || '').trim().replace(/[\s()-]/g, '');
+  if (!s) return '';
+  if (s.startsWith('00')) s = '+' + s.slice(2);
+  else if (!s.startsWith('+')) s = '+' + s;
+  return s;
+}
+function isValidPhone(s) { return /^\+[1-9]\d{7,14}$/.test(s); }
 
 // ---------- قاعدة بيانات الأسعار والعروض (لكل شركة) ----------
 function pricedbFile(companyId) { return path.join(PRICEDB_DIR, companyId + '.json'); }
@@ -476,6 +486,11 @@ app.put('/api/projects/:id', auth, (req, res) => {
         return res.status(400).json({ error: 'consultant_approval_required', itemId: it.id });
       }
     }
+    const projSubIds = new Set((data.subcontractors || []).map(s => s.id));
+    const oldApprovalIds = new Set(((prev && prev.approvals) || []).map(a => a.id));
+    for (const a of (it.approvals || [])) {
+      if (!oldApprovalIds.has(a.id) && a.subId && !projSubIds.has(a.subId)) return res.status(400).json({ error: 'approval_unknown_subcontractor', itemId: it.id });
+    }
   }
 
   // رقابة تعديل الإنتاجية: مدير المشروع (pm) لا يحذف بنداً أو يومية قائمة،
@@ -711,7 +726,7 @@ app.delete('/api/projects/:id', auth, (req, res) => {
 app.get('/api/users', auth, (req, res) => res.json(visibleUsers(req.user).map(sanitizeUser)));
 
 app.post('/api/users', auth, (req, res) => {
-  const { username, name, role, password, companyId } = req.body || {};
+  const { username, name, role, password, companyId, phone } = req.body || {};
   const un = String(username || '').trim();
   if (!un || !name || !password) return res.status(400).json({ error: 'fill_username_name_password' });
   if (String(password).length < 4) return res.status(400).json({ error: 'password_too_short' });
@@ -728,9 +743,14 @@ app.post('/api/users', auth, (req, res) => {
   } else {
     return res.status(403).json({ error: 'create_user_denied' });
   }
+  let newPhone = '';
+  if (phone !== undefined && String(phone).trim()) {
+    newPhone = normalizePhone(phone);
+    if (!isValidPhone(newPhone)) return res.status(400).json({ error: 'invalid_phone' });
+  }
   const users = loadUsers();
   if (users.some(u => u.username === un)) return res.status(400).json({ error: 'username_taken' });
-  const u = { id: nextId(), username: un, name: String(name).trim(), role: newRole, companyId: newCompanyId, hash: bcrypt.hashSync(String(password), 10) };
+  const u = { id: nextId(), username: un, name: String(name).trim(), role: newRole, companyId: newCompanyId, phone: newPhone, hash: bcrypt.hashSync(String(password), 10) };
   users.push(u);
   saveUsers(users);
   res.json(sanitizeUser(u));
@@ -742,7 +762,7 @@ app.put('/api/users/:id', auth, (req, res) => {
   const u = users.find(x => x.id === id);
   if (!u) return res.status(404).json({ error: 'user_not_found' });
   if (!canManageUser(req.user, u)) return res.status(403).json({ error: 'no_user_access' });
-  const { name, role, password } = req.body || {};
+  const { name, role, password, phone } = req.body || {};
   if (name) u.name = String(name).trim();
   if (role && ROLES.includes(role)) {
     const allowed = isAdmin(req.user) ? ROLES : ['pmo','pm'];
@@ -755,6 +775,15 @@ app.put('/api/users/:id', auth, (req, res) => {
   if (password) {
     if (String(password).length < 4) return res.status(400).json({ error: 'password_too_short' });
     u.hash = bcrypt.hashSync(String(password), 10);
+  }
+  if (phone !== undefined) {
+    const np = String(phone).trim();
+    if (!np) { u.phone = ''; }
+    else {
+      const norm = normalizePhone(np);
+      if (!isValidPhone(norm)) return res.status(400).json({ error: 'invalid_phone' });
+      u.phone = norm;
+    }
   }
   saveUsers(users);
   res.json(sanitizeUser(u));

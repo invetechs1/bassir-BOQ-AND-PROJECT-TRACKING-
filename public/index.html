@@ -850,6 +850,7 @@
       <div class="f-field full" id="aq-match" style="display:none"></div>
       <div class="f-field"><label data-i18n="تاريخ الاعتماد">تاريخ الاعتماد</label><input type="date" id="aq-date"></div>
       <div class="f-field"><label data-i18n="اسم الاستشاري / المهندس">اسم الاستشاري / المهندس</label><input type="text" id="aq-consultant" placeholder="من وقّع الاستلام"></div>
+      <div class="f-field"><label data-i18n="المقاول المنفّذ (اختياري)">المقاول المنفّذ (اختياري)</label><select id="aq-sub"></select></div>
       <div class="f-field"><label data-i18n="رقم الاستلام (AR)">رقم الاستلام (AR)</label><input type="text" id="aq-arno" placeholder="اختياري"></div>
       <div class="f-field"><label data-i18n="الكمية المعتمدة (تدخل المستخلص)">الكمية المعتمدة (تدخل المستخلص)</label><input type="number" id="aq-qty" min="0" step="0.01" oninput="aqCheckMatch()"></div>
       <div class="f-field full"><label data-i18n="📎 استلام الاستشاري الموقّع + كل الملفات الداعمة * — PDF أو صور (يمكن اختيار عدة ملفات)">📎 استلام الاستشاري الموقّع + كل الملفات الداعمة * — PDF أو صور (يمكن اختيار عدة ملفات)</label><input type="file" id="aq-file" accept="image/*,.pdf,application/pdf" multiple onchange="aqFilePicked(this)"><div id="aq-file-name" style="font-size:11px;color:var(--text2);margin-top:4px;display:flex;flex-direction:column;gap:3px"></div></div>
@@ -2697,7 +2698,7 @@ function renderArchive(){
     '<tr><td><span class="item-no">' + esc(r.it.id) + '</span> <span style="font-size:11px;color:var(--text3)">' + esc((r.it.desc||'').substring(0,24)) + '</span></td>' +
     '<td style="font-family:var(--mono);font-size:12px">' + esc(r.a.date||'—') + '</td>' +
     '<td class="amount">' + fmtQ(r.a.qty) + ' ' + esc(r.it.unit||'') + '</td>' +
-    '<td>' + esc(r.a.consultant||'—') + '</td>' +
+    '<td>' + esc(r.a.consultant||'—') + (r.a.subId ? '<br><span style="font-size:11px;color:var(--text2)">🧱 ' + esc((getSub(r.a.subId)||{}).name || '—') + '</span>' : '') + '</td>' +
     '<td>' + esc(r.a.arNo||'—') + '</td>' +
     '<td>' + (r.docs.length ? r.docs.map((d,di) => '<span style="display:inline-flex;align-items:center;gap:3px;margin-inline-end:8px"><a href="' + esc(d.url) + '" target="_blank" style="color:var(--blue);font-size:12px">' + fileIcon(d.url) + ' ' + esc(d.name||T('ملف')) + ' ↗</a>' + delBtn('deleteArchiveApprovalDoc(\'' + esc(r.it.id) + '\',' + r.a.id + ',' + di + ')') + '</span>').join('') : '<span style="color:var(--text3)">—</span>') + '</td>' +
     '<td>' + (isAdmin() ? '<button class="mini-btn red" onclick="deleteApproval(\'' + esc(r.it.id) + '\',' + r.a.id + ')" data-tip="' + T('حذف هذا الاعتماد بالكامل') + '">🗑</button>' : '') + '</td></tr>'
@@ -3287,6 +3288,9 @@ function openApproveQty(id, opts){
   $('aq-qty').max = pend;
   $('aq-date').value = todayStr();
   $('aq-consultant').value = ''; $('aq-arno').value = ''; $('aq-note').value = '';
+  $('aq-sub').innerHTML = '<option value="">— ' + T('تنفيذ ذاتي (بدون مقاول)') + ' —</option>' +
+    (proj().subcontractors||[]).map(s => '<option value="' + s.id + '">🧱 ' + esc(s.name) + '</option>').join('');
+  $('aq-sub').value = '';
   $('aq-file').value = ''; renderAqFiles();
   aqCheckMatch();
   $('approve-qty-modal').classList.add('open');
@@ -3332,7 +3336,7 @@ async function saveApproveQty(){
   const arQty = Number($('aq-arqty').value) || qty;
   it.approvals = it.approvals || [];
   it.approvals.push({id: nextSeq(), qty, arQty, sysQty: Number($('aq-sysqty').value)||0,
-    date: $('aq-date').value || todayStr(), consultant: $('aq-consultant').value.trim(),
+    date: $('aq-date').value || todayStr(), consultant: $('aq-consultant').value.trim(), subId: Number($('aq-sub').value) || null,
     arNo: $('aq-arno').value.trim(), ar: docs[0], docs, note: $('aq-note').value.trim(), by: currentUser().name});
   it.approvedQty = Math.min(qtyBase(it).executedQty||0, (it.approvedQty||0) + qty);
   const toMustakhlas = aqThenMustakhlas;
@@ -3478,6 +3482,7 @@ function viewApprovals(id){
     (mism ? '⚠️' : '✅') + ' ' + T('معتمد') + ' <strong>' + fmtQ(a.qty) + ' ' + esc(it.unit) + '</strong>' +
     ' · ' + T('موقّع على الاستلام:') + ' <strong style="color:' + (mism?'var(--red)':'var(--purple)') + '">' + fmtQ(arq) + '</strong>' +
     ' — ' + esc(a.date) + (a.consultant ? ' · ' + T('الاستشاري:') + ' ' + esc(a.consultant) : '') + (a.arNo ? ' · ' + T('استلام رقم') + ' ' + esc(a.arNo) : '') +
+    (a.subId ? ' · 🧱 ' + esc((getSub(a.subId)||{}).name || '—') : '') +
     '<br><span style="font-size:11px">' + T('سجّله:') + ' ' + esc(a.by||'—') + (a.note ? ' · ' + esc(a.note) : '') + '</span></span>' +
     '<span style="display:flex;flex-direction:column;gap:2px;align-items:flex-end">' +
     ((a.docs && a.docs.length ? a.docs : (a.ar ? [a.ar] : [])).map(d => '<a href="' + esc(d.url) + '" target="_blank" style="color:var(--blue);font-size:11px">' + (String(d.url).endsWith('.pdf')?'📄':'🖼') + ' ' + esc(d.name||T('ملف')) + ' ↗</a>').join('')) +
@@ -5928,6 +5933,21 @@ function openSubDetail(id){
   renderSdAdvances();
   $('sub-detail-modal').classList.add('open');
 }
+// الحد الأقصى الفعلي لحقل "تعميد الآن": عادةً المتاح (المعتمد من الاستشاري ناقص سبق تعميده)،
+// لكن إن لم يُعتمد البند بعد (eligible=0) وهناك تنفيذ فعلي حقيقي من هذا المقاول — يُسمح لأدمن النظام
+// أو العميل (مالك الشركة) فقط بتجاوز هذه البوابة، بحد أقصى الكمية المنفذة فعلياً (ناقص سبق تعميده)
+function sdCanOverrideApproval(id){
+  const ex = subExecForItem(sdSubId, id), elig = subEligibleQty(sdSubId, id);
+  return elig <= 0.001 && ex > 0.001;
+}
+function sdMaxFor(id){
+  const avail = subAvailQty(sdSubId, id);
+  if (sdCanOverrideApproval(id) && (isAdmin() || state.me.role === 'client')) {
+    const ex = subExecForItem(sdSubId, id), claimed = subClaimedQty(sdSubId, id);
+    return Math.max(0, round2(ex - claimed));
+  }
+  return avail;
+}
 function renderSubDetail(){
   const s = getSub(sdSubId); if (!s) return;
   const ids = subItemIds(s);
@@ -5935,6 +5955,11 @@ function renderSubDetail(){
     const it = getItem(id); const rate = subRate(s, id);
     const ex = subExecForItem(sdSubId, id), elig = subEligibleQty(sdSubId, id), claimed = subClaimedQty(sdSubId, id), avail = subAvailQty(sdSubId, id);
     const val = sdSel[id]!==undefined ? sdSel[id] : '';
+    const overrideCase = sdCanOverrideApproval(id);
+    const isPrivileged = isAdmin() || state.me.role === 'client';
+    const maxQ = sdMaxFor(id);
+    const canOverride = overrideCase && isPrivileged;
+    const lockedNoApproval = overrideCase && !isPrivileged;
     return '<tr>' +
       '<td><span class="item-no">' + esc(id) + '</span> <span style="font-size:11px;color:var(--text3)">' + esc(it.desc.substring(0,24)) + '</span></td>' +
       '<td><span class="pill gray" style="font-size:10px">' + esc(it.unit) + '</span></td>' +
@@ -5945,7 +5970,10 @@ function renderSubDetail(){
       '<td class="amount ' + (avail>0.01?'claimable':'muted') + '">' + fmtQ(avail) + '</td>' +
       // oninput: حدّ أحمر فوري فقط (بلا نص، بلا إعادة رسم) أثناء الكتابة — onchange: الفرض الفعلي (قصّ + alert + تسجيل) عند الخروج من الحقل فقط.
       // رسالة الخطأ تظهر في نافذة الـ alert فقط عند الخروج من الحقل، وليس أثناء الكتابة، حتى لا تنقطع الكتابة ولا يتحرك تخطيط الجدول.
-      '<td><input type="number" class="qty-input" id="sd-qty-' + esc(id) + '" min="0" max="' + avail + '" step="any" value="' + val + '" placeholder="0" oninput="sdLiveWarn(\'' + esc(id) + '\', this.value, ' + avail + ')" onchange="sdSetQty(\'' + esc(id) + '\', this.value)" style="width:90px"></td>' +
+      '<td><input type="number" class="qty-input" id="sd-qty-' + esc(id) + '" min="0" max="' + maxQ + '" step="any" value="' + val + '" placeholder="0"' +
+        (lockedNoApproval ? ' disabled data-tip="' + T('بانتظار اعتماد الاستشاري — لا يمكن التعميد قبل اعتماد الكمية (أدمن النظام أو العميل فقط يملكان استثناءً هنا)') + '"' : '') +
+        (canOverride ? ' data-tip="' + T('استثناء: لم يُعتمد البند من الاستشاري بعد — يُسمح لك بالتعميد بحد أقصى الكمية المنفذة فعلياً') + '"' : '') +
+        ' oninput="sdLiveWarn(\'' + esc(id) + '\', this.value, ' + maxQ + ')" onchange="sdSetQty(\'' + esc(id) + '\', this.value)" style="width:90px' + (canOverride ? ';border-color:var(--amber)' : '') + '"></td>' +
       '<td class="amount" id="sd-val-' + esc(id) + '">' + fmtN(round2((Number(val)||0)*rate)) + '</td>' +
       '</tr>';
   }).join('') || '<tr><td colspan="9"><div class="empty-state"><p>' + T('لا بنود لهذا المقاول — أضف بنوده وأسعاره من «تعديل»') + '</p></div></td></tr>';
@@ -5963,10 +5991,10 @@ function sdLiveWarn(id, val, avail){
   if (valEl) valEl.textContent = fmtN(round2(q * rate)); // القيمة حسب ما هو مكتوب حالياً — القصّ الفعلي يحدث عند الخروج من الحقل (sdSetQty)
 }
 function sdSetQty(id, val){
-  const s = getSub(sdSubId); const avail = subAvailQty(sdSubId, id);
+  const s = getSub(sdSubId); const avail = sdMaxFor(id);
   let q = Math.round((Number(val)||0)*100)/100;
   if (q > avail + 0.001) {
-    // منع التلاعب: تجاوز المتاح (المنفذ المعتمد) — إنذار + تسجيل
+    // منع التلاعب: تجاوز المتاح (المعتمد، أو المنفذ فعلياً عند استثناء الأدمن/العميل) — إنذار + تسجيل
     recordSubAlert(sdSubId, id, q, avail);
     alert(T('⛔ الكمية المدخلة (') + fmtQ(q) + T(') أكبر من المتاح للتعميد على البند ') + id + ' (' + fmtQ(avail) + T('). تم تصحيحها تلقائياً إلى ') + fmtQ(avail) + T(' — وسُجِّلت هذه المحاولة.'));
     q = avail;
@@ -6059,7 +6087,11 @@ Object.assign(I18N_EN, {
   'حذف هذه الدفعة المقدمة نهائياً؟':'Delete this advance payment permanently?',
   '✅ معتمدة':'✅ Approved',
   '↩ مرفوضة':'↩ Rejected',
-  'حفظ':'Save'
+  'حفظ':'Save',
+  'المقاول المنفّذ (اختياري)':'Executing subcontractor (optional)',
+  'تنفيذ ذاتي (بدون مقاول)':'Self-executed (no subcontractor)',
+  'بانتظار اعتماد الاستشاري — لا يمكن التعميد قبل اعتماد الكمية (أدمن النظام أو العميل فقط يملكان استثناءً هنا)':'Awaiting consultant approval — can\'t certify before the quantity is approved (only system admin or the client/owner have an exception here)',
+  'استثناء: لم يُعتمد البند من الاستشاري بعد — يُسمح لك بالتعميد بحد أقصى الكمية المنفذة فعلياً':'Exception: this item isn\'t consultant-approved yet — you\'re allowed to certify up to the actually executed quantity'
 });
 function subMusComputeDraft(){
   const s = getSub(sdSubId); const lines = [];

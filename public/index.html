@@ -1309,7 +1309,7 @@ Object.assign(I18N_EN, {
   'حذف بند السعر؟':'Delete price item?',
   'تعديل عرض':'Edit offer',
   'إضافة عرض':'Add offer',
-  'أكبر من 9MB':'larger than 9MB',
+  'أكبر من 50MB':'larger than 50MB',
   'أكمل: رقم العرض، المشروع، الإجمالي':'Fill in: offer no., project, total',
   'تعذر رفع الملفات:':'Failed to upload files:',
   'حذف العرض؟ (لا تُحذف بنود الأسعار المرتبطة)':'Delete offer? (linked price items will not be deleted)',
@@ -1715,7 +1715,8 @@ const isManagerial = () => ['admin','client'].includes(state.me.role); // من �
 const isOwner = isManagerial; // (توافقية مع الكود القديم)
 // رقابة تعديل الإنتاجية: مدير المشروع (pm) تعديلاته/حذفه للإنتاجية والكميات المنفذة تحتاج موافقة العميل ومدير المشاريع معاً
 const editsGated = () => state.me.role === 'pm';
-const canApproveEdits = () => ['admin','client','pmo'].includes(state.me.role);
+// الاعتماد (طلبات التعديل، الكميات، المستخلصات، صرف المستخلصات) لأدمن النظام وحده
+const canApproveEdits = () => isAdmin();
 const accessibleProjects = () => state.projects; // الخادم يعيد المشاريع المصرح بها فقط
 const userName = id => { const u = state.users.find(x => x.id === id); return u ? u.name : null; };
 const companyName = id => { const c = (state.companies||[]).find(x => x.id === id); return c ? c.name : null; };
@@ -2854,7 +2855,7 @@ function renderAlerts(){
   let html = '';
   // تنبيه المراجع: مستخلصات بانتظار الاعتماد
   const pendingMus = proj().mustakhlasat.filter(m => m.status === 'submitted');
-  if (canReviewMus() && pendingMus.length) {
+  if (isAdmin() && pendingMus.length) {
     html += '<div class="alert warning">🔔 <div><strong>' + pendingMus.length + ' ' + T('مستخلص بانتظار مراجعتك واعتمادك') + '</strong> (' + money(pendingMus.reduce((s,m)=>s+m.gross,0)) + ') — <a href="#" onclick="switchTab(\'invoice\');switchInvView(\'history\');return false" style="color:var(--amber);font-weight:700">' + T('افتح المستخلصات ←') + '</a></div></div>';
   }
   const myRejected = proj().mustakhlasat.filter(m => m.status === 'rejected');
@@ -3184,7 +3185,7 @@ function renderItemsTable(){
       '<td class="tight">' + depHtml + '</td>' +
       '<td class="actions-cell"><div class="actions-wrap">' + (isAdmin() ? '<button class="mini-btn" onclick="openItemModal(\'' + esc(it2.id) + '\')">✏️ ' + T('تعديل') + '</button>' : '') +
       (!indent && canSplitItem(it2) ? ' <button class="mini-btn" onclick="openSplitItemModal(\'' + esc(it2.id) + '\')" data-tip="' + T('تقسيم سعر البند إلى أجزاء مستقلة — الكمية تبقى كاملة لكل جزء') + '">✂ ' + T('تقسيم الجدول') + '</button>' : '') +
-      (it2.scope !== 'others' && (availQty(it2) > 0.01 || pendingApprovalQty(it2) > 0.01)
+      (it2.scope !== 'others' && (availQty(it2) > 0.01 || (isAdmin() && pendingApprovalQty(it2) > 0.01))
         ? ' <button class="mini-btn green" onclick="itemToMustakhlas(\'' + esc(it2.id) + '\')" data-tip="' + T('نقل إلى مستخلص') + '">📤</button>' : '') + '</div></td>' +
       '</tr>';
   }).join('') || '<tr><td colspan="13"><div class="empty-state"><p>' + T('لا توجد بنود مطابقة') + '</p></div></td></tr>';
@@ -3233,7 +3234,7 @@ Object.assign(I18N_EN, {
   'استلام':'receipt'
 });
 // من يعتمد كميات الاستشاري؟ الموظف الميداني فأعلى (يرفع الاستلام الموقّع)
-const pdbCanApproveQty = () => ['admin','client','pmo','pm'].includes(state.me.role);
+const pdbCanApproveQty = () => isAdmin();
 
 // إدخال الكمية المنفذة مباشرة — العميل يحاسب بالكميات فالحسبة تكون دقيقة
 // تعديل الكمية المنفذة مباشرة من جدول الكميات — لأدمن النظام فقط (بقية الأدوار تسجّل الكمية عبر تبويب الإنتاجية)
@@ -3314,7 +3315,7 @@ function aqCheckMatch(){
 async function aqFilePicked(input){
   for (const f of [...input.files]) {
     try {
-      if (f.type === 'application/pdf') { if (f.size > 9*1024*1024) { alert(f.name + ': ' + T('أكبر من 9MB')); continue; } aqPendingFiles.push({dataUrl: await readFileAsDataURL(f), name: f.name}); }
+      if (f.type === 'application/pdf') { if (f.size > 50*1024*1024) { alert(f.name + ': ' + T('أكبر من 50MB')); continue; } aqPendingFiles.push({dataUrl: await readFileAsDataURL(f), name: f.name}); }
       else if (f.type.startsWith('image/')) aqPendingFiles.push({dataUrl: await compressImage(f), name: f.name});
       else alert(f.name + ': ' + T('PDF أو صورة فقط'));
     } catch(e) { alert(e.message); }
@@ -3360,7 +3361,7 @@ Object.assign(I18N_EN, {
   ') يختلف عن المنفذ في النظام (':') differs from what is recorded as executed in the system (',
   ') — سيُسجّل الفرق للمراجعة.':') — the difference will be logged for review.',
   'الكميات متطابقة':'Quantities match',
-  'أكبر من 9MB':'larger than 9MB',
+  'أكبر من 50MB':'larger than 50MB',
   'PDF أو صورة فقط':'PDF or image only',
   'الكمية المعتمدة تتجاوز الكمية المنفذة بانتظار الاعتماد (':'The approved quantity exceeds the executed quantity awaiting approval (',
   'تم اعتماد':'Approved',
@@ -4012,7 +4013,7 @@ async function mbFilesPicked(input){
   for (const f of files) {
     try {
       if (f.type === 'application/pdf') {
-        if (f.size > 9 * 1024 * 1024) { alert(f.name + ': ' + T('الملف أكبر من 9MB')); continue; }
+        if (f.size > 50 * 1024 * 1024) { alert(f.name + ': ' + T('الملف أكبر من 50MB')); continue; }
         mbPendingFiles.push({dataUrl: await readFileAsDataURL(f), name: f.name});
       } else if (f.type.startsWith('image/')) {
         mbPendingFiles.push({dataUrl: await compressImage(f), name: f.name});
@@ -4026,7 +4027,7 @@ async function mbFilesPicked(input){
 }
 Object.assign(I18N_EN, {
   'تعذر قراءة الملف':'Could not read the file',
-  'الملف أكبر من 9MB':'File larger than 9MB',
+  'الملف أكبر من 50MB':'File larger than 50MB',
   'الصيغة غير مدعومة (PDF أو صور فقط)':'Unsupported format (PDF or images only)'
 });
 
@@ -4163,7 +4164,7 @@ function renderHistory(){
     // أزرار سير العمل حسب الدور والحالة
     let flowBtns = '';
     if (canReviewMus()) {
-      if (m.status === 'submitted') flowBtns = '<button class="mini-btn green" onclick="approveMus(' + m.id + ')">✅ ' + T('اعتماد') + '</button> <button class="mini-btn red" onclick="rejectMus(' + m.id + ')">↩ ' + T('إرجاع') + '</button> ';
+      if (m.status === 'submitted') { if (isAdmin()) flowBtns = '<button class="mini-btn green" onclick="approveMus(' + m.id + ')">✅ ' + T('اعتماد') + '</button> <button class="mini-btn red" onclick="rejectMus(' + m.id + ')">↩ ' + T('إرجاع') + '</button> '; }
       else if (m.status === 'approved' && !m.invoiceNo) flowBtns = '<button class="mini-btn green" onclick="issueInvoice(' + m.id + ')">🧾 ' + T('إصدار الفاتورة') + '</button> ';
       if (m.invoiceNo) flowBtns += '<button class="mini-btn" onclick="viewInvoice(' + m.id + ')">🧾 ' + esc(m.invoiceNo) + '</button> ';
       if (['approved','paid'].includes(m.status)) flowBtns += '<button class="mini-btn green" onclick="openPay(' + m.id + ')">💵 ' + T('دفعة') + '</button> ';
@@ -4255,7 +4256,7 @@ function savePayment(){
 
 // ---- سير الاعتماد: مراجعة مدير المشاريع → اعتماد → إصدار فاتورة ----
 function approveMus(id){
-  if (!canReviewMus()) { alert(T('الاعتماد صلاحية مدير المشاريع فأعلى')); return; }
+  if (!isAdmin()) { alert(T('الاعتماد صلاحية أدمن النظام فقط')); return; }
   const m = proj().mustakhlasat.find(x => x.id === id);
   if (!m) return;
   if (!confirm(T('اعتماد المستخلص') + ' ' + m.no + ' ' + T('بقيمة') + ' ' + money(m.gross) + T('؟ راجع المرفقات واستلامات الاستشاري قبل الاعتماد.'))) return;
@@ -4267,7 +4268,7 @@ function approveMus(id){
 }
 
 function rejectMus(id){
-  if (!canReviewMus()) return;
+  if (!isAdmin()) return;
   const m = proj().mustakhlasat.find(x => x.id === id);
   if (!m) return;
   const reason = prompt(T('سبب الإرجاع للتعديل (سيظهر لمدير المشروع):'));
@@ -5721,7 +5722,7 @@ function subDueSummary(subId){
   return { musCount: ms.length, net, paid, remaining: Math.max(0, round2(net-paid)), availValue: avail };
 }
 // من يعتمد مستخلصات مقاولي الباطن؟ العميل ومدير المشاريع والأدمن
-const canApproveSubMus = () => ['admin','client','pmo'].includes(state.me.role);
+const canApproveSubMus = () => isAdmin();
 const SUBMUS_STATUS = {
   submitted:{label:'⏳ بانتظار الاعتماد', color:'amber'},
   rejected:{label:'↩ مرفوض', color:'red'},
@@ -6088,6 +6089,7 @@ Object.assign(I18N_EN, {
   '✅ معتمدة':'✅ Approved',
   '↩ مرفوضة':'↩ Rejected',
   'حفظ':'Save',
+  'الاعتماد صلاحية أدمن النظام فقط':'Approval is restricted to the system admin only',
   'المقاول المنفّذ (اختياري)':'Executing subcontractor (optional)',
   'تنفيذ ذاتي (بدون مقاول)':'Self-executed (no subcontractor)',
   'بانتظار اعتماد الاستشاري — لا يمكن التعميد قبل اعتماد الكمية (أدمن النظام أو العميل فقط يملكان استثناءً هنا)':'Awaiting consultant approval — can\'t certify before the quantity is approved (only system admin or the client/owner have an exception here)',
@@ -6126,7 +6128,7 @@ async function sdFilesPicked(input){
   const files = [...(input.files||[])].slice(0, 15 - sdPendingFiles.length);
   for (const f of files) {
     try {
-      if (f.type === 'application/pdf') { if (f.size > 9*1024*1024) { alert(f.name+': '+T('أكبر من 9MB')); continue; } sdPendingFiles.push({dataUrl: await readFileAsDataURL(f), name:f.name}); }
+      if (f.type === 'application/pdf') { if (f.size > 50*1024*1024) { alert(f.name+': '+T('أكبر من 50MB')); continue; } sdPendingFiles.push({dataUrl: await readFileAsDataURL(f), name:f.name}); }
       else if (f.type.startsWith('image/')) sdPendingFiles.push({dataUrl: await compressImage(f), name:f.name});
       else alert(f.name+': '+T('صيغة غير مدعومة'));
     } catch(e){ alert(e.message); }
@@ -6522,7 +6524,7 @@ function openPdbOfferModal(id){
 async function pdoFilesPicked(input){
   for (const f of [...input.files].slice(0, 10 - pdoPendingFiles.length)) {
     try {
-      if (f.type === 'application/pdf') { if (f.size > 9*1024*1024) { alert(f.name+': '+T('أكبر من 9MB')); continue; } pdoPendingFiles.push({dataUrl: await readFileAsDataURL(f), name: f.name}); }
+      if (f.type === 'application/pdf') { if (f.size > 50*1024*1024) { alert(f.name+': '+T('أكبر من 50MB')); continue; } pdoPendingFiles.push({dataUrl: await readFileAsDataURL(f), name: f.name}); }
       else if (f.type.startsWith('image/')) pdoPendingFiles.push({dataUrl: await compressImage(f), name: f.name});
     } catch(e) { alert(e.message); }
   }

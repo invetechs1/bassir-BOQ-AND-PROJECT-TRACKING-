@@ -238,7 +238,22 @@ function seedPricedb(companyId) {
 // ---------- التطبيق ----------
 const app = express();
 app.disable('x-powered-by');
-app.use(express.json({ limit: '25mb' }));
+app.use(express.json({ limit: '70mb' }));
+
+// حدود الرفع: PDF حتى 50MB، الصور حتى 10MB (الصور تُضغط في المتصفح أصلاً)
+const MAX_PDF_BYTES = 50 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+const UPLOAD_RE = /^data:(image\/(?:jpeg|png|webp)|application\/pdf);base64,([A-Za-z0-9+/=]+)$/;
+// يفكّ ترميز الملف المرفوع (dataUrl) ويتحقق من صيغته وحجمه حسب نوعه — يُرجع reason عند الرفض
+function decodeUpload(dataUrl) {
+  const s = String(dataUrl || '');
+  if (s.length > Math.ceil(MAX_PDF_BYTES * 4 / 3) + 64) return { reason: 'size' };
+  const m = UPLOAD_RE.exec(s);
+  if (!m) return { reason: 'format' };
+  const buf = Buffer.from(m[2], 'base64');
+  if (buf.length > (m[1] === 'application/pdf' ? MAX_PDF_BYTES : MAX_IMAGE_BYTES)) return { reason: 'size' };
+  return { mime: m[1], buf };
+}
 
 // حد بسيط لمحاولات الدخول
 const loginAttempts = new Map();
@@ -700,6 +715,46 @@ app.put('/api/projects/:id', auth, (req, res) => {
     }
   }
 
+  // الاعتماد للأدمن وحده في كل الوحدات: اعتماد كميات الاستشاري (الاستلامات)، اعتماد/إرجاع المستخلصات (العميل والباطن)،
+  // صرف مستخلصات الباطن، وطلبات التعديل. أي تغيير على هذه الحقول من غير الأدمن يُرفض هنا حتى لو تجاوز الواجهة.
+  if (!isAdmin(req.user)) {
+    const deny = (error, extra) => res.status(403).json(Object.assign({ error }, extra || {}));
+    const storedItemsById = new Map((stored.boqItems || []).map(i => [i.id, i]));
+    for (const it of (data.boqItems || [])) {
+      if (splitIds.has(it.id)) continue; // تقسيم صالح يعيد توزيع الكميات المعتمدة على الأجزاء
+      const s = storedItemsById.get(it.id);
+      if (!s) {
+        if ((it.approvals || []).length || (Number(it.approvedQty) || 0) > 0.001) return deny('approval_admin_only', { itemId: it.id });
+        continue;
+      }
+      const oldApproved = s.approvedQty !== undefined ? (Number(s.approvedQty) || 0) : (Number(s.executedQty) || 0);
+      if ((Number(it.approvedQty) || 0) > oldApproved + 0.001) return deny('approval_admin_only', { itemId: it.id });
+      if (JSON.stringify(s.approvals || []) !== JSON.stringify(it.approvals || [])) return deny('approval_admin_only', { itemId: it.id });
+    }
+    const storedMus = new Map((stored.mustakhlasat || []).map(m => [m.id, m]));
+    for (const m of (Array.isArray(data.mustakhlasat) ? data.mustakhlasat : [])) {
+      const s = storedMus.get(m.id);
+      if (['approved', 'rejected'].includes(m.status) && (!s || s.status !== m.status)) return deny('approval_admin_only', { id: m.id });
+      if (s && (s.approvedBy || '') !== (m.approvedBy || '')) return deny('approval_admin_only', { id: m.id });
+    }
+    const storedSubMus = new Map((stored.subMustakhlasat || []).map(m => [m.id, m]));
+    for (const m of (Array.isArray(data.subMustakhlasat) ? data.subMustakhlasat : [])) {
+      const s = storedSubMus.get(m.id);
+      if (['approved', 'rejected'].includes(m.status) && (!s || s.status !== m.status)) return deny('approval_admin_only', { id: m.id });
+      if (s && (s.approvedBy || '') !== (m.approvedBy || '')) return deny('approval_admin_only', { id: m.id });
+      if ((m.payments || []).length > (s ? (s.payments || []).length : 0)) return deny('subcontractor_payment_admin_only', { id: m.id });
+    }
+    const storedReqs = new Map((stored.editRequests || []).map(r => [r.id, r]));
+    for (const r of (Array.isArray(data.editRequests) ? data.editRequests : [])) {
+      const s = storedReqs.get(r.id);
+      if (s) {
+        if (s.status !== r.status || !!s.clientApproved !== !!r.clientApproved || !!s.pmoApproved !== !!r.pmoApproved) return deny('approval_admin_only', { id: r.id });
+      } else if (r.status !== 'pending' || r.clientApproved || r.pmoApproved) {
+        return deny('edit_request_must_start_pending');
+      }
+    }
+  }
+
   const p = { ...data, managerUserId, companyId, id, version: stored.version + 1 };
   saveProject(p);
   res.json({ version: p.version });
@@ -856,12 +911,11 @@ app.post('/api/pricedb/upload', auth, (req, res) => {
   if (!canEditPricedb(req.user)) return res.status(403).json({ error: 'pmo_or_above_required' });
   const companyId = pricedbCompanyOf(req);
   if (!companyId) return res.status(400).json({ error: 'no_company_selected' });
-  const dataUrl = req.body && req.body.dataUrl;
-  const m = /^data:(image\/(?:jpeg|png|webp)|application\/pdf);base64,([A-Za-z0-9+/=]+)$/.exec(String(dataUrl || '').slice(0, 16 * 1024 * 1024));
-  if (!m) return res.status(400).json({ error: 'unsupported_file_format' });
-  const buf = Buffer.from(m[2], 'base64');
-  if (buf.length > 10 * 1024 * 1024) return res.status(400).json({ error: 'file_too_large' });
-  const ext = m[1] === 'application/pdf' ? 'pdf' : (m[1] === 'image/jpeg' ? 'jpg' : m[1].split('/')[1]);
+  const up = decodeUpload(req.body && req.body.dataUrl);
+  if (up.reason === 'format') return res.status(400).json({ error: 'unsupported_file_format' });
+  if (up.reason === 'size') return res.status(400).json({ error: 'file_too_large' });
+  const { mime: pmime, buf } = up;
+  const ext = pmime === 'application/pdf' ? 'pdf' : (pmime === 'image/jpeg' ? 'jpg' : pmime.split('/')[1]);
   const file = crypto.randomBytes(14).toString('hex') + '.' + ext;
   const dir = path.join(UPLOADS_DIR, 'pricedb', String(companyId));
   fs.mkdirSync(dir, { recursive: true });
@@ -899,12 +953,11 @@ app.post('/api/projects/:id/photos', auth, (req, res) => {
   const stored = loadProject(id);
   if (!stored) return res.status(404).json({ error: 'project_not_found' });
   if (!canAccessProject(req.user, stored)) return res.status(403).json({ error: 'no_project_access' });
-  const dataUrl = req.body && req.body.dataUrl;
-  const m = /^data:(image\/(?:jpeg|png|webp)|application\/pdf);base64,([A-Za-z0-9+/=]+)$/.exec(String(dataUrl || '').slice(0, 16 * 1024 * 1024));
-  if (!m) return res.status(400).json({ error: 'unsupported_image_format' });
-  const buf = Buffer.from(m[2], 'base64');
-  if (buf.length > 10 * 1024 * 1024) return res.status(400).json({ error: 'image_too_large' });
-  const ext = m[1] === 'application/pdf' ? 'pdf' : (m[1] === 'image/jpeg' ? 'jpg' : m[1].split('/')[1]);
+  const up = decodeUpload(req.body && req.body.dataUrl);
+  if (up.reason === 'format') return res.status(400).json({ error: 'unsupported_image_format' });
+  if (up.reason === 'size') return res.status(400).json({ error: 'image_too_large' });
+  const { mime: pmime, buf } = up;
+  const ext = pmime === 'application/pdf' ? 'pdf' : (pmime === 'image/jpeg' ? 'jpg' : pmime.split('/')[1]);
   const file = crypto.randomBytes(14).toString('hex') + '.' + ext;
   const dir = path.join(UPLOADS_DIR, String(id));
   fs.mkdirSync(dir, { recursive: true });

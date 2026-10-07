@@ -3175,7 +3175,7 @@ function renderItemsTable(){
       '<td class="amount tight">' + fmtN(amt(it2)) + '</td>' +
       '<td class="tight">' + (it2.scope==='others' ? '<span style="color:var(--text3)">—</span>' :
         ('<span style="display:inline-flex;flex-direction:column;gap:3px;align-items:flex-start">' +
-        (isAdmin() ? '<input type="number" class="qty-input boq-qty-input" min="' + (it2.approvedQty||0) + '" max="' + it2.totalQty + '" step="any" value="' + (Math.round((it2.executedQty||0)*100)/100) + '" onchange="setItemQty(\'' + esc(it2.id) + '\', this.value)" data-tip="' + T('أدخل الكمية المنفذة (من أصل ') + fmtQ(it2.totalQty) + ' ' + esc(it2.unit) + T(') — لا تقل عن المعتمد من الاستشاري') + '">' : '') +
+        '<input type="number" class="qty-input boq-qty-input" min="' + (it2.approvedQty||0) + '" max="' + it2.totalQty + '" step="any" value="' + (Math.round((it2.executedQty||0)*100)/100) + '" onchange="setItemQty(\'' + esc(it2.id) + '\', this.value)" data-tip="' + T('أدخل الكمية المنفذة (من أصل ') + fmtQ(it2.totalQty) + ' ' + esc(it2.unit) + T(') — لا تقل عن المعتمد من الاستشاري') + '">' +
         '<span style="display:inline-flex;align-items:center;gap:5px"><span style="font-family:var(--mono);font-size:10px;color:var(--text2)">' + (itemPct(it2)*100).toFixed(1) + '%</span><span class="prog-bar boq-prog"><span class="prog-fill ' + (itemPct(it2)>=DONE?'green':itemPct(it2)>0?'amber':'red') + '" style="width:' + (itemPct(it2)*100) + '%;display:block"></span></span></span>' +
         '</span>')) + '</td>' +
       '<td class="tight">' + approvalCell(it2) + '</td>' +
@@ -3185,7 +3185,7 @@ function renderItemsTable(){
       '<td class="tight">' + depHtml + '</td>' +
       '<td class="actions-cell"><div class="actions-wrap">' + (isAdmin() ? '<button class="mini-btn" onclick="openItemModal(\'' + esc(it2.id) + '\')">✏️ ' + T('تعديل') + '</button>' : '') +
       (!indent && canSplitItem(it2) ? ' <button class="mini-btn" onclick="openSplitItemModal(\'' + esc(it2.id) + '\')" data-tip="' + T('تقسيم سعر البند إلى أجزاء مستقلة — الكمية تبقى كاملة لكل جزء') + '">✂ ' + T('تقسيم الجدول') + '</button>' : '') +
-      (it2.scope !== 'others' && (availQty(it2) > 0.01 || (isAdmin() && pendingApprovalQty(it2) > 0.01))
+      (it2.scope !== 'others' && (availQty(it2) > 0.01 || (pdbCanApproveQty() && pendingApprovalQty(it2) > 0.01))
         ? ' <button class="mini-btn green" onclick="itemToMustakhlas(\'' + esc(it2.id) + '\')" data-tip="' + T('نقل إلى مستخلص') + '">📤</button>' : '') + '</div></td>' +
       '</tr>';
   }).join('') || '<tr><td colspan="13"><div class="empty-state"><p>' + T('لا توجد بنود مطابقة') + '</p></div></td></tr>';
@@ -3234,12 +3234,10 @@ Object.assign(I18N_EN, {
   'استلام':'receipt'
 });
 // من يعتمد كميات الاستشاري؟ الموظف الميداني فأعلى (يرفع الاستلام الموقّع)
-const pdbCanApproveQty = () => isAdmin();
+const pdbCanApproveQty = () => isAdmin() || state.me.role === 'pm';
 
 // إدخال الكمية المنفذة مباشرة — العميل يحاسب بالكميات فالحسبة تكون دقيقة
-// تعديل الكمية المنفذة مباشرة من جدول الكميات — لأدمن النظام فقط (بقية الأدوار تسجّل الكمية عبر تبويب الإنتاجية)
 function setItemQty(id, val){
-  if (!isAdmin()) return;
   const it = getItem(id);
   if (!it) return;
   // الكمية المنفذة لا تقل عن الكمية المعتمدة من الاستشاري — المعتمد أثبت فعلاً بمرفق موقّع فلا يجوز التراجع عنه من هنا.

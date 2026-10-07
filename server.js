@@ -546,9 +546,10 @@ app.put('/api/projects/:id', auth, (req, res) => {
         if ((Number(it.executedQty) || 0) > 0.01) return res.status(403).json({ error: 'pm_new_item_qty_zero', itemId: it.id });
         continue;
       }
-      const allowed = (Number(st.executedQty) || 0) + (addByItem[it.id] || 0);
-      if (Math.abs((Number(it.executedQty) || 0) - allowed) > 0.02) {
-        return res.status(403).json({ error: 'pm_qty_edit_needs_owner', itemId: it.id });
+      const floorQ = Number(st.approvedQty) || 0;
+      const ex = Number(it.executedQty) || 0;
+      if (ex < floorQ - 0.02 || ex > (Number(it.totalQty) || 0) + 0.02) {
+        return res.status(403).json({ error: 'executed_out_of_bounds', itemId: it.id });
       }
       // سعر الوحدة والكمية الكلية للبند يؤثران في قيمة المطالبة تماماً كالكمية المنفذة — يتطلبان موافقة مالك الشركة أيضاً
       if (Math.abs((Number(it.unitRate) || 0) - (Number(st.unitRate) || 0)) > 0.001) {
@@ -601,9 +602,10 @@ app.put('/api/projects/:id', auth, (req, res) => {
         if ((Number(it.executedQty) || 0) > 0.01) return res.status(403).json({ error: 'البند الجديد يبدأ بكمية منفذة صفر (البند ' + it.id + ')' });
         continue;
       }
-      const allowed = (Number(s.executedQty) || 0) + (addByItem[it.id] || 0);
-      if (Math.abs((Number(it.executedQty) || 0) - allowed) > 0.02) {
-        return res.status(403).json({ error: 'تعديل الكمية المنفذة يتطلب موافقة العميل ومدير المشاريع (البند ' + it.id + ')' });
+      const floorQ = Number(s.approvedQty) || 0;
+      const ex = Number(it.executedQty) || 0;
+      if (ex < floorQ - 0.02 || ex > (Number(it.totalQty) || 0) + 0.02) {
+        return res.status(403).json({ error: 'executed_out_of_bounds', itemId: it.id });
       }
     }
     // طلبات التعديل: يُضيف مدير المشروع طلبات جديدة فقط (بحالة pending وبدون اعتمادات) ولا يعدّل القائمة
@@ -722,6 +724,7 @@ app.put('/api/projects/:id', auth, (req, res) => {
     const storedItemsById = new Map((stored.boqItems || []).map(i => [i.id, i]));
     for (const it of (data.boqItems || [])) {
       if (splitIds.has(it.id)) continue; // تقسيم صالح يعيد توزيع الكميات المعتمدة على الأجزاء
+      if (req.user.role === 'pm') continue; // مدير المشروع يعتمد الكميات مع الأدمن (استلامات الاستشاري)
       const s = storedItemsById.get(it.id);
       if (!s) {
         if ((it.approvals || []).length || (Number(it.approvedQty) || 0) > 0.001) return deny('approval_admin_only', { itemId: it.id });

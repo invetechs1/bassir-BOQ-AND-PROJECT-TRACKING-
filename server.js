@@ -331,6 +331,17 @@ const canAdminCompany = (user, companyId) => isAdmin(user) || (user.role === 'cl
 const canManageUser = (actor, target) => isAdmin(actor) ||
   (actor.role === 'client' && ['pmo','pm'].includes(target.role) && target.companyId === actor.companyId);
 
+// ---------- طبقة البيع والاشتراكات (SaaS: مستأجرون/باقات/فوترة/دفع Tap/لوحة مالك) ----------
+// تُركّب هنا لتُسجّل مساراتها قبل الملفات الثابتة والمسار الشامل، وتوفّر حُرّاس الصلاحية للمشاريع.
+const SAAS = require('./saas')({
+  app, express, DATA_DIR, UPLOADS_DIR, PUBLIC_DIR: path.join(__dirname, 'public'),
+  readJSON, writeJSON, nextId,
+  loadCompanies, saveCompanies, loadUsers, saveUsers, sanitizeUser,
+  listProjects, loadProject, saveProject,
+  bcrypt, jwt, JWT_SECRET, auth, isAdmin,
+  fs, crypto
+});
+
 // ---------- المصادقة ----------
 app.post('/api/auth/login', (req, res) => {
   const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '?';
@@ -418,6 +429,9 @@ app.post('/api/projects', auth, (req, res) => {
   const companyId = isAdmin(req.user) ? Number(data.companyId) : req.user.companyId;
   if (!companyId || !loadCompanies().some(c => c.id === companyId)) return res.status(400).json({ error: 'حدد شركة صحيحة للمشروع' });
   if (!canAdminCompany(req.user, companyId)) return res.status(403).json({ error: 'إنشاء المشاريع صلاحية أدمن النظام أو عميل الشركة' });
+  // مستأجر مُدار بالاشتراك: المشاريع تُضاف وتُدفع من صفحة الاشتراك (لا إنشاء مباشر)
+  const gC = SAAS.guards.projectCreate(req.user);
+  if (!gC.ok) return res.status(gC.code).json({ error: gC.error, billing: gC.billing });
   const p = { ...data, companyId, id: nextId(), version: 1 };
   saveProject(p);
   res.json({ id: p.id, version: p.version });
@@ -428,6 +442,9 @@ app.put('/api/projects/:id', auth, (req, res) => {
   const stored = loadProject(id);
   if (!stored) return res.status(404).json({ error: 'المشروع غير موجود' });
   if (!canAccessProject(req.user, stored)) return res.status(403).json({ error: 'لا تملك صلاحية على هذا المشروع' });
+  // اشتراك موقوف لعدم السداد → منع الكتابة (القراءة تبقى متاحة)
+  const gW = SAAS.guards.projectWrite(req.user);
+  if (!gW.ok) return res.status(gW.code).json({ error: gW.error, billing: gW.billing });
   const { baseVersion, data } = req.body || {};
   if (!data) return res.status(400).json({ error: 'بيانات ناقصة' });
   if (Number(baseVersion) !== stored.version) return res.status(409).json({ error: 'conflict', version: stored.version });
@@ -543,6 +560,12 @@ app.put('/api/projects/:id', auth, (req, res) => {
     const totalSubExec = itemId => round2s((data.subcontractors || []).reduce((s, sub) => s + subExec(sub.id, itemId), 0));
     const subEligible = (subId, itemId) => {
       const it = itemMap.get(itemId); if (!it) return 0;
+      const appr = it.approvals || [];
+      // الطريقة الجديدة: إن نُسبت الاعتمادات لمقاولين، المؤهل = مجموع ما اعتمده الاستشاري لهذا المقاول بالضبط.
+      if (appr.some(a => a.subId)) {
+        return round2s(appr.filter(a => a.subId === subId).reduce((s, a) => s + (Number(a.qty) || 0), 0));
+      }
+      // بيانات قديمة بلا نسب: توزيع تناسبي بحدود المعتمد.
       const ex = subExec(subId, itemId), tot = totalSubExec(itemId);
       if (tot <= 0 || ex <= 0) return 0;
       return round2s(ex * Math.min(1, approvedOfItem(it) / tot));
@@ -791,6 +814,8 @@ app.post('/api/projects/:id/photos', auth, (req, res) => {
   if (!m) return res.status(400).json({ error: 'الصيغة غير مدعومة (صور jpeg/png/webp أو PDF)' });
   const buf = Buffer.from(m[2], 'base64');
   if (buf.length > 10 * 1024 * 1024) return res.status(400).json({ error: 'الملف كبير جداً (الحد 10MB)' });
+  const gU = SAAS.guards.upload(stored, buf.length);
+  if (!gU.ok) return res.status(gU.code).json({ error: gU.error, billing: '/billing' });
   const ext = m[1] === 'application/pdf' ? 'pdf' : (m[1] === 'image/jpeg' ? 'jpg' : m[1].split('/')[1]);
   const file = crypto.randomBytes(14).toString('hex') + '.' + ext;
   const dir = path.join(UPLOADS_DIR, String(id));

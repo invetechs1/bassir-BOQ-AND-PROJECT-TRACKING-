@@ -1,0 +1,226 @@
+<!doctype html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>لوحة المالك — نظام بصير</title>
+<link rel="stylesheet" href="/saas/saas.css">
+<style>
+.tabs{display:flex;gap:6px;margin:18px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.tab{padding:10px 16px;cursor:pointer;color:var(--text3);font-weight:700;border-bottom:2px solid transparent}
+.tab.active{color:var(--text);border-bottom-color:var(--brand)}
+@media(max-width:700px){th.hs,td.hs{display:none}}
+.mode-chip{font-size:12px;padding:3px 10px;border-radius:999px;font-weight:700}
+.mode-sim{background:var(--amberbg);color:#ffd27a} .mode-live{background:var(--greenbg);color:#7ff0bb} .mode-test{background:#0e2b55;color:#9dc0ff}
+</style>
+</head>
+<body>
+<div class="topbar"><div class="wrap">
+  <div class="logo"><span class="mark">ب</span><span>لوحة المالك</span></div>
+  <div class="row"><span id="mode-chip" class="mode-chip mode-sim" style="align-self:center">—</span>
+    <a class="btn btn-ghost btn-sm" href="/">→ النظام</a>
+    <button class="btn btn-ghost btn-sm" onclick="logout()">خروج</button>
+  </div>
+</div></div>
+
+<div class="wrap" style="padding:24px 20px">
+  <div id="login-gate" class="card hide" style="max-width:420px;margin:40px auto">
+    <h2>دخول مالك المنصّة</h2>
+    <div id="login-err" class="note note-err hide"></div>
+    <div class="field"><label>اسم المستخدم</label><input id="lg-user" autocomplete="username"></div>
+    <div class="field"><label>كلمة المرور</label><input id="lg-pass" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <button class="btn btn-primary btn-block" onclick="doLogin()">دخول</button>
+  </div>
+
+  <div id="content" class="hide">
+    <div class="tabs">
+      <div class="tab active" data-t="dash" onclick="tab('dash')">📊 اللوحة</div>
+      <div class="tab" data-t="tenants" onclick="tab('tenants')">🏢 المستأجرون</div>
+      <div class="tab" data-t="settings" onclick="tab('settings')">⚙️ الإعدادات</div>
+    </div>
+
+    <!-- اللوحة -->
+    <div id="pane-dash">
+      <div class="grid g4" style="margin-bottom:16px">
+        <div class="kpi"><div class="k-label">🏢 المستأجرون</div><div class="k-val" id="k-total">—</div><div class="k-sub" id="k-breakdown"></div></div>
+        <div class="kpi"><div class="k-label">💰 الإيراد الشهري المتكرر (MRR)</div><div class="k-val" id="k-mrr">—</div><div class="k-sub" id="k-mrr-vat"></div></div>
+        <div class="kpi"><div class="k-label">📆 إيراد هذا الشهر</div><div class="k-val" id="k-rev-month">—</div><div class="k-sub">مدفوعات محصّلة</div></div>
+        <div class="kpi"><div class="k-label">🗂️ مشاريع فعّالة</div><div class="k-val" id="k-proj">—</div><div class="k-sub" id="k-storage"></div></div>
+      </div>
+      <div class="grid g2">
+        <div class="panel"><div class="spread" style="margin-bottom:8px"><h3 style="margin:0">حالة المستأجرين</h3><button class="btn btn-ghost btn-sm" onclick="runBilling()">⟳ تشغيل الفوترة الآن</button></div>
+          <div id="status-cards" class="grid" style="grid-template-columns:1fr 1fr;gap:10px"></div>
+          <div class="note note-info" style="margin-top:12px;font-size:12.5px">إجمالي الإيراد منذ البداية: <strong id="rev-all">—</strong></div>
+        </div>
+        <div class="panel"><h3 style="margin:0 0 8px">أحدث المدفوعات</h3>
+          <div style="overflow:auto"><table><thead><tr><th>التاريخ</th><th>النوع</th><th>المبلغ</th><th class="hs">البطاقة</th></tr></thead><tbody id="pay-body"></tbody></table></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- المستأجرون -->
+    <div id="pane-tenants" class="hide">
+      <div class="panel"><div style="overflow:auto"><table>
+        <thead><tr><th>الشركة</th><th>الحالة</th><th class="hs">المالك</th><th>المشاريع</th><th>الشهري</th><th class="hs">التجديد</th><th class="hs">التخزين</th><th>إجراءات</th></tr></thead>
+        <tbody id="tenants-body"></tbody>
+      </table></div></div>
+    </div>
+
+    <!-- الإعدادات -->
+    <div id="pane-settings" class="hide">
+      <div class="grid g2">
+        <div class="panel">
+          <h3 style="margin:0 0 12px">💳 بوابة الدفع (Tap)</h3>
+          <div class="note note-warn" id="tap-hint"></div>
+          <div class="field"><label>وضع التشغيل</label><select id="st-mode"><option value="sim">محاكاة (تجربة بلا أموال)</option><option value="test">اختبار Tap (مفاتيح test)</option><option value="live">تشغيل فعلي (مفاتيح live)</option></select></div>
+          <div class="field"><label>Public Key (يُستخدم في صفحة الدفع)</label><input id="st-pub" placeholder="pk_live_... أو pk_test_..."></div>
+          <div class="field"><label>Secret Key (سرّي — لا يُعرض بعد الحفظ)</label><input id="st-sec" placeholder="اتركه فارغاً للإبقاء على الحالي"></div>
+          <div class="field"><label>Webhook Secret</label><input id="st-wh" placeholder="اتركه فارغاً للإبقاء على الحالي"></div>
+          <div class="field"><label>Tap API Base URL</label><input id="st-base" value="https://api.tap.company"></div>
+          <button class="btn btn-primary" onclick="saveConfig()">حفظ إعدادات الدفع</button>
+        </div>
+        <div class="panel">
+          <h3 style="margin:0 0 12px">💵 التسعير والضريبة</h3>
+          <div class="row"><div class="field" style="flex:1"><label>سعر باقة 15 ج.ب / شهر</label><input id="st-t15" type="number"></div>
+          <div class="field" style="flex:1"><label>سعر باقة 20 ج.ب / شهر</label><input id="st-t20" type="number"></div></div>
+          <div class="row"><div class="field" style="flex:1"><label>ضريبة القيمة المضافة %</label><input id="st-vat" type="number"></div>
+          <div class="field" style="flex:1"><label>مهلة السداد (أيام)</label><input id="st-grace" type="number"></div></div>
+          <div class="field"><label>طريقة احتساب الضريبة</label><select id="st-inc"><option value="false">تُضاف على السعر (750 + ضريبة)</option><option value="true">السعر شامل الضريبة</option></select></div>
+          <hr style="border:0;border-top:1px solid var(--line);margin:14px 0">
+          <div class="field"><label>اسم المنصّة (يظهر للعملاء)</label><input id="st-brand"></div>
+          <div class="row"><div class="field" style="flex:1"><label>جوال الدعم</label><input id="st-phone"></div>
+          <div class="field" style="flex:1"><label>بريد الدعم</label><input id="st-email"></div></div>
+          <button class="btn btn-primary" onclick="saveConfig()">حفظ التسعير</button>
+        </div>
+      </div>
+      <div class="note note-info" style="margin-top:14px">رابط صفحة التسجيل لعملائك: <a href="/landing" target="_blank"><strong id="landing-link">/landing</strong></a> — شاركه في موقعك أو إعلاناتك.</div>
+    </div>
+  </div>
+</div>
+
+<!-- تفاصيل مستأجر -->
+<div class="overlay" id="t-ov"><div class="modal" id="t-modal" style="max-width:640px"></div></div>
+<div class="toast" id="toast"><span></span></div>
+
+<script>
+var TOKEN=localStorage.getItem('azoom_token')||'', CFG=null;
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function money(n){return Number(n||0).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:2})}
+function toast(m){var t=document.getElementById('toast');t.querySelector('span').textContent=m;t.classList.add('show');setTimeout(function(){t.classList.remove('show')},2800)}
+function fmtDate(iso){ if(!iso) return '—'; try{return new Date(iso).toLocaleDateString('ar-SA-u-nu-latn',{year:'numeric',month:'short',day:'numeric'})}catch(e){return String(iso).slice(0,10)} }
+function api(method,path,body){return fetch(path,{method:method,headers:{'Content-Type':'application/json',Authorization:'Bearer '+TOKEN},body:body?JSON.stringify(body):undefined}).then(function(r){return r.json().then(function(d){return{status:r.status,ok:r.ok,d:d}})})}
+function show(el,on){document.getElementById(el).classList[on?'remove':'add']('hide')}
+function tab(t){['dash','tenants','settings'].forEach(function(x){document.getElementById('pane-'+x).classList.toggle('hide',x!==t);document.querySelector('.tab[data-t='+x+']').classList.toggle('active',x===t)});if(t==='tenants')loadTenants();if(t==='settings')loadConfig()}
+
+function boot(){
+  if(!TOKEN){ show('login-gate',true); show('content',false); return; }
+  api('GET','/api/saas/admin/overview').then(function(r){
+    if(r.status===401){ localStorage.removeItem('azoom_token'); TOKEN=''; show('login-gate',true); show('content',false); return; }
+    if(r.status===403){ show('login-gate',false); document.getElementById('content').classList.add('hide'); document.querySelector('.wrap').insertAdjacentHTML('beforeend','<div class="card" style="max-width:480px;margin:40px auto"><h2>صلاحية المالك فقط</h2><p class="muted">هذه اللوحة لمالك المنصّة (admin).</p><a class="btn btn-primary" href="/">→ النظام</a></div>'); return; }
+    show('login-gate',false); show('content',true); renderDash(r.d);
+    document.getElementById('landing-link').textContent=location.origin+'/landing';
+  });
+}
+function doLogin(){
+  var u=document.getElementById('lg-user').value.trim(), p=document.getElementById('lg-pass').value;
+  fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})}).then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d}})}).then(function(res){
+    if(!res.ok){ var e=document.getElementById('login-err'); e.textContent=res.d.error||'فشل الدخول'; e.classList.remove('hide'); return; }
+    TOKEN=res.d.token; localStorage.setItem('azoom_token',TOKEN); boot();
+  });
+}
+function logout(){ localStorage.removeItem('azoom_token'); location.href='/'; }
+
+function renderDash(d){
+  var chip=document.getElementById('mode-chip'); chip.className='mode-chip mode-'+d.tap.mode;
+  chip.textContent=d.tap.mode==='live'?'Tap: تشغيل فعلي':(d.tap.mode==='test'?'Tap: اختبار':'Tap: محاكاة');
+  document.getElementById('k-total').textContent=d.counts.total;
+  document.getElementById('k-breakdown').textContent='فعّال '+d.counts.active+' · موقوف '+d.counts.suspended;
+  document.getElementById('k-mrr').textContent=money(d.mrrNet)+' ر.س';
+  document.getElementById('k-mrr-vat').textContent='مع الضريبة '+money(d.mrrWithVat)+' ر.س';
+  document.getElementById('k-rev-month').textContent=money(d.revenueMonth)+' ر.س';
+  document.getElementById('k-proj').textContent=d.activeProjects;
+  document.getElementById('k-storage').textContent='تخزين '+money(d.storageGB)+' ج.ب';
+  document.getElementById('rev-all').textContent=money(d.revenueAll)+' ر.س';
+  var sc=[['active','فعّال','b-green'],['pending','بانتظار الدفع','b-amber'],['past_due','متأخر','b-amber'],['suspended','موقوف','b-red'],['cancelled','ملغى','b-gray']];
+  document.getElementById('status-cards').innerHTML=sc.map(function(s){return '<div class="panel" style="padding:12px;text-align:center"><div class="k-val" style="font-size:24px">'+(d.counts[s[0]]||0)+'</div><span class="badge '+s[2]+'">'+s[1]+'</span></div>'}).join('');
+  var kinds={signup:'اشتراك',project_add:'مشروع',renewal:'تجديد',card_update:'بطاقة'};
+  document.getElementById('pay-body').innerHTML=(d.recentPayments||[]).map(function(p){return '<tr><td>'+fmtDate(p.at)+'</td><td>'+(kinds[p.kind]||p.kind||'')+'</td><td class="amount">'+money(p.amount)+' '+esc(p.currency||'')+'</td><td class="hs">'+(p.cardLast4?esc(p.cardBrand||'')+' ****'+esc(p.cardLast4):'—')+'</td></tr>'}).join('')||'<tr><td colspan="4" class="muted center">لا مدفوعات بعد</td></tr>';
+}
+function runBilling(){ toast('جارٍ تشغيل الفوترة…'); api('POST','/api/saas/admin/run-billing',{}).then(function(r){ toast('تمّ: جُدّد '+r.d.renewed+' · أوقف '+r.d.suspended+' · فشل '+r.d.failed); boot(); }); }
+
+function statusBadge(s){var map={active:['b-green','فعّال'],pending:['b-amber','بانتظار'],past_due:['b-amber','متأخر'],suspended:['b-red','موقوف'],cancelled:['b-gray','ملغى']};var m=map[s]||['b-gray',s];return '<span class="badge '+m[0]+'">'+m[1]+'</span>'}
+function loadTenants(){
+  api('GET','/api/saas/admin/tenants').then(function(r){
+    document.getElementById('tenants-body').innerHTML=(r.d||[]).map(function(t){
+      return '<tr><td><strong>'+esc(t.company)+'</strong></td><td>'+statusBadge(t.status)+'</td>'+
+        '<td class="hs">'+esc((t.owner&&t.owner.name)||'—')+'</td>'+
+        '<td>'+t.activeProjects+'/'+t.projects+'</td><td class="amount">'+money(t.monthlyNet)+'</td>'+
+        '<td class="hs">'+fmtDate(t.nextRenewalAt)+'</td><td class="hs">'+money(t.storageGB)+' ج.ب</td>'+
+        '<td><button class="btn btn-ghost btn-sm" onclick="viewTenant('+t.companyId+')">تفاصيل</button></td></tr>';
+    }).join('')||'<tr><td colspan="8" class="muted center">لا مستأجرين بعد</td></tr>';
+  });
+}
+function viewTenant(id){
+  api('GET','/api/saas/admin/tenants/'+id).then(function(r){
+    if(!r.ok) return toast('تعذّر'); var t=r.d.tenant, invs=r.d.invoices||[];
+    var acts='';
+    if(t.status!=='suspended'&&t.status!=='cancelled') acts+='<button class="btn btn-danger btn-sm" onclick="tAction('+id+',\'suspend\')">إيقاف</button> ';
+    if(t.status!=='active') acts+='<button class="btn btn-primary btn-sm" onclick="tAction('+id+',\'activate\')">تفعيل</button> ';
+    acts+='<button class="btn btn-ghost btn-sm" onclick="tAction('+id+',\'renew-now\')">تجديد الآن</button> ';
+    if(t.status!=='cancelled') acts+='<button class="btn btn-ghost btn-sm" onclick="tAction('+id+',\'cancel\')">إلغاء</button>';
+    var st={paid:['b-green','مدفوعة'],unpaid:['b-amber','غير مدفوعة'],failed:['b-red','فشلت']};
+    var irows=invs.slice(0,12).map(function(v){var s=st[v.status]||['b-gray',v.status];return '<tr><td>'+esc(v.no)+'</td><td>'+fmtDate(v.issuedAt)+'</td><td class="amount">'+money(v.total)+'</td><td><span class="badge '+s[0]+'">'+s[1]+'</span></td></tr>'}).join('');
+    document.getElementById('t-modal').innerHTML='<span class="modal-x" onclick="document.getElementById(\'t-ov\').classList.remove(\'open\')">✕</span>'+
+      '<h2>'+esc(t.company)+' '+statusBadge(t.status)+'</h2>'+
+      '<div class="muted" style="margin-bottom:10px">المالك: '+esc((t.contact&&t.contact.name)||'—')+' · '+esc((t.contact&&t.contact.phone)||'')+' · '+esc((t.contact&&t.contact.email)||'')+'</div>'+
+      '<div class="row" style="margin-bottom:12px">'+acts+'</div>'+
+      '<div class="panel" style="padding:12px;margin-bottom:12px"><strong>المشاريع ('+(t.projects||[]).length+')</strong>'+
+        (t.projects||[]).map(function(p){return '<div class="spread" style="padding:5px 0;border-bottom:1px solid var(--line)"><span>'+esc(p.name)+' <span class="badge b-blue">'+(Number(p.tier)||15)+' ج.ب</span></span>'+statusBadge(p.status)+'</div>'}).join('')+'</div>'+
+      '<strong>آخر الفواتير</strong><table style="margin-top:6px"><thead><tr><th>رقم</th><th>التاريخ</th><th>الإجمالي</th><th>الحالة</th></tr></thead><tbody>'+irows+'</tbody></table>';
+    document.getElementById('t-ov').classList.add('open');
+  });
+}
+function tAction(id,action){
+  if(action==='cancel'&&!confirm('إلغاء اشتراك هذا المستأجر؟')) return;
+  api('POST','/api/saas/admin/tenants/'+id+'/action',{action:action}).then(function(r){
+    if(r.ok){ toast('تمّ'); document.getElementById('t-ov').classList.remove('open'); loadTenants(); boot(); } else toast(r.d.error||'تعذّر');
+  });
+}
+
+function loadConfig(){
+  api('GET','/api/saas/admin/config').then(function(r){
+    CFG=r.d;
+    document.getElementById('st-mode').value=r.d.tap.mode;
+    document.getElementById('st-pub').value=r.d.tap.publicKey||'';
+    document.getElementById('st-sec').placeholder=r.d.tap.secretKeySet?'محفوظ — اتركه فارغاً للإبقاء':'pk غير مضبوط';
+    document.getElementById('st-wh').placeholder=r.d.tap.webhookSecretSet?'محفوظ — اتركه فارغاً':'غير مضبوط';
+    document.getElementById('st-base').value=r.d.tap.baseUrl||'https://api.tap.company';
+    document.getElementById('st-t15').value=r.d.tiers['15'];
+    document.getElementById('st-t20').value=r.d.tiers['20'];
+    document.getElementById('st-vat').value=r.d.vatRate;
+    document.getElementById('st-grace').value=r.d.graceDays;
+    document.getElementById('st-inc').value=String(!!r.d.priceInclusiveVat);
+    document.getElementById('st-brand').value=(r.d.brand&&r.d.brand.name)||'';
+    document.getElementById('st-phone').value=(r.d.brand&&r.d.brand.supportPhone)||'';
+    document.getElementById('st-email').value=(r.d.brand&&r.d.brand.supportEmail)||'';
+    document.getElementById('tap-hint').innerHTML = r.d.tap.mode==='sim'
+      ? 'الوضع الحالي: <strong>محاكاة</strong> — للتجربة فقط. أدخل مفاتيح Tap وبدّل الوضع إلى «تشغيل فعلي» لقبول مدفوعات حقيقية.'
+      : (r.d.tap.secretKeySet?'مفاتيح Tap محفوظة.':'⚠️ لم تُحفظ مفاتيح Tap بعد — لن تنجح المدفوعات.');
+  });
+}
+function saveConfig(){
+  var body={
+    tap:{ mode:document.getElementById('st-mode').value, publicKey:document.getElementById('st-pub').value.trim(), baseUrl:document.getElementById('st-base').value.trim() },
+    tiers:{ '15':Number(document.getElementById('st-t15').value), '20':Number(document.getElementById('st-t20').value) },
+    vatRate:Number(document.getElementById('st-vat').value), graceDays:Number(document.getElementById('st-grace').value),
+    priceInclusiveVat: document.getElementById('st-inc').value==='true',
+    brand:{ name:document.getElementById('st-brand').value.trim(), supportPhone:document.getElementById('st-phone').value.trim(), supportEmail:document.getElementById('st-email').value.trim() }
+  };
+  var sec=document.getElementById('st-sec').value.trim(), wh=document.getElementById('st-wh').value.trim();
+  if(sec) body.tap.secretKey=sec; if(wh) body.tap.webhookSecret=wh;
+  api('PUT','/api/saas/admin/config',body).then(function(r){ if(r.ok){ toast('✅ حُفظت الإعدادات'); document.getElementById('st-sec').value=''; document.getElementById('st-wh').value=''; loadConfig(); boot(); } else toast(r.d.error||'تعذّر'); });
+}
+boot();
+</script>
+</body>
+</html>

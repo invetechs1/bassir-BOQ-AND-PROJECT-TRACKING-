@@ -1,0 +1,284 @@
+<!doctype html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>نظام بصير — إدارة المشاريع والمستخلصات</title>
+<meta name="description" content="نظام سحابي لإدارة جداول الكميات والمستخلصات والإنتاجية ومقاولي الباطن. اشترك أونلاين وابدأ خلال دقائق.">
+<link rel="stylesheet" href="/saas/saas.css">
+<style>
+.hero{padding:70px 0 40px;text-align:center}
+.hero h1{font-size:44px;font-weight:800;letter-spacing:-1px;background:linear-gradient(120deg,#eaf1ff,#9dc0ff 60%,#2bb3c0);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p.sub{font-size:19px;color:var(--text2);max-width:680px;margin:14px auto 26px}
+.hero .cta{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.pill{display:inline-flex;gap:8px;align-items:center;background:#0e2b4e55;border:1px solid #245089;color:#bcd6ff;padding:6px 14px;border-radius:999px;font-size:13px;margin-bottom:22px}
+.feat-grid{margin:30px 0}
+.feat{padding:22px}
+.feat .ic{width:46px;height:46px;border-radius:12px;background:#0e223f;display:grid;place-items:center;font-size:22px;margin-bottom:12px}
+.feat h3{font-size:17px;margin-bottom:4px}
+.feat p{color:var(--text3);font-size:14px;margin:0}
+section{padding:36px 0}
+.sec-title{text-align:center;margin-bottom:26px}
+.sec-title h2{font-size:30px}
+.sec-title p{color:var(--text3)}
+.steps{counter-reset:s}
+.step{display:flex;gap:16px;align-items:flex-start;padding:14px 0}
+.step .n{counter-increment:s;min-width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--brand),var(--accent));color:#021316;display:grid;place-items:center;font-weight:800}
+.step .n::before{content:counter(s)}
+footer{border-top:1px solid var(--line);padding:26px 0;color:var(--text3);font-size:13px;text-align:center}
+.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:520px){.formgrid{grid-template-columns:1fr}.hero h1{font-size:33px}}
+.tierpick{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:4px 0 8px}
+.tierpick .opt{border:1.5px solid var(--line);border-radius:12px;padding:12px;cursor:pointer;text-align:center;transition:.15s}
+.tierpick .opt.sel{border-color:var(--brand);background:#0e2e3340}
+.tierpick .opt .p{font-size:22px;font-weight:800}
+.tierpick .opt .c{font-size:12px;color:var(--text3)}
+/* لماذا تشتري + قبل/بعد */
+.why .ic{width:46px;height:46px;border-radius:12px;background:linear-gradient(135deg,#0e3a41,#143a6e);display:grid;place-items:center;font-size:22px;margin-bottom:12px}
+.ba{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:22px}
+.ba .col{border-radius:16px;padding:20px}
+.ba .before{background:#271314;border:1px solid #5b2020}
+.ba .after{background:#0c2a1c;border:1px solid #1c6b47}
+.ba h4{margin:0 0 12px;font-size:16px}
+.ba ul{margin:0;padding:0;list-style:none}
+.ba li{margin:8px 0;font-size:13.8px;color:var(--text2);display:flex;gap:9px;align-items:flex-start}
+.ba .before li::before{content:"✕";color:#ff7a7a;font-weight:800}
+.ba .after li::before{content:"✓";color:var(--green);font-weight:800}
+@media(max-width:560px){.ba{grid-template-columns:1fr}}
+/* دليل الاستخدام */
+.tut-stage{margin:24px 0}
+.tut-stage .st-head{display:flex;align-items:center;gap:10px;color:var(--brand);font-size:15px;font-weight:800;margin-bottom:12px}
+.tut-stage .st-head .dot{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,var(--brand),var(--accent));color:#021316;display:grid;place-items:center;font-weight:800;font-size:14px}
+.tut-step{display:flex;gap:14px;padding:15px;border:1px solid var(--line);border-radius:13px;background:var(--surface);margin-bottom:10px;transition:.15s}
+.tut-step:hover{border-color:var(--brand)}
+.tut-step .num{min-width:36px;height:36px;border-radius:10px;background:#0e223f;color:var(--accent);display:grid;place-items:center;font-weight:800;font-size:15px}
+.tut-step .body{flex:1}
+.tut-step .body h4{margin:0 0 4px;font-size:15.5px;display:flex;align-items:center;flex-wrap:wrap;gap:6px}
+.tut-step .body p{margin:0;color:var(--text3);font-size:13.8px;line-height:1.75}
+.tut-chip{display:inline-block;background:#0e2b55;color:#9dc0ff;border:1px solid #27508c;border-radius:7px;font-size:11.5px;padding:2px 8px;font-weight:700}
+</style>
+</head>
+<body>
+<div class="topbar"><div class="wrap">
+  <div class="logo"><span class="mark">ب</span><span>نظام بصير</span></div>
+  <div class="row">
+    <a class="btn btn-ghost btn-sm" href="/">دخول العملاء</a>
+    <button class="btn btn-primary btn-sm" onclick="openSignup()">ابدأ الآن</button>
+  </div>
+</div></div>
+
+<div class="wrap">
+  <div class="hero">
+    <span class="pill">☁️ نظام سحابي — بدون تثبيت · يعمل على الجوال والحاسب</span>
+    <h1>أدر مشاريعك ومستخلصاتك<br>من مكان واحد</h1>
+    <p class="sub">جداول الكميات، الإنتاجية اليومية، اعتمادات الاستشاري، مستخلصات الشركة ومقاولي الباطن، والأرشيف الكامل — في نظام واحد آمن. اشترك أونلاين وابدأ خلال دقائق.</p>
+    <div class="cta">
+      <button class="btn btn-primary" onclick="openSignup()">🚀 اشترك الآن</button>
+      <a class="btn btn-ghost" href="#pricing">عرض الأسعار</a>
+    </div>
+  </div>
+
+  <div class="grid g3 feat-grid">
+    <div class="card feat"><div class="ic">📊</div><h3>جداول الكميات والمستخلصات</h3><p>BOQ كامل، احتساب تلقائي للمستخلص، ضريبة ومحتجزات ودفعات مقدمة.</p></div>
+    <div class="card feat"><div class="ic">📷</div><h3>الإنتاجية اليومية الموثّقة</h3><p>رفع يومي بالصور مع ختم التاريخ والموقع الجغرافي واسم المشروع.</p></div>
+    <div class="card feat"><div class="ic">✅</div><h3>اعتمادات الاستشاري</h3><p>كل كمية معتمدة مربوطة باستلام موقّع، ونسبها لمقاول الباطن الصحيح.</p></div>
+    <div class="card feat"><div class="ic">🧱</div><h3>مقاولو الباطن</h3><p>عقود وأسعار ومستخلصات ومدفوعات مقاولي الباطن مع ضوابط منع التلاعب.</p></div>
+    <div class="card feat"><div class="ic">🗂️</div><h3>الأرشيف والمستندات</h3><p>كل ملف مرفق محفوظ ومنظّم في مجلدات يومية يسهل الرجوع إليها.</p></div>
+    <div class="card feat"><div class="ic">🔒</div><h3>صلاحيات وأمان</h3><p>أدوار دقيقة (مالك/مدير مشاريع/مهندس موقع) وعزل كامل لبيانات كل عميل.</p></div>
+  </div>
+
+  <section id="why">
+    <div class="sec-title"><h2>لماذا تشتري نظام بصير؟</h2><p>صُمّم خصيصاً للمقاول الصغير والمتوسط — ينظّم مشروعك ويُسرّع تحصيل مستخلصاتك دون تعقيد أو تكاليف ضخمة.</p></div>
+    <div class="grid g3 why">
+      <div class="card"><div class="ic">💸</div><h3>حصّل مستخلصاتك أسرع</h3><p>كل كمية مربوطة باعتماد موقّع من الاستشاري، فيُعتمد مستخلصك بلا جدال ويصل تحصيلك أسرع ونزاعات أقل.</p></div>
+      <div class="card"><div class="ic">🧾</div><h3>وداعاً لإكسل المبعثر</h3><p>جدول الكميات والمستخلصات والإنتاجية في نظام واحد — لا ملفات ضائعة ولا نسخ متضاربة بين الموقع والمكتب.</p></div>
+      <div class="card"><div class="ic">🛡️</div><h3>احمِ أموالك من التلاعب</h3><p>ضوابط آلية تمنع تضخيم كميات مقاول الباطن أو تكرارها أو صرف أكثر مما اعتمده الاستشاري.</p></div>
+      <div class="card"><div class="ic">📸</div><h3>إثبات ميداني لا يُنكَر</h3><p>صور الإنجاز اليومي مختومة تلقائياً بالتاريخ والموقع الجغرافي واسم المشروع — مرجعك عند أي خلاف.</p></div>
+      <div class="card"><div class="ic">📊</div><h3>المالك يرى كل شيء من جواله</h3><p>نسبة الإنجاز، المستخلصات المعلّقة، مديونية مقاولي الباطن، والتنبيهات — لحظياً ومن أي مكان.</p></div>
+      <div class="card"><div class="ic">⚙️</div><h3>بلا سيرفرات ولا مبرمجين</h3><p>اشتراك شهري بسيط، نسخ احتياطية وتحديثات تلقائية، يعمل من المتصفح على الجوال والحاسب.</p></div>
+      <div class="card"><div class="ic">💰</div><h3>تكلفة على مقاسك</h3><p>ادفع فقط عن المشاريع الفعّالة؛ أضِف مشروعاً عند ترسيته وأوقفه عند تسليمه — بلا التزامات طويلة.</p></div>
+      <div class="card"><div class="ic">🕒</div><h3>جاهز خلال دقائق</h3><p>سجّل، ادفع، وابدأ العمل اليوم — واجهة عربية سهلة بلا تركيب ولا تدريب طويل.</p></div>
+      <div class="card"><div class="ic">👷</div><h3>انضباط فريق الموقع</h3><p>أدوار واضحة (مالك / مدير مشاريع / مهندس موقع) وتذكير يومي تلقائي لرفع الإنتاجية.</p></div>
+    </div>
+
+    <div class="ba">
+      <div class="col before"><h4>❌ قبل نظام بصير</h4><ul>
+        <li>جداول إكسل متفرقة وملفات تضيع بين الموقع والمكتب</li>
+        <li>مستخلصات تتأخر وتُرفض لنقص المستندات</li>
+        <li>كميات مقاولي الباطن بلا رقابة وعرضة للتلاعب</li>
+        <li>صور إنجاز بلا تاريخ ولا موقع موثّق</li>
+        <li>المالك لا يعرف وضع مشاريعه إلا بزيارة الموقع</li>
+      </ul></div>
+      <div class="col after"><h4>✅ بعد نظام بصير</h4><ul>
+        <li>نظام واحد سحابي يجمع كل بيانات المشروع</li>
+        <li>مستخلص معتمد بمستندات واستلامات موقّعة</li>
+        <li>رقابة آلية تمنع تجاوز الكميات المعتمدة</li>
+        <li>توثيق مختوم بالتاريخ والموقع لكل صورة</li>
+        <li>متابعة لحظية من الجوال لكل المشاريع والمبالغ</li>
+      </ul></div>
+    </div>
+  </section>
+
+  <section id="pricing">
+    <div class="sec-title"><h2>تسعير بسيط — لكل مشروع</h2><p>تدفع فقط عن المشاريع التي تحتاجها. أضِف أو أوقِف في أي وقت.</p></div>
+    <div class="grid g2" id="pricing-cards" style="max-width:760px;margin:0 auto"></div>
+    <p class="center muted" style="margin-top:16px;font-size:13px" id="vat-note"></p>
+  </section>
+
+  <section id="tutorial">
+    <div class="sec-title"><h2>دليل الاستخدام الكامل — خطوة بخطوة</h2><p>من التسجيل حتى رفع المستخلص وإدارة مقاولي الباطن. رحلة مشروعك كاملة.</p></div>
+    <div class="panel" style="max-width:820px;margin:0 auto">
+
+      <div class="tut-stage">
+        <div class="st-head"><span class="dot">1</span> البداية: الحساب والدفع</div>
+        <div class="tut-step"><div class="num">1</div><div class="body"><h4>سجّل حسابك</h4><p>اضغط «ابدأ الآن»، وأدخل اسم الشركة والمالك، واسم مستخدم وكلمة مرور للدخول، ثم اسم أول مشروع واختر باقته (15 أو 20 جيجابايت). دقيقة واحدة فقط.</p></div></div>
+        <div class="tut-step"><div class="num">2</div><div class="body"><h4>ادفع وفعّل فوراً</h4><p>ادفع اشتراك أول مشروع بالبطاقة (Visa / Mada / Apple Pay) عبر بوابة Tap الآمنة — بيانات بطاقتك لا تمر عبر خوادمنا. بمجرد نجاح الدفع يُفعّل حسابك وتدخل النظام مباشرة، ويتجدد الاشتراك شهرياً تلقائياً.</p></div></div>
+      </div>
+
+      <div class="tut-stage">
+        <div class="st-head"><span class="dot">2</span> تجهيز المشروع</div>
+        <div class="tut-step"><div class="num">3</div><div class="body"><h4>افتح مشروعك <span class="tut-chip">🗂 المشاريع</span></h4><p>من تبويب «المشاريع» اضغط «فتح المشروع» لتدخل لوحة تحكمه. (لإضافة مشروع جديد لاحقاً، تضيفه وتدفعه من صفحة «الاشتراك» فيُفعّل مباشرة.)</p></div></div>
+        <div class="tut-step"><div class="num">4</div><div class="body"><h4>ارفع جدول الكميات (BOQ) <span class="tut-chip">📋 جدول الكميات</span></h4><p>أضف بنود المشروع (الوصف، الوحدة، الكمية، السعر) يدوياً أو جلباً من «قاعدة الأسعار»، وحدّد نطاق كل بند: تنفيذ ذاتي أو مقاول باطن. يمكنك ترتيبها كبنود رئيسية وفرعية.</p></div></div>
+        <div class="tut-step"><div class="num">5</div><div class="body"><h4>اضبط إعدادات المشروع</h4><p>حدّد نسبة ضريبة القيمة المضافة، نسبة المحتجزات (الضمان)، الدفعة المقدمة ونسبة استردادها، ونوع المشروع ووحداته (فلل/أدوار/…).</p></div></div>
+      </div>
+
+      <div class="tut-stage">
+        <div class="st-head"><span class="dot">3</span> التنفيذ اليومي في الموقع</div>
+        <div class="tut-step"><div class="num">6</div><div class="body"><h4>اعرف ماذا تنفّذ اليوم <span class="tut-chip">🧭 خطة العمل</span></h4><p>يرتّب لك النظام البنود الجاهزة للتنفيذ حسب الأسبقيات (ما يسبق ما) والعوائق، فيعرف مهندس الموقع أولوياته فوراً.</p></div></div>
+        <div class="tut-step"><div class="num">7</div><div class="body"><h4>سجّل الإنتاجية اليومية بالصور <span class="tut-chip">👷 الإنتاجية</span></h4><p>أدخل الكمية المنفذة لكل بند، وأرفق صور الموقع — تُختم تلقائياً بالتاريخ والموقع الجغرافي واسم المشروع — واربط التنفيذ بمقاول الباطن المنفّذ إن وجد. كل يومية محفوظة ولا يُعدّلها مهندس الموقع بعد رفعها.</p></div></div>
+        <div class="tut-step"><div class="num">8</div><div class="body"><h4>وثّق العوائق <span class="tut-chip">🚫 العوائق</span></h4><p>سجّل ما يعطّل العمل (تصميم، مواد، طقس…) وأثره على الجدول، ليكون مرجعاً موثّقاً عند المطالبات والتمديدات.</p></div></div>
+      </div>
+
+      <div class="tut-stage">
+        <div class="st-head"><span class="dot">4</span> الاعتماد ورفع المستخلص</div>
+        <div class="tut-step"><div class="num">9</div><div class="body"><h4>اعتماد الاستشاري للكميات <span class="tut-chip">📋 جدول الكميات</span></h4><p>اعتمد الكمية المنفذة وأرفق الاستلام الموقّع من الاستشاري. هذا شرط إلزامي: لا تُرفع أي كمية في مستخلص قبل اعتمادها بمستند موقّع — وهذا ما يحمي مستخلصك من الرفض.</p></div></div>
+        <div class="tut-step"><div class="num">10</div><div class="body"><h4>أنشئ المستخلص وارفعه <span class="tut-chip">💰 المستخلصات</span></h4><p>اختر «مستخلص جديد» وحدّد البنود المعتمدة؛ يحسب النظام الإجمالي وضريبة القيمة المضافة والمحتجزات واسترداد الدفعة المقدمة تلقائياً. يُرفع المستخلص للمراجعة والاعتماد ثم تصدر الفاتورة — وكل مستنداته محفوظة في الأرشيف.</p></div></div>
+      </div>
+
+      <div class="tut-stage">
+        <div class="st-head"><span class="dot">5</span> مقاولو الباطن</div>
+        <div class="tut-step"><div class="num">11</div><div class="body"><h4>أنشئ مقاول باطن <span class="tut-chip">🧱 مقاولو الباطن</span></h4><p>أضف المقاول وعقده وبنوده وأسعاره المتفق عليها، ونسبة المحتجزات الخاصة به.</p></div></div>
+        <div class="tut-step"><div class="num">12</div><div class="body"><h4>مستخلص المقاول ومدفوعاته</h4><p>ارفع مستخلص مقاول الباطن بحدود الكمية المعتمدة له فقط (مع إرفاق مستخلصه واعتمادات الاستشاري إلزامياً)، ثم سجّل دفعاته ومحتجزاته. ضوابط النظام تمنع صرف أكثر من المعتمد.</p></div></div>
+      </div>
+
+      <div class="tut-stage">
+        <div class="st-head"><span class="dot">6</span> المتابعة والإدارة</div>
+        <div class="tut-step"><div class="num">13</div><div class="body"><h4>لوحة التحكم <span class="tut-chip">📊</span></h4><p>نظرة شاملة: نسب الإنجاز، المبالغ المنفذة والمعتمدة والمرفوعة، والتنبيهات (بنود تنتظر الاعتماد، مستخلصات تنتظر المراجعة).</p></div></div>
+        <div class="tut-step"><div class="num">14</div><div class="body"><h4>الأرشيف والمستندات <span class="tut-chip">📁 الأرشيف</span></h4><p>ارجع لأي استلام أو صورة أو ملف مرفق في أي وقت، منظّمة في مجلدات يومية سهلة البحث.</p></div></div>
+        <div class="tut-step"><div class="num">15</div><div class="body"><h4>المستخدمون والصلاحيات وإضافة المشاريع</h4><p>أضف مدير مشاريع ومهندسي موقع بأدوار محددة لكل منهم. ولكل مشروع جديد، أضفه وادفع اشتراكه من صفحة «الاشتراك» فيُفعّل مباشرة.</p></div></div>
+      </div>
+
+      <div class="center" style="margin-top:20px"><button class="btn btn-primary" onclick="openSignup()">جرّب كل هذا الآن — ابدأ اشتراكك</button></div>
+    </div>
+  </section>
+
+  <section class="center">
+    <button class="btn btn-primary" style="font-size:16px;padding:14px 28px" onclick="openSignup()">ابدأ اشتراكك الآن</button>
+  </section>
+</div>
+
+<footer><div class="wrap" id="footer-brand">نظام بصير — الإدارة التقنية لشركة بصير · ذراع شركة عزوم التقني</div></footer>
+
+<!-- نافذة التسجيل -->
+<div class="overlay" id="signup-ov">
+  <div class="modal">
+    <span class="modal-x" onclick="closeSignup()">✕</span>
+    <h2 style="margin-bottom:4px">إنشاء حساب جديد</h2>
+    <p class="muted" style="margin-top:0;font-size:14px">أكمل البيانات ثم تابع للدفع الآمن.</p>
+    <div id="signup-err" class="note note-err hide"></div>
+    <div class="field"><label>اسم الشركة *</label><input id="su-company" placeholder="مثال: شركة البناء الحديثة"></div>
+    <div class="formgrid">
+      <div class="field"><label>اسم المالك *</label><input id="su-owner" placeholder="الاسم الكامل"></div>
+      <div class="field"><label>الجوال</label><input id="su-phone" placeholder="05xxxxxxxx" inputmode="tel"></div>
+    </div>
+    <div class="formgrid">
+      <div class="field"><label>اسم المستخدم للدخول *</label><input id="su-username" placeholder="بالإنجليزية" autocomplete="username"></div>
+      <div class="field"><label>البريد الإلكتروني</label><input id="su-email" placeholder="للإيصالات" inputmode="email"></div>
+    </div>
+    <div class="field"><label>كلمة المرور * (6 أحرف فأكثر)</label><input id="su-pass" type="password" autocomplete="new-password"></div>
+    <hr style="border:0;border-top:1px solid var(--line);margin:16px 0">
+    <div class="field"><label>اسم أول مشروع *</label><input id="su-proj" placeholder="مثال: برج الرياض"></div>
+    <label>اختر باقة المشروع</label>
+    <div class="tierpick" id="su-tiers"></div>
+    <div class="note note-info" id="su-summary"></div>
+    <button class="btn btn-primary btn-block" id="su-go" style="font-size:15px" onclick="submitSignup()">متابعة للدفع الآمن ←</button>
+    <p class="center muted" style="font-size:12px;margin-top:10px">🔒 الدفع عبر بوابة Tap المرخّصة. بيانات بطاقتك لا تُخزّن لدينا.</p>
+  </div>
+</div>
+
+<div class="toast" id="toast"><span></span></div>
+
+<script>
+var CFG = null, selTier = '15';
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function money(n){return Number(n||0).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:2})}
+function toast(m){var t=document.getElementById('toast');t.querySelector('span').textContent=m;t.classList.add('show');setTimeout(function(){t.classList.remove('show')},2600)}
+function priceWithVat(net){ if(!CFG) return net; if(CFG.priceInclusiveVat) return net; return Math.round((net*(1+(CFG.vatRate||0)/100))*100)/100; }
+
+function load(){
+  fetch('/api/saas/public/config').then(function(r){return r.json()}).then(function(c){
+    CFG=c;
+    document.title='نظام بصير — '+(c.brand&&c.brand.name||'إدارة المشاريع');
+    if(c.brand&&c.brand.name) document.getElementById('footer-brand').textContent=c.brand.name;
+    renderPricing(); renderTierPicker();
+    var vr=c.vatRate||0;
+    document.getElementById('vat-note').textContent = c.priceInclusiveVat
+      ? ('الأسعار شاملة ضريبة القيمة المضافة '+vr+'%.')
+      : ('تُضاف ضريبة القيمة المضافة '+vr+'% على الأسعار أعلاه.');
+  }).catch(function(){ toast('تعذّر تحميل الأسعار'); });
+}
+function tierCard(gb,feat){
+  var net=CFG.tiers[gb]; var total=priceWithVat(net);
+  return '<div class="price-card'+(feat?' feat':'')+'">'+(feat?'<span class="tag">الأكثر سعة</span>':'')+
+    '<div class="muted">باقة المشروع</div>'+
+    '<div class="amt">'+money(net)+' <small>ر.س / شهر</small></div>'+
+    '<div class="muted" style="font-size:13px">'+ (CFG.priceInclusiveVat?'شامل':'+ ')+' ضريبة '+(CFG.vatRate||0)+'% = '+money(total)+' ر.س'+(CFG.priceInclusiveVat?'':' شاملة')+'</div>'+
+    '<ul><li>سعة تخزين '+gb+' جيجابايت للمشروع</li><li>مستخدمون غير محدودين للمشروع</li><li>كل مزايا النظام</li><li>تجديد شهري تلقائي</li><li>أضف/أوقف في أي وقت</li></ul>'+
+    '<button class="btn '+(feat?'btn-primary':'btn-ghost')+' btn-block" onclick="openSignup(\''+gb+'\')">اختر هذه الباقة</button></div>';
+}
+function renderPricing(){
+  document.getElementById('pricing-cards').innerHTML = tierCard('15',false)+tierCard('20',true);
+}
+function renderTierPicker(){
+  var el=document.getElementById('su-tiers');
+  el.innerHTML=['15','20'].map(function(gb){
+    return '<div class="opt'+(gb===selTier?' sel':'')+'" data-gb="'+gb+'" onclick="pickTier(\''+gb+'\')">'+
+      '<div class="p">'+money(CFG.tiers[gb])+'</div><div class="c">ر.س/شهر · '+gb+' ج.ب</div></div>';
+  }).join('');
+  updateSummary();
+}
+function pickTier(gb){ selTier=gb; renderTierPicker(); }
+function updateSummary(){
+  var net=CFG.tiers[selTier], total=priceWithVat(net);
+  document.getElementById('su-summary').innerHTML='الإجمالي الآن: <strong>'+money(total)+' ر.س</strong> '+
+    (CFG.priceInclusiveVat?'(شامل الضريبة)':'(شامل ضريبة '+(CFG.vatRate||0)+'%)')+' — عن أول شهر، ثم يتجدد تلقائياً شهرياً.';
+}
+function openSignup(gb){ if(gb) selTier=gb; if(CFG) renderTierPicker(); document.getElementById('signup-ov').classList.add('open'); }
+function closeSignup(){ document.getElementById('signup-ov').classList.remove('open'); }
+function showErr(m){ var e=document.getElementById('signup-err'); e.textContent=m; e.classList.remove('hide'); }
+
+function submitSignup(){
+  document.getElementById('signup-err').classList.add('hide');
+  var body={
+    company:val('su-company'), ownerName:val('su-owner'), phone:val('su-phone'),
+    username:val('su-username'), email:val('su-email'), password:val('su-pass'),
+    project:{ name:val('su-proj'), tier:selTier }
+  };
+  if(!body.company||!body.ownerName||!body.username||!body.password||!body.project.name) return showErr('أكمل الحقول المطلوبة (*)');
+  if(body.password.length<6) return showErr('كلمة المرور 6 أحرف على الأقل');
+  var btn=document.getElementById('su-go'); btn.disabled=true; btn.innerHTML='<span class="spin"></span> جارٍ التحويل للدفع…';
+  fetch('/api/saas/public/signup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+    .then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d}})})
+    .then(function(res){
+      if(!res.ok){ btn.disabled=false; btn.textContent='متابعة للدفع الآمن ←'; return showErr(res.d.error||'تعذّر التسجيل'); }
+      try{ localStorage.setItem('azoom_pending_user',res.d.username||''); }catch(e){}
+      if(res.d.captured){ window.location='/saas/return?inv='+res.d.invoiceId; return; }
+      window.location = res.d.redirectUrl;
+    }).catch(function(){ btn.disabled=false; btn.textContent='متابعة للدفع الآمن ←'; showErr('تعذّر الاتصال بالخادم'); });
+}
+function val(id){return (document.getElementById(id).value||'').trim()}
+['su-company','su-owner','su-username','su-pass','su-proj'].forEach(function(){});
+load();
+</script>
+</body>
+</html>

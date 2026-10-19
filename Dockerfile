@@ -6,6 +6,7 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 
 COPY server.js ./
+COPY saas ./saas
 COPY public ./public
 COPY seed-pricedb.json ./
 COPY seed-files ./seed-files

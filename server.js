@@ -719,6 +719,8 @@ app.put('/api/projects/:id', auth, (req, res) => {
     const itemMap = new Map((data.boqItems || []).map(i => [i.id, i]));
     const approvedOfItem = it => it ? Math.min(Number(it.executedQty) || 0, it.approvedQty !== undefined ? (Number(it.approvedQty) || 0) : (Number(it.executedQty) || 0)) : 0;
     const totalSubExec = itemId => round2s((data.subcontractors || []).reduce((s, sub) => s + subExec(sub.id, itemId), 0));
+    // طابق منطق الواجهة subEligibleQty: اعتمادات موسومة بمقاول (subId) تُحسب مباشرة لذلك المقاول،
+    // وإلا يُستخدم التوزيع التناسبي القديم للبيانات التي سبقت إضافة الحقل
     // الاستلامات الفعّالة حالياً: نمشي على سجل الاعتمادات من الأحدث للأقدم ونجمع حتى نصل لـ approvedQty
     // الحالي — الاستلامات الأحدث تحل محل الأقدم بدل أن تُخفَّف كلها بالتناسب على كامل السجل التاريخي
     // (يمنع مثلاً تخفيف اعتماد جديد محدد لمقاول على سجل قديم باهت من قبل إعادة ضبط الكمية).

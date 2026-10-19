@@ -32,6 +32,7 @@ const CONTRACTORS_DIR = path.join(DATA_DIR, 'contractors');
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
 const COMPANIES_FILE = path.join(DATA_DIR, 'companies.json');
 const INTEGRATIONS_FILE = path.join(DATA_DIR, 'integrations.json');
+const WHATSAPP_FILE = path.join(DATA_DIR, 'whatsapp.json');
 const META_FILE = path.join(DATA_DIR, 'meta.json');
 const SECRET_FILE = path.join(DATA_DIR, '.jwt-secret');
 
@@ -86,6 +87,74 @@ function setIntegrationStatus(companyId, status) {
   all[companyId].bassir.lastAt = new Date().toISOString();
   saveIntegrations(all);
 }
+
+// ---------- تذكير واتساب يومي لمدراء المشاريع (بوابة UltraMsg برقم الشركة) ----------
+function loadWhatsapp() {
+  return readJSON(WHATSAPP_FILE, { enabled: false, provider: 'ultramsg', base: 'https://api.ultramsg.com', instanceId: '', token: '', senderNumber: '0558338548', hour: 15, lastRunDay: '', lastStatus: '', log: [] });
+}
+function saveWhatsapp(o) { writeJSON(WHATSAPP_FILE, o); }
+function redactWhatsapp(c) {
+  return { enabled: !!c.enabled, provider: c.provider || 'ultramsg', base: c.base || 'https://api.ultramsg.com', instanceId: c.instanceId || '', tokenSet: !!c.token, senderNumber: c.senderNumber || '', hour: (c.hour != null ? c.hour : 15), lastStatus: c.lastStatus || '', lastRunDay: c.lastRunDay || '', log: (c.log || []).slice(-30) };
+}
+// توحيد الرقم لصيغة دولية بدون + (السعودية 966 افتراضياً)
+function normalizePhone(p) {
+  let d = String(p || '').replace(/[^0-9]/g, '');
+  if (!d) return '';
+  if (d.startsWith('00')) d = d.slice(2);
+  if (d.startsWith('0')) d = '966' + d.slice(1);
+  else if (!d.startsWith('966') && d.length <= 9) d = '966' + d;
+  return d;
+}
+function reminderBody(projectName) {
+  return 'تذكير 📋\nهل قمت برفع وتحديث الإنتاجية اليومية لمشروعك' + (projectName ? '؛ ' + projectName : '') + '؟\n\nمع تحيات الإدارة التقنية لشركة بصير — ذراع شركة عزوم التقني';
+}
+async function sendWhatsappMessage(cfg, to, body) {
+  const num = normalizePhone(to);
+  if (!num) return { ok: false, error: 'رقم غير صالح', to };
+  if (!cfg.instanceId || !cfg.token) return { ok: false, error: 'إعداد UltraMsg ناقص', to: num };
+  const url = (cfg.base || 'https://api.ultramsg.com').replace(/\/+$/, '') + '/' + encodeURIComponent(cfg.instanceId) + '/messages/chat';
+  const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 15000);
+  try {
+    const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: cfg.token, to: num, body }), signal: ctrl.signal });
+    clearTimeout(t);
+    let d = {}; try { d = await r.json(); } catch (e) { /* */ }
+    const ok = r.ok && (d.sent === true || d.sent === 'true' || d.message === 'ok' || (d.id && !d.error));
+    return { ok: !!ok, status: r.status, resp: d, to: num };
+  } catch (e) { clearTimeout(t); return { ok: false, error: (e && e.message) || 'خطأ', to: num }; }
+}
+// إرسال التذكير لكل مدير مشروع لديه رقم
+async function runDailyReminders(reason) {
+  const cfg = loadWhatsapp();
+  if (!cfg.enabled) return { ok: false, error: 'التذكير غير مُفعّل' };
+  if (!cfg.instanceId || !cfg.token) return { ok: false, error: 'إعداد UltraMsg ناقص' };
+  const byId = new Map(loadUsers().map(u => [u.id, u]));
+  const results = [];
+  for (const p of listProjects()) {
+    const mgr = p.managerUserId ? byId.get(p.managerUserId) : null;
+    if (!mgr || !mgr.phone) continue;
+    const r = await sendWhatsappMessage(cfg, mgr.phone, reminderBody(p.info && p.info.name));
+    results.push({ project: (p.info && p.info.name) || '', name: mgr.name, to: r.to, ok: r.ok, status: r.status || null, error: r.error || null, at: new Date().toISOString() });
+  }
+  const fresh = loadWhatsapp();
+  fresh.lastStatus = reason + ': ' + results.filter(x => x.ok).length + '/' + results.length + ' أُرسلت @ ' + new Date().toISOString();
+  fresh.log = [...(fresh.log || []), ...results].slice(-100);
+  saveWhatsapp(fresh);
+  return { ok: true, sent: results.filter(x => x.ok).length, total: results.length, results };
+}
+// المجدوِل: كل دقيقة يفحص توقيت الرياض (UTC+3، بلا توقيت صيفي) ويُرسل مرة واحدة يومياً عند الساعة المحددة
+setInterval(() => {
+  try {
+    const cfg = loadWhatsapp();
+    if (!cfg.enabled) return;
+    const hour = cfg.hour != null ? Number(cfg.hour) : 15;
+    const riyadh = new Date(Date.now() + 3 * 3600 * 1000);
+    const day = riyadh.toISOString().slice(0, 10);
+    if (riyadh.getUTCHours() === hour && cfg.lastRunDay !== day) {
+      const fresh = loadWhatsapp(); fresh.lastRunDay = day; saveWhatsapp(fresh); // حجز اليوم أولاً لمنع التكرار
+      runDailyReminders('المجدول اليومي');
+    }
+  } catch (e) { /* لا يوقف الخادم */ }
+}, 60 * 1000);
 
 // إرسال المستخلص المُنشأ إلى Bassir ERP (إن كان التكامل مفعّلاً). لا يوقف حفظ المستخلص عند الفشل.
 async function pushMustakhlasToBassir(companyId, project, mus) {
@@ -294,6 +363,17 @@ const canAdminCompany = (user, companyId) => isAdmin(user) || (user.role === 'cl
 const canManageUser = (actor, target) => isAdmin(actor) ||
   (actor.role === 'client' && ['pmo','pm'].includes(target.role) && target.companyId === actor.companyId);
 
+// ---------- طبقة البيع والاشتراكات (SaaS: مستأجرون/باقات/فوترة/دفع Tap/لوحة مالك) ----------
+// تُركّب هنا لتُسجّل مساراتها قبل الملفات الثابتة والمسار الشامل، وتوفّر حُرّاس الصلاحية للمشاريع.
+const SAAS = require('./saas')({
+  app, express, DATA_DIR, UPLOADS_DIR, PUBLIC_DIR: path.join(__dirname, 'public'),
+  readJSON, writeJSON, nextId,
+  loadCompanies, saveCompanies, loadUsers, saveUsers, sanitizeUser,
+  listProjects, loadProject, saveProject,
+  bcrypt, jwt, JWT_SECRET, auth, isAdmin,
+  fs, crypto
+});
+
 // ---------- المصادقة ----------
 app.post('/api/auth/login', (req, res) => {
   const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '?';
@@ -381,6 +461,9 @@ app.post('/api/projects', auth, (req, res) => {
   const companyId = isAdmin(req.user) ? Number(data.companyId) : req.user.companyId;
   if (!companyId || !loadCompanies().some(c => c.id === companyId)) return res.status(400).json({ error: 'invalid_company_for_project' });
   if (!canAdminCompany(req.user, companyId)) return res.status(403).json({ error: 'create_project_denied' });
+  // مستأجر مُدار بالاشتراك: المشاريع تُضاف وتُدفع من صفحة الاشتراك (لا إنشاء مباشر)
+  const gC = SAAS.guards.projectCreate(req.user);
+  if (!gC.ok) return res.status(gC.code).json({ error: gC.error, billing: gC.billing });
   const p = { ...data, companyId, id: nextId(), version: 1 };
   saveProject(p);
   res.json({ id: p.id, version: p.version });
@@ -391,6 +474,9 @@ app.put('/api/projects/:id', auth, (req, res) => {
   const stored = loadProject(id);
   if (!stored) return res.status(404).json({ error: 'project_not_found' });
   if (!canAccessProject(req.user, stored)) return res.status(403).json({ error: 'no_project_access' });
+  // اشتراك موقوف لعدم السداد → منع الكتابة (القراءة تبقى متاحة)
+  const gW = SAAS.guards.projectWrite(req.user);
+  if (!gW.ok) return res.status(gW.code).json({ error: gW.error, billing: gW.billing });
   const { baseVersion, data } = req.body || {};
   if (!data) return res.status(400).json({ error: 'data_incomplete' });
   if (Number(baseVersion) !== stored.version) return res.status(409).json({ error: 'conflict', version: stored.version });
@@ -588,7 +674,7 @@ app.put('/api/projects/:id', auth, (req, res) => {
         if ((s.qty || 0) !== (l.qty || 0) || (s.appliedQty || 0) !== (l.appliedQty || 0) ||
             !!s.applied !== !!l.applied || s.itemId !== l.itemId || s.date !== l.date ||
             (s.subId || null) !== (l.subId || null)) {
-          return res.status(403).json({ error: 'تعديل يومية الإنتاجية يتطلب موافقة العميل ومدير المشاريع' });
+          return res.status(403).json({ error: 'تعديل يومية الإنتاجية (بما فيها مقاول الباطن) يتطلب موافقة العميل ومدير المشاريع' });
         }
       } else if (l.applied) {
         addByItem[l.itemId] = (addByItem[l.itemId] || 0) + (Number(l.appliedQty) || 0);
@@ -601,6 +687,10 @@ app.put('/api/projects/:id', auth, (req, res) => {
       if (!s) {
         if ((Number(it.executedQty) || 0) > 0.01) return res.status(403).json({ error: 'البند الجديد يبدأ بكمية منفذة صفر (البند ' + it.id + ')' });
         continue;
+      }
+      // سعر العقد (سعر الوحدة) لا يعدّله مدير المشروع
+      if (Math.abs((Number(s.unitRate) || 0) - (Number(it.unitRate) || 0)) > 0.001) {
+        return res.status(403).json({ error: 'تعديل سعر العقد للبند ' + it.id + ' صلاحية الإدارة' });
       }
       const floorQ = Number(s.approvedQty) || 0;
       const ex = Number(it.executedQty) || 0;
@@ -629,12 +719,48 @@ app.put('/api/projects/:id', auth, (req, res) => {
     const itemMap = new Map((data.boqItems || []).map(i => [i.id, i]));
     const approvedOfItem = it => it ? Math.min(Number(it.executedQty) || 0, it.approvedQty !== undefined ? (Number(it.approvedQty) || 0) : (Number(it.executedQty) || 0)) : 0;
     const totalSubExec = itemId => round2s((data.subcontractors || []).reduce((s, sub) => s + subExec(sub.id, itemId), 0));
+    // الاستلامات الفعّالة حالياً: نمشي على سجل الاعتمادات من الأحدث للأقدم ونجمع حتى نصل لـ approvedQty
+    // الحالي — الاستلامات الأحدث تحل محل الأقدم بدل أن تُخفَّف كلها بالتناسب على كامل السجل التاريخي
+    // (يمنع مثلاً تخفيف اعتماد جديد محدد لمقاول على سجل قديم باهت من قبل إعادة ضبط الكمية).
+    const activeApprovals = it => {
+      let remaining = approvedOfItem(it);
+      const approvals = it.approvals || [];
+      const active = [];
+      for (let i = approvals.length - 1; i >= 0 && remaining > 0.001; i--) {
+        const a = approvals[i];
+        const use = Math.min(Number(a.qty) || 0, remaining);
+        if (use > 0.001) active.push({ subId: a.subId, qty: use });
+        remaining -= use;
+      }
+      return active;
+    };
     const subEligible = (subId, itemId) => {
       const it = itemMap.get(itemId); if (!it) return 0;
-      const ex = subExec(subId, itemId), tot = totalSubExec(itemId);
+      const ex = subExec(subId, itemId);
+      const approvals = it.approvals || [];
+      if (approvals.some(a => a.subId != null)) {
+        const tagged = round2s(activeApprovals(it).filter(a => a.subId === subId).reduce((s, a) => s + a.qty, 0));
+        return round2s(Math.min(tagged, ex));
+      }
+      const tot = totalSubExec(itemId);
       if (tot <= 0 || ex <= 0) return 0;
       return round2s(ex * Math.min(1, approvedOfItem(it) / tot));
     };
+    // سعر مقاول الباطن لا يتجاوز سعر العقد للبند نفسه (لا يُدفع للمقاول أكثر مما يُطالَب به العميل)
+    const storedSubMap = new Map((stored.subcontractors || []).map(s => [s.id, s]));
+    const storedSubRate = (subId, itemId) => { const ss = storedSubMap.get(subId); const r = ss && (ss.items || []).find(i => i.itemId === itemId); return r ? Number(r.rate || 0) : null; };
+    const subById = new Map((data.subcontractors || []).map(s => [s.id, s]));
+    for (const sub of (data.subcontractors || [])) {
+      for (const r of (sub.items || [])) {
+        const s = storedItems.get(r.itemId);
+        const cap = s ? Number(s.unitRate || 0) : null;
+        const prev = storedSubRate(sub.id, r.itemId);
+        // نمنع فقط رفع السعر الجديد فوق سعر العقد (نُبقي الأسعار القديمة كما هي)
+        if (cap != null && Number(r.rate || 0) > cap + 0.01 && Number(r.rate || 0) !== prev) {
+          return res.status(403).json({ error: 'سعر مقاول الباطن للبند ' + r.itemId + ' لا يمكن أن يتجاوز سعر العقد (' + cap + ')' });
+        }
+      }
+    }
     // كمية معمّدة تراكمياً (من المخزّن غير المرفوض) نبدأ منها ونضيف المستخلصات الجديدة أثناء الفحص
     const claimedMap = {}; // subId|itemId -> qty
     (stored.subMustakhlasat || []).filter(m => m.status !== 'rejected').forEach(m => {
@@ -644,10 +770,13 @@ app.put('/api/projects/:id', auth, (req, res) => {
     for (const m of (Array.isArray(data.subMustakhlasat) ? data.subMustakhlasat : [])) {
       const s = storedSubMus.get(m.id);
       if (s) {
-        // موجود مسبقاً: لا يغيّر حالته/اعتماده/دفعاته/صافيه
+        // موجود مسبقاً: مدير المشروع لا يغيّر أي شيء فيه (حالة/اعتماد/صافي/إجمالي/بنود/خصومات/دفعات)
         if (s.status !== m.status || s.approvedBy !== m.approvedBy || round2s(s.net) !== round2s(m.net) ||
+            round2s(s.gross || 0) !== round2s(m.gross || 0) ||
+            JSON.stringify(s.lines || []) !== JSON.stringify(m.lines || []) ||
+            JSON.stringify(s.ded || {}) !== JSON.stringify(m.ded || {}) ||
             JSON.stringify(s.payments || []) !== JSON.stringify(m.payments || [])) {
-          return res.status(403).json({ error: 'مدير المشروع لا يعتمد ولا يصرف مستخلصات مقاولي الباطن' });
+          return res.status(403).json({ error: 'مدير المشروع لا يعدّل ولا يعتمد ولا يصرف مستخلصات مقاولي الباطن' });
         }
       } else {
         // جديد: يجب أن يكون submitted وبدون دفعات
@@ -658,14 +787,38 @@ app.put('/api/projects/:id', auth, (req, res) => {
         if (!(m.docs || []).some(d => d && d.url)) {
           return res.status(400).json({ error: 'مستخلص مقاول الباطن يتطلب إرفاق المستخلص المعمول من الشركة واعتمادات الاستشاري' });
         }
-        // فحص الكميات: لا تجاوز للمؤهّل
+        // التحقق من صحة المبالغ: منع الخصومات السالبة ونسبة الحجز خارج النطاق
+        const ded = m.ded || {};
+        for (const kk of ['materials', 'utilities', 'performance', 'other']) {
+          if (Number(ded[kk] || 0) < 0) return res.status(400).json({ error: 'لا يُسمح بخصومات سالبة في مستخلص مقاول الباطن' });
+        }
+        const retR = Number(m.retRate || 0);
+        if (retR < 0 || retR > 100) return res.status(400).json({ error: 'نسبة حجز الجودة غير صحيحة' });
+        // فحص الكميات + مطابقة السعر + إعادة حساب الإجمالي والصافي على الخادم
+        const sub = subById.get(m.subId);
+        const agreedRate = itemId => { const r = sub && (sub.items || []).find(i => i.itemId === itemId); return r ? Number(r.rate || 0) : 0; };
+        let grossCalc = 0;
         for (const l of (m.lines || [])) {
           const k = m.subId + '|' + l.itemId;
           const avail = round2s(subEligible(m.subId, l.itemId) - (claimedMap[k] || 0));
           if ((Number(l.currQty) || 0) > avail + 0.02) {
             return res.status(403).json({ error: 'كمية مقاول الباطن للبند ' + l.itemId + ' تتجاوز المنفّذ المعتمد — مُنع تلقائياً' });
           }
+          if (Math.abs((Number(l.rate) || 0) - agreedRate(l.itemId)) > 0.01) {
+            return res.status(400).json({ error: 'سعر البند ' + l.itemId + ' لا يطابق السعر المتفق مع مقاول الباطن' });
+          }
+          grossCalc += (Number(l.currQty) || 0) * agreedRate(l.itemId);
           claimedMap[k] = (claimedMap[k] || 0) + (Number(l.currQty) || 0);
+        }
+        grossCalc = round2s(grossCalc);
+        const dedTot = round2s(Number(ded.materials || 0) + Number(ded.utilities || 0) + Number(ded.performance || 0) + Number(ded.other || 0));
+        const retCalc = round2s(grossCalc * retR / 100);
+        const netCalc = round2s(grossCalc - retCalc - dedTot);
+        if (Math.abs(round2s(m.gross || 0) - grossCalc) > 0.02) {
+          return res.status(400).json({ error: 'إجمالي مستخلص مقاول الباطن لا يطابق (الكمية × السعر المتفق)' });
+        }
+        if (Math.abs(round2s(m.net || 0) - netCalc) > 0.02) {
+          return res.status(400).json({ error: 'صافي مستخلص مقاول الباطن غير صحيح (لا يطابق الإجمالي ناقص الحجز والخصومات)' });
         }
       }
     }
@@ -822,6 +975,7 @@ app.put('/api/users/:id', auth, (req, res) => {
   if (!canManageUser(req.user, u)) return res.status(403).json({ error: 'no_user_access' });
   const { name, role, password, phone } = req.body || {};
   if (name) u.name = String(name).trim();
+  if (req.body && req.body.phone !== undefined) u.phone = String(req.body.phone || '').trim();
   if (role && ROLES.includes(role)) {
     const allowed = isAdmin(req.user) ? ROLES : ['pmo','pm'];
     if (!allowed.includes(role)) return res.status(403).json({ error: 'cannot_grant_role' });
@@ -960,6 +1114,8 @@ app.post('/api/projects/:id/photos', auth, (req, res) => {
   if (up.reason === 'format') return res.status(400).json({ error: 'unsupported_image_format' });
   if (up.reason === 'size') return res.status(400).json({ error: 'image_too_large' });
   const { mime: pmime, buf } = up;
+  const gU = SAAS.guards.upload(stored, buf.length);
+  if (!gU.ok) return res.status(gU.code).json({ error: gU.error, billing: '/billing' });
   const ext = pmime === 'application/pdf' ? 'pdf' : (pmime === 'image/jpeg' ? 'jpg' : pmime.split('/')[1]);
   const file = crypto.randomBytes(14).toString('hex') + '.' + ext;
   const dir = path.join(UPLOADS_DIR, String(id));
@@ -1030,6 +1186,41 @@ app.post('/api/integration/test', auth, async (req, res) => {
     setIntegrationStatus(companyId, 'test error: ' + (e && e.message ? e.message : 'connection failed'));
     res.status(502).json({ error: 'integration_test_failed', detail: e && e.message ? e.message : '' });
   }
+});
+
+// ---------- إعداد تذكير الواتساب اليومي ----------
+app.get('/api/whatsapp', auth, (req, res) => {
+  if (!['admin', 'client', 'pmo'].includes(req.user.role)) return res.status(403).json({ error: 'صلاحية الإدارة' });
+  res.json({ config: redactWhatsapp(loadWhatsapp()), canEdit: ['admin', 'client'].includes(req.user.role) });
+});
+app.put('/api/whatsapp', auth, (req, res) => {
+  if (!['admin', 'client'].includes(req.user.role)) return res.status(403).json({ error: 'تعديل الإعداد صلاحية أدمن النظام أو العميل' });
+  const b = req.body || {}; const c = loadWhatsapp();
+  c.enabled = !!b.enabled;
+  if (b.instanceId !== undefined) c.instanceId = String(b.instanceId || '').trim();
+  if (b.senderNumber !== undefined) c.senderNumber = String(b.senderNumber || '').trim();
+  if (b.base !== undefined) c.base = String(b.base || 'https://api.ultramsg.com').trim() || 'https://api.ultramsg.com';
+  if (b.hour !== undefined) c.hour = Math.max(0, Math.min(23, Number(b.hour) || 15));
+  if (typeof b.token === 'string' && b.token.length) c.token = b.token; // يُحدّث فقط عند إرسال توكن جديد
+  if (b.clearToken) c.token = '';
+  saveWhatsapp(c);
+  res.json({ ok: true, config: redactWhatsapp(c) });
+});
+app.post('/api/whatsapp/test', auth, async (req, res) => {
+  if (!['admin', 'client'].includes(req.user.role)) return res.status(403).json({ error: 'صلاحية الإدارة' });
+  const cfg = loadWhatsapp();
+  if (!cfg.instanceId || !cfg.token) return res.status(400).json({ error: 'أكمل إعداد UltraMsg (المعرف والتوكن)' });
+  const to = (req.body && req.body.to) || cfg.senderNumber;
+  const r = await sendWhatsappMessage(cfg, to, 'رسالة تجريبية من نظام بصير ✅\n\n' + reminderBody('(تجربة)'));
+  const fresh = loadWhatsapp();
+  fresh.lastStatus = 'اختبار: ' + (r.ok ? 'نجح' : 'فشل — ' + (r.error || ('HTTP ' + r.status))) + ' @ ' + new Date().toISOString();
+  saveWhatsapp(fresh);
+  res.json(r);
+});
+app.post('/api/whatsapp/run-now', auth, async (req, res) => {
+  if (!['admin', 'client'].includes(req.user.role)) return res.status(403).json({ error: 'صلاحية الإدارة' });
+  const r = await runDailyReminders('تشغيل يدوي');
+  res.json(r);
 });
 
 // ---------- نسخ احتياطي واستعادة ----------

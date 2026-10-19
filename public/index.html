@@ -369,6 +369,7 @@
       <button class="btn btn-ghost" id="btn-users-manage" onclick="openUsersManage()" data-i18n="👥 إدارة المستخدمين">👥 إدارة المستخدمين</button>
       <button class="btn btn-ghost" id="btn-companies" onclick="openCompanies()" data-i18n="🏢 إدارة الشركات">🏢 إدارة الشركات</button>
       <button class="btn btn-ghost" id="btn-integration" onclick="openIntegration()" data-i18n="🔗 ربط Bassir ERP">🔗 ربط Bassir ERP</button>
+      <button class="btn btn-ghost" id="btn-whatsapp" onclick="openWhatsapp()" data-i18n="💬 تذكير الواتساب اليومي">💬 تذكير الواتساب اليومي</button>
     </div>
     <div id="pm-notice"></div>
     <div class="status-cards" id="projects-grid"></div>
@@ -946,6 +947,7 @@
       <div class="f-field"><label data-i18n="اسم المستخدم للدخول *">اسم المستخدم للدخول *</label><input type="text" id="us-username" placeholder="khaled" autocomplete="off"></div>
       <div class="f-field"><label data-i18n="الدور">الدور</label><select id="us-role" onchange="usRoleChanged()"></select></div>
       <div class="f-field" id="us-company-wrap"><label data-i18n="🏢 الشركة">🏢 الشركة</label><select id="us-company"></select></div>
+      <div class="f-field"><label data-i18n="📱 جوال واتساب (لتذكير الإنتاجية)">📱 جوال واتساب (لتذكير الإنتاجية)</label><input type="text" id="us-phone" placeholder="05xxxxxxxx" dir="ltr" style="text-align:left"></div>
       <div class="f-field"><label data-i18n="كلمة المرور *">كلمة المرور *</label><input type="text" id="us-pin" placeholder="4 أحرف على الأقل" data-i18n-ph="4 أحرف على الأقل" autocomplete="off"></div>
     </div>
     <div class="alert info" style="margin-top:10px;font-size:11px">💡 <strong data-i18n="العميل">العميل</strong><span data-i18n=": يشوف مشاريع شركته بكامل الصلاحيات ·">: يشوف مشاريع شركته بكامل الصلاحيات ·</span> <strong data-i18n="مدير المشاريع">مدير المشاريع</strong><span data-i18n=": يشوف كل مشاريع شركته ·">: يشوف كل مشاريع شركته ·</span> <strong data-i18n="مدير المشروع">مدير المشروع</strong><span data-i18n=": مشروعه المعيّن له فقط.">: مشروعه المعيّن له فقط.</span></div>
@@ -1064,6 +1066,38 @@
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn btn-green" onclick="saveIntegration()" data-i18n="💾 حفظ الإعدادات">💾 حفظ الإعدادات</button>
       <button class="btn btn-ghost" onclick="testIntegration()" data-i18n="🔌 اختبار الاتصال">🔌 اختبار الاتصال</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="whatsapp-modal">
+  <div class="modal">
+    <div class="modal-title"><span>💬 تذكير الإنتاجية اليومي (واتساب)</span><span class="modal-close" onclick="closeModal('whatsapp-modal')">✕</span></div>
+    <div class="alert info" style="font-size:12px">
+      يرسل النظام تلقائياً رسالة واتساب لكل <strong>مدير مشروع</strong> (حسب رقمه في شاشة المستخدمين) في الوقت المحدد يومياً:
+      <div style="margin-top:6px;padding:8px;background:var(--bg2);border-radius:6px;white-space:pre-line">هل قمت برفع وتحديث الإنتاجية اليومية لمشروعك؟
+
+مع تحيات الإدارة التقنية لشركة بصير — ذراع شركة عزوم التقني</div>
+    </div>
+    <label class="switch-row" style="display:flex;align-items:center;gap:8px;margin:6px 0 12px;cursor:pointer">
+      <input type="checkbox" id="wa-enabled" style="width:18px;height:18px">
+      <span>تفعيل التذكير اليومي</span>
+    </label>
+    <div class="f-grid" style="grid-template-columns:1fr 1fr">
+      <div class="f-field"><label>وقت الإرسال (توقيت الرياض)</label>
+        <select id="wa-hour"></select></div>
+      <div class="f-field"><label>رقم الإرسال (واتساب الشركة)</label><input type="text" id="wa-sender" dir="ltr" style="text-align:left" placeholder="0558338548"></div>
+    </div>
+    <div class="alert warning" style="font-size:11px">قناة الإرسال: <strong>UltraMsg</strong> — اربط رقمك في ultramsg.com (مسح QR مرة واحدة) وأدخل معرّف الـInstance والتوكن:</div>
+    <div class="f-grid" style="grid-template-columns:1fr 1fr">
+      <div class="f-field"><label>Instance ID</label><input type="text" id="wa-instance" dir="ltr" style="text-align:left" placeholder="instance12345"></div>
+      <div class="f-field"><label>Token</label><input type="password" id="wa-token" dir="ltr" style="text-align:left" autocomplete="off"><span id="wa-token-hint" style="font-size:11px;color:var(--text2)"></span></div>
+    </div>
+    <div id="wa-status" style="font-size:12px;margin:10px 0"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-green" onclick="saveWhatsapp()">💾 حفظ</button>
+      <button class="btn btn-ghost" onclick="testWhatsapp()">🔌 إرسال رسالة تجريبية لرقمك</button>
+      <button class="btn btn-ghost" onclick="runWhatsappNow()">📤 إرسال التذكير الآن (تجربة)</button>
     </div>
   </div>
 </div>
@@ -1258,6 +1292,8 @@ Object.assign(I18N_EN, {
   'تغيير كلمة المرور':'Change password',
   '💲 قاعدة الأسعار':'💲 Price database',
   '🔗 ربط Bassir ERP':'🔗 Connect Bassir ERP',
+  '💬 تذكير الواتساب اليومي':'💬 Daily WhatsApp reminder',
+  '📱 جوال واتساب (لتذكير الإنتاجية)':'📱 WhatsApp number (for productivity reminders)',
   '🔍 بحث بالوصف أو رقم البند...':'🔍 Search by description or item no...',
   '⬇ Excel':'⬇ Excel',
   '🔍 تدقيق استلامات الاستشاري':'🔍 Consultant receipts audit',
@@ -2180,6 +2216,7 @@ function renderProjects(){
   $('btn-users-manage').style.display = isManagerial() ? '' : 'none';
   $('btn-companies').style.display = isAdmin() ? '' : 'none';
   $('btn-integration').style.display = isManagerial() ? '' : 'none';
+  $('btn-whatsapp').style.display = isManagerial() ? '' : 'none';
   const roleNotices = {
     client:'⭐ أنت العميل (مالك الشركة) — تظهر لك مشاريع شركتك ولديك كامل الصلاحيات عليها.',
     pmo:'👔 أنت مدير المشاريع — تظهر لك جميع مشاريع شركتك للعمل عليها.',
@@ -2382,8 +2419,9 @@ function renderUsersList(){
       (ROLE_ICONS[u.role]||'👤') + ' <strong style="color:var(--text)">' + esc(u.name) + '</strong> — ' + T(ROLE_LABELS[u.role]||u.role) +
       (co ? ' · 🏢 ' + esc(co) : '') +
       ' <span style="font-family:var(--mono);font-size:10px;color:var(--text3)">(' + esc(u.username) + ')</span>' +
-      (projects.length ? '<br><span style="font-size:11px">' + T('يدير:') + ' ' + projects.map(p => esc(p.info.name)).join('، ') + '</span>' : '') + '</span>' +
-      '<span>' + (manageable ? '<button class="mini-btn" onclick="resetUserPassword(' + u.id + ')">🔑 ' + T('كلمة المرور') + '</button> ' : '') +
+      (projects.length ? '<br><span style="font-size:11px">' + T('يدير:') + ' ' + projects.map(p => esc(p.info.name)).join('، ') + '</span>' : '') +
+      '<br><span style="font-size:11px;color:' + (u.phone?'var(--text2)':'var(--text3)') + '">📱 ' + (u.phone ? esc(u.phone) : T('لا يوجد رقم واتساب')) + '</span></span>' +
+      '<span>' + (manageable ? '<button class="mini-btn" onclick="editUserPhone(' + u.id + ')">📱 ' + T('الجوال') + '</button> <button class="mini-btn" onclick="resetUserPassword(' + u.id + ')">🔑 ' + T('كلمة المرور') + '</button> ' : '') +
       (u.id === state.me.id ? '<span class="pill blue" style="font-size:9px">' + T('أنت') + '</span>'
         : manageable ? '<button class="mini-btn red" onclick="deleteUser(' + u.id + ')">🗑</button>' : '') + '</span></div>';
   }).join('');
@@ -2407,13 +2445,25 @@ async function addUser(){
   const password = $('us-pin').value.trim();
   if (!name || !username || !password) { alert(T('أكمل: الاسم، اسم المستخدم، كلمة المرور')); return; }
   const role = $('us-role').value;
-  const body = {username, name, role, password};
+  const body = {username, name, role, password, phone: $('us-phone').value.trim()};
   if (isAdmin() && role !== 'admin') body.companyId = Number($('us-company').value) || null;
   try {
     const u = await API.req('POST', '/api/users', body);
     state.users.push(u);
-    $('us-name').value = ''; $('us-username').value = ''; $('us-pin').value = '';
+    $('us-name').value = ''; $('us-username').value = ''; $('us-pin').value = ''; $('us-phone').value = '';
     renderUsersList(); renderAll();
+  } catch(e) { alert(e.message); }
+}
+
+// تعديل رقم واتساب لمستخدم قائم
+async function editUserPhone(id){
+  const u = state.users.find(x => x.id === id); if (!u) return;
+  const phone = prompt('رقم واتساب لـ «' + u.name + '» (لاستقبال تذكير الإنتاجية):', u.phone || '');
+  if (phone === null) return;
+  try {
+    await API.req('PUT', '/api/users/' + id, { phone: phone.trim() });
+    u.phone = phone.trim();
+    renderUsersList();
   } catch(e) { alert(e.message); }
 }
 
@@ -2565,6 +2615,57 @@ Object.assign(I18N_EN, {
   'تعذر الاتصال:':'Could not connect:'
 });
 
+// ---------- تذكير الواتساب اليومي ----------
+async function openWhatsapp(){
+  if (!isManagerial()) { alert('إعداد التذكير صلاحية أدمن النظام أو العميل'); return; }
+  const sel = $('wa-hour');
+  if (!sel.options.length) sel.innerHTML = Array.from({length:24}, (_,i)=>'<option value="'+i+'">'+String(i).padStart(2,'0')+':00</option>').join('');
+  $('whatsapp-modal').classList.add('open');
+  $('wa-status').innerHTML = '<span style="color:var(--text2)">جارٍ التحميل…</span>';
+  try {
+    const r = await API.req('GET', '/api/whatsapp');
+    const c = r.config || {};
+    $('wa-enabled').checked = !!c.enabled;
+    $('wa-hour').value = c.hour != null ? c.hour : 15;
+    $('wa-sender').value = c.senderNumber || '0558338548';
+    $('wa-instance').value = c.instanceId || '';
+    $('wa-token').value = '';
+    $('wa-token').placeholder = c.tokenSet ? '•••••••• (محفوظ — اتركه فارغاً للإبقاء عليه)' : 'أدخل التوكن';
+    $('wa-token-hint').textContent = c.tokenSet ? '🔒 يوجد توكن محفوظ.' : 'لا يوجد توكن محفوظ بعد.';
+    const canEdit = r.canEdit !== false;
+    ['wa-enabled','wa-hour','wa-sender','wa-instance','wa-token'].forEach(id => { $(id).disabled = !canEdit; });
+    $('wa-status').innerHTML = c.lastStatus ? '<span style="color:var(--text2)">آخر حالة: ' + esc(c.lastStatus) + '</span>' : '<span style="color:var(--text2)">لم يُرسل أي تذكير بعد.</span>';
+  } catch(e){ $('wa-status').innerHTML = '<span style="color:var(--danger)">تعذر التحميل: ' + esc(e.message) + '</span>'; }
+}
+async function saveWhatsapp(){
+  const body = { enabled: $('wa-enabled').checked, hour: Number($('wa-hour').value), senderNumber: $('wa-sender').value.trim(), instanceId: $('wa-instance').value.trim() };
+  const tok = $('wa-token').value; if (tok) body.token = tok;
+  try {
+    await API.req('PUT', '/api/whatsapp', body);
+    $('wa-status').innerHTML = '<span style="color:var(--success,#2e7d32)">✅ تم الحفظ</span>';
+    openWhatsapp();
+  } catch(e){ $('wa-status').innerHTML = '<span style="color:var(--danger)">فشل الحفظ: ' + esc(e.message) + '</span>'; }
+}
+async function testWhatsapp(){
+  $('wa-status').innerHTML = '<span style="color:var(--text2)">جارٍ إرسال رسالة تجريبية…</span>';
+  try {
+    const r = await API.req('POST', '/api/whatsapp/test', { to: $('wa-sender').value.trim() });
+    $('wa-status').innerHTML = r.ok
+      ? '<span style="color:var(--success,#2e7d32)">✅ أُرسلت الرسالة التجريبية إلى ' + esc(r.to||'') + '</span>'
+      : '<span style="color:var(--danger)">❌ تعذر الإرسال: ' + esc(r.error || ('HTTP ' + r.status)) + '</span>';
+  } catch(e){ $('wa-status').innerHTML = '<span style="color:var(--danger)">❌ ' + esc(e.message) + '</span>'; }
+}
+async function runWhatsappNow(){
+  if (!confirm('إرسال تذكير الإنتاجية الآن لكل مدراء المشاريع الذين لديهم رقم واتساب؟')) return;
+  $('wa-status').innerHTML = '<span style="color:var(--text2)">جارٍ الإرسال…</span>';
+  try {
+    const r = await API.req('POST', '/api/whatsapp/run-now');
+    $('wa-status').innerHTML = r.ok
+      ? '<span style="color:var(--success,#2e7d32)">✅ أُرسلت ' + r.sent + ' من ' + r.total + ' رسالة</span>'
+      : '<span style="color:var(--danger)">❌ ' + esc(r.error || 'تعذر الإرسال') + '</span>';
+  } catch(e){ $('wa-status').innerHTML = '<span style="color:var(--danger)">❌ ' + esc(e.message) + '</span>'; }
+}
+
 async function resetUserPassword(id){
   const u = state.users.find(x => x.id === id);
   if (!u) return;
@@ -2593,6 +2694,8 @@ Object.assign(I18N_EN, {
   'مدير مشروع':'Project manager',
   'إدارة المستخدمين صلاحية المالك فقط':'Managing users is owner-only',
   'يدير:':'Manages:',
+  'لا يوجد رقم واتساب':'No WhatsApp number',
+  'الجوال':'Phone',
   'كلمة المرور':'Password',
   'أنت':'You',
   'أكمل: الاسم، اسم المستخدم، كلمة المرور':'Fill in: name, username, password',
@@ -3496,7 +3599,11 @@ function deleteApproval(id, approvalId){
   if (!it) return;
   const a = (it.approvals||[]).find(x => x.id === approvalId);
   if (!a) return;
-  if (approvedOf(it) - a.qty < claimedPct(it)*it.totalQty - 0.001) { alert(T('لا يمكن حذف هذا الاعتماد: كمية معتمدة منه مرفوعة بمستخلص. احذف المستخلص أولاً.')); return; }
+  // approvedQty قد يكون أصلاً أقل من مجموع سجل الاستلامات (مثلاً بعد تخفيض المنفذ وتصفيره تلقائياً دون
+  // تنظيف السجل القديم) — نحسب الأثر الفعلي لحذف هذا الاستلام بعد تصفيره عند الصفر لا أن يذهب سالباً،
+  // وإلا يظن الفحص خطأً أن مستخلصاً استهلك الفرق رغم عدم وجود أي مستخلص.
+  const approvedAfterDelete = Math.max(0, approvedOf(it) - a.qty);
+  if (approvedAfterDelete < claimedPct(it)*it.totalQty - 0.001) { alert(T('لا يمكن حذف هذا الاعتماد: كمية معتمدة منه مرفوعة بمستخلص. احذف المستخلص أولاً.')); return; }
   if (!confirm(T('حذف اعتماد') + ' ' + fmtQ(a.qty) + ' ' + esc(it.unit) + T('؟ سترجع الكمية لبانتظار الاعتماد.'))) return;
   (a.docs && a.docs.length ? a.docs : (a.ar ? [a.ar] : [])).forEach(d => { const file = String(d.url).split('/').pop(); API.req('DELETE', '/api/projects/' + proj().id + '/photos/' + file).catch(()=>{}); });
   it.approvals = it.approvals.filter(x => x.id !== approvalId);
@@ -5692,10 +5799,33 @@ function subExecForItem(subId, itemId){
     .reduce((s,l) => s + (Number(l.appliedQty)||0), 0));
 }
 const totalSubExecForItem = itemId => round2((proj().subcontractors||[]).reduce((s,sub) => s + subExecForItem(sub.id, itemId), 0));
-// الكمية المؤهلة للصرف = المنفذ من هذا المقاول بحدود المعتمد من الاستشاري (موزّع بالتناسب عند تعدد المقاولين)
+// الاستلامات الفعّالة حالياً: المعتمد الحالي (approvedQty) هو مصدر الحقيقة، وقد يكون أقل من مجموع
+// سجل الاستلامات التاريخي (مثلاً بعد تصفير المنفذ ثم اعتماد كمية جديدة لاحقاً دون تنظيف السجل القديم).
+// نمشي على السجل من الأحدث للأقدم ونجمع حتى نصل للمعتمد الحالي — فالاستلامات الأحدث تحل محل الأقدم بدل
+// أن تُخفَّف كلها بالتناسب على كامل السجل القديم.
+function activeApprovals(it){
+  let remaining = approvedOf(it);
+  const approvals = it.approvals || [];
+  const active = [];
+  for (let i = approvals.length - 1; i >= 0 && remaining > 0.001; i--) {
+    const a = approvals[i];
+    const use = Math.min(Number(a.qty) || 0, remaining);
+    if (use > 0.001) active.push({ subId: a.subId, qty: use });
+    remaining -= use;
+  }
+  return active;
+}
+// الكمية المؤهلة للصرف لمقاول باطن = مجموع الكميات الفعّالة الموسومة صراحة بهذا المقاول (حقل subId على
+// كل استلام اعتماد)، بحد أقصى ما نفّذه هذا المقاول فعلياً. توافق قديم: إن لم توسَم أي اعتمادات لهذا البند
+// بمقاول — تُستخدم الطريقة القديمة: توزيع المعتمد الإجمالي بالتناسب بين كل من نفّذ على البند.
 function subEligibleQty(subId, itemId){
   const it = getItem(itemId); if (!it) return 0;
+  const approvals = it.approvals || [];
   const subEx = subExecForItem(subId, itemId);
+  if (approvals.some(a => a.subId != null)) {
+    const tagged = activeApprovals(it).filter(a => a.subId === subId).reduce((s,a) => s + a.qty, 0);
+    return round2(Math.min(tagged, subEx));
+  }
   const totEx = totalSubExecForItem(itemId);
   if (totEx <= 0 || subEx <= 0) return 0;
   const factor = Math.min(1, approvedOf(it) / totEx);
@@ -5847,6 +5977,12 @@ function subAddItemRate(){
   if (!itemId) { alert(T('اختر بنداً من القائمة')); return; }
   if (!rate || rate <= 0) { alert(T('أدخل السعر المتفق عليه')); return; }
   if (subDraftItems.some(r => r.itemId === itemId)) { alert(T('البند مضاف مسبقاً')); return; }
+  // سعر مقاول الباطن لا يتجاوز سعر العقد (لا تُدفع للمقاول أكثر مما يُطالَب به العميل)
+  const boqIt = getItem(itemId);
+  if (boqIt && rate > (boqIt.unitRate || 0) + 0.01) {
+    if (editsGated()) { alert(T('⛔ سعر مقاول الباطن (') + fmtN(rate) + T(') لا يمكن أن يتجاوز سعر العقد للبند (') + fmtN(boqIt.unitRate) + ').'); return; }
+    if (!confirm(T('⚠️ تنبيه: سعر مقاول الباطن (') + fmtN(rate) + T(') أعلى من سعر العقد (') + fmtN(boqIt.unitRate) + T(') — أي أنك ستدفع للمقاول أكثر مما تطالب به العميل. متابعة؟'))) return;
+  }
   subDraftItems.push({ itemId, rate });
   $('sub-item-id').value = ''; $('sub-item-search').value = ''; $('sub-item-rate').value = '';
   renderSubDraftItems();
@@ -5868,6 +6004,11 @@ function deleteSub(id){
   save(); renderAll();
 }
 Object.assign(I18N_EN, {
+  '⛔ سعر مقاول الباطن (':'⛔ Subcontractor rate (',
+  ') لا يمكن أن يتجاوز سعر العقد للبند (':') cannot exceed the item\'s contract rate (',
+  '⚠️ تنبيه: سعر مقاول الباطن (':'⚠️ Note: subcontractor rate (',
+  ') أعلى من سعر العقد (':') is higher than the contract rate (',
+  ') — أي أنك ستدفع للمقاول أكثر مما تطالب به العميل. متابعة؟':') — meaning you would pay the subcontractor more than you bill the client. Continue?',
   'إنذارات محاولات تجاوز كميات مقاولي الباطن':'Subcontractor over-quantity attempt alerts',
   'حاول مدير المشروع تعميد كمية أكبر من المنفذ فعلاً — مُنعت تلقائياً':'The project manager tried to allocate a quantity greater than what was actually executed — automatically blocked',
   'مسح':'Clear',

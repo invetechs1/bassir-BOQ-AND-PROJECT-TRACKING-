@@ -53,6 +53,8 @@ module.exports = function createTap(store) {
     const body = {
       amount: opts.amount, currency: opts.currency || 'SAR',
       threeDSecure: true, save_card: true,
+      // إنشاء اتفاقية دفع غير مجدولة ليصبح التجديد الشهري (MIT) مدعوماً لدى Tap
+      payment_agreement: { type: 'UNSCHEDULED' },
       customer: opts.customer && opts.customer.id ? { id: opts.customer.id } : {
         first_name: (opts.customer && opts.customer.name) || 'Customer',
         email: (opts.customer && opts.customer.email) || undefined,
@@ -74,6 +76,7 @@ module.exports = function createTap(store) {
       cardId: d.card && d.card.id ? d.card.id : (d.source && d.source.id) || null,
       cardLast4: d.card && (d.card.last_four || d.card.last4) || null,
       cardBrand: d.card && (d.card.brand || d.card.scheme) || null,
+      paymentAgreementId: paymentAgreementOf(d),
       raw: d
     };
   }
@@ -86,14 +89,17 @@ module.exports = function createTap(store) {
       if (opts.simFail) return { ok: true, id, status: 'failed', raw: { sim: true, declined: true } };
       return { ok: true, id, status: 'captured', raw: { sim: true } };
     }
+    // معاملة بمبادرة التاجر (MIT) وفق Tap: بطاقة محفوظة + اتفاقية دفع + بلا 3DS
     const body = {
       amount: opts.amount, currency: opts.currency || 'SAR',
       threeDSecure: false, save_card: false,
+      customer_initiated: false,
       customer: { id: opts.customerId },
-      source: { id: opts.cardId },
+      source: { id: opts.cardId, on_file: true },
       description: opts.description || 'Subscription renewal',
       metadata: opts.metadata || {}
     };
+    if (opts.paymentAgreementId) body.payment_agreement = { id: opts.paymentAgreementId };
     const r = await tapFetch('POST', '/v2/charges', body);
     const d = r.data || {};
     if (!r.httpOk || !d.id) return { ok: false, error: errOf(d), raw: d };
@@ -111,8 +117,18 @@ module.exports = function createTap(store) {
       cardBrand: d.card && (d.card.brand || d.card.scheme) || null,
       customerId: d.customer && d.customer.id || null,
       cardId: d.card && d.card.id || null,
+      paymentAgreementId: paymentAgreementOf(d),
       raw: d
     };
+  }
+
+  // استخراج معرّف اتفاقية الدفع من استجابة Tap (مواضع محتملة مختلفة)
+  function paymentAgreementOf(d) {
+    if (!d) return null;
+    return (d.payment_agreement && d.payment_agreement.id)
+      || (d.card && d.card.payment_agreement && d.card.payment_agreement.id)
+      || (d.source && d.source.payment_agreement && d.source.payment_agreement.id)
+      || null;
   }
 
   // تحقق توقيع إشعار tap (hashstring). المرجعية الأضمن: إعادة جلب العملية للتأكد.

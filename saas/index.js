@@ -99,6 +99,7 @@ module.exports = function initSaas(ctx) {
         brand: result.cardBrand || (tenant.billing.card && tenant.billing.card.brand) || null
       };
     }
+    if (result.paymentAgreementId) tenant.billing.paymentAgreementId = result.paymentAgreementId;
     tenant.billing.lastPaymentAt = now();
 
     if (inv.kind === 'signup') {
@@ -163,7 +164,7 @@ module.exports = function initSaas(ctx) {
     const price = B.tierPrice(cfg, tier);
     const tenant = {
       companyId: comp.id, ownerUserId: owner.id, saasManaged: true, status: 'pending', createdAt: now(),
-      billing: { customerId: null, card: { id: null, last4: null, brand: null }, cycleStart: null, cycleEnd: null, nextRenewalAt: null, graceUntil: null, lastPaymentAt: null },
+      billing: { customerId: null, paymentAgreementId: null, card: { id: null, last4: null, brand: null }, cycleStart: null, cycleEnd: null, nextRenewalAt: null, graceUntil: null, lastPaymentAt: null },
       projects: [{ projectId: project.id, name: projName, tier, price, status: 'pending', addedAt: now() }],
       contact: { name: ownerName, email, phone }, note: ''
     };
@@ -238,7 +239,7 @@ module.exports = function initSaas(ctx) {
     }
     // بطاقة محفوظة وفعّال → خصم فوري (MIT)
     if (tenant.status === 'active' && tenant.billing.customerId && tenant.billing.card && tenant.billing.card.id && !token) {
-      const r = await tap.createRecurringCharge({ amount: inv.total, currency: inv.currency, customerId: tenant.billing.customerId, cardId: tenant.billing.card.id, description: 'إضافة مشروع ' + name, metadata: { invoiceId: inv.id, companyId: tenant.companyId, kind: 'project_add' } });
+      const r = await tap.createRecurringCharge({ amount: inv.total, currency: inv.currency, customerId: tenant.billing.customerId, cardId: tenant.billing.card.id, paymentAgreementId: tenant.billing.paymentAgreementId, description: 'إضافة مشروع ' + name, metadata: { invoiceId: inv.id, companyId: tenant.companyId, kind: 'project_add' } });
       const applied = applyChargeResult(inv.id, { ...r, cardLast4: tenant.billing.card.last4, cardBrand: tenant.billing.card.brand });
       if (applied.ok) return { code: 200, ok: true, projectId: project.id, invoice: applied.invoice };
       return { code: 402, error: 'تعذّر الخصم من البطاقة المحفوظة: ' + (r.error || 'مرفوضة') };
@@ -266,6 +267,7 @@ module.exports = function initSaas(ctx) {
     }
     const r = await tap.createRecurringCharge({
       amount: inv.total, currency: inv.currency, customerId: tenant.billing.customerId, cardId: tenant.billing.card.id,
+      paymentAgreementId: tenant.billing.paymentAgreementId,
       description: 'تجديد اشتراك — ' + companyName(tenant.companyId), metadata: { invoiceId: inv.id, companyId: tenant.companyId, kind: 'renewal' },
       simFail: !!tenant._simFailRenewal
     });
@@ -368,7 +370,7 @@ module.exports = function initSaas(ctx) {
     const result = (req.body && req.body.result) || req.query.result;
     const inv = store.loadInvoices().find(v => v.tapChargeId === chg);
     if (!inv) return res.status(404).json({ error: 'عملية غير معروفة' });
-    const r = applyChargeResult(inv.id, result === 'ok' ? { status: 'captured', id: chg, cardLast4: '4242', cardBrand: 'VISA', customerId: 'cus_sim_' + inv.tenantCompanyId, cardId: 'card_sim_' + inv.tenantCompanyId } : { status: 'failed', id: chg, error: 'المحاكاة: رُفضت' });
+    const r = applyChargeResult(inv.id, result === 'ok' ? { status: 'captured', id: chg, cardLast4: '4242', cardBrand: 'VISA', customerId: 'cus_sim_' + inv.tenantCompanyId, cardId: 'card_sim_' + inv.tenantCompanyId, paymentAgreementId: 'agr_sim_' + inv.tenantCompanyId } : { status: 'failed', id: chg, error: 'المحاكاة: رُفضت' });
     res.redirect('/saas/return?inv=' + inv.id);
   });
 
@@ -376,13 +378,15 @@ module.exports = function initSaas(ctx) {
   app.post('/api/saas/tap/webhook', async (req, res) => {
     const payload = req.body || {};
     try {
-      if (!tap.verifyWebhook(req.headers, payload)) return res.status(400).json({ error: 'bad signature' });
       const chargeId = payload.id;
+      if (!chargeId) return res.json({ ok: true, ignored: true });
       const invoiceId = (payload.metadata && payload.metadata.invoiceId) || (store.loadInvoices().find(v => v.tapChargeId === chargeId) || {}).id;
       if (!invoiceId) return res.json({ ok: true, ignored: true });
-      // نقطة الحقيقة: أعِد جلب العملية للتأكد من الحالة
+      // نقطة الحقيقة: نعيد جلب العملية من Tap بمفتاحنا السرّي (آمن ضد الإشعارات المزوّرة —
+      // لا يستطيع مهاجم تزوير حالة "مدفوعة" لأن الحالة تؤخذ من Tap مباشرة لا من جسم الإشعار).
       const fetched = await tap.retrieveCharge(chargeId);
-      applyChargeResult(invoiceId, fetched.ok ? fetched : { status: tap.normStatus(payload.status), id: chargeId });
+      if (fetched.ok) applyChargeResult(invoiceId, fetched);
+      else if (tap.verifyWebhook(req.headers, payload)) applyChargeResult(invoiceId, { status: tap.normStatus(payload.status), id: chargeId });
     } catch (e) { /* لا نكسر الـwebhook */ }
     res.json({ ok: true });
   });

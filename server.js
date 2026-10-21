@@ -769,14 +769,29 @@ app.put('/api/projects/:id', auth, (req, res) => {
       (m.lines || []).forEach(l => { const k = m.subId + '|' + l.itemId; claimedMap[k] = (claimedMap[k] || 0) + (Number(l.currQty) || 0); });
     });
     const storedSubMus = new Map((stored.subMustakhlasat || []).map(m => [m.id, m]));
+    const storedSubMusArr = stored.subMustakhlasat || [];
+    // موقف تراكمي من المستخلصات المخزّنة (قبل هذا الحفظ) — يُستخدم لإعادة احتساب الحجز التراكمي واسترداد الدفعة المقدمة
+    const subGrossCumulativeStored = (subId, extra) => round2s(storedSubMusArr.filter(m => m.subId === subId && m.status !== 'rejected').reduce((s, m) => s + (Number(m.gross) || 0), 0) + (Number(extra) || 0));
+    const subRetentionHeldStored = subId => {
+      const certs = storedSubMusArr.filter(m => m.subId === subId && m.status !== 'rejected');
+      const held = certs.reduce((s, m) => s + (Number(m.retention) || 0), 0) - certs.reduce((s, m) => s + (Number(m.retentionReleased) || 0), 0);
+      return Math.max(0, round2s(held));
+    };
+    const subAdvanceGrantedData = subId => round2s((data.subAdvances || []).filter(a => a.subId === subId && a.status === 'approved').reduce((s, a) => s + (Number(a.amount) || 0), 0));
+    const subAdvanceRecoveredStored = subId => round2s(storedSubMusArr.filter(m => m.subId === subId && m.status !== 'rejected').reduce((s, m) => s + (Number(m.advanceRecovery) || 0), 0));
+    const subAdvanceRemainingStored = subId => Math.max(0, round2s(subAdvanceGrantedData(subId) - subAdvanceRecoveredStored(subId)));
     for (const m of (Array.isArray(data.subMustakhlasat) ? data.subMustakhlasat : [])) {
       const s = storedSubMus.get(m.id);
       if (s) {
-        // موجود مسبقاً: مدير المشروع لا يغيّر أي شيء فيه (حالة/اعتماد/صافي/إجمالي/بنود/خصومات/دفعات)
+        // موجود مسبقاً: مدير المشروع لا يغيّر أي شيء فيه (حالة/اعتماد/صافي/إجمالي/بنود/خصومات/دفعات/حقول الشهادة الموسّعة)
         if (s.status !== m.status || s.approvedBy !== m.approvedBy || round2s(s.net) !== round2s(m.net) ||
             round2s(s.gross || 0) !== round2s(m.gross || 0) ||
             JSON.stringify(s.lines || []) !== JSON.stringify(m.lines || []) ||
             JSON.stringify(s.ded || {}) !== JSON.stringify(m.ded || {}) ||
+            JSON.stringify(s.additions || {}) !== JSON.stringify(m.additions || {}) ||
+            round2s(s.vat || 0) !== round2s(m.vat || 0) ||
+            round2s(s.retention || 0) !== round2s(m.retention || 0) ||
+            round2s(s.advanceRecovery || 0) !== round2s(m.advanceRecovery || 0) ||
             JSON.stringify(s.payments || []) !== JSON.stringify(m.payments || [])) {
           return res.status(403).json({ error: 'مدير المشروع لا يعدّل ولا يعتمد ولا يصرف مستخلصات مقاولي الباطن' });
         }
@@ -785,17 +800,27 @@ app.put('/api/projects/:id', auth, (req, res) => {
         if (m.status !== 'submitted' || (m.payments || []).length) {
           return res.status(403).json({ error: 'مستخلص مقاول الباطن الجديد يبدأ بانتظار الاعتماد وبدون صرف' });
         }
+        // الشهادة الختامية تُقفل حساب المقاول — لا شهادات دورية جديدة بعدها
+        if (m.type === 'interim' && storedSubMusArr.some(x => x.subId === m.subId && x.type === 'final' && x.status !== 'rejected')) {
+          return res.status(403).json({ error: 'صدرت شهادة ختامية لهذا المقاول مسبقاً — لا يمكن فتح شهادة دورية جديدة' });
+        }
         // المرفقات إلزامية: المستخلص المعمول من الشركة واعتمادات الاستشاري (أرشيف المشروع)
         if (!(m.docs || []).some(d => d && d.url)) {
           return res.status(400).json({ error: 'مستخلص مقاول الباطن يتطلب إرفاق المستخلص المعمول من الشركة واعتمادات الاستشاري' });
         }
-        // التحقق من صحة المبالغ: منع الخصومات السالبة ونسبة الحجز خارج النطاق
+        // التحقق من صحة المبالغ: منع الخصومات/الإضافات السالبة ونسب خارج النطاق
         const ded = m.ded || {};
-        for (const kk of ['materials', 'utilities', 'performance', 'other']) {
+        for (const kk of ['materials', 'utilities', 'performance', 'equipment', 'backCharges', 'other']) {
           if (Number(ded[kk] || 0) < 0) return res.status(400).json({ error: 'لا يُسمح بخصومات سالبة في مستخلص مقاول الباطن' });
+        }
+        const additions = m.additions || {};
+        if (Number(additions.materialsOnSite || 0) < 0 || Number(additions.extraWorks || 0) < 0) {
+          return res.status(400).json({ error: 'لا يُسمح بإضافات سالبة في مستخلص مقاول الباطن' });
         }
         const retR = Number(m.retRate || 0);
         if (retR < 0 || retR > 100) return res.status(400).json({ error: 'نسبة حجز الجودة غير صحيحة' });
+        const vatR = Number(m.vatRate || 0);
+        if (vatR < 0 || vatR > 100) return res.status(400).json({ error: 'نسبة الضريبة غير صحيحة' });
         // فحص الكميات + مطابقة السعر + إعادة حساب الإجمالي والصافي على الخادم
         const sub = subById.get(m.subId);
         const agreedRate = itemId => { const r = sub && (sub.items || []).find(i => i.itemId === itemId); return r ? Number(r.rate || 0) : 0; };
@@ -813,11 +838,41 @@ app.put('/api/projects/:id', auth, (req, res) => {
           claimedMap[k] = (claimedMap[k] || 0) + (Number(l.currQty) || 0);
         }
         grossCalc = round2s(grossCalc);
-        const dedTot = round2s(Number(ded.materials || 0) + Number(ded.utilities || 0) + Number(ded.performance || 0) + Number(ded.other || 0));
-        const retCalc = round2s(grossCalc * retR / 100);
-        const netCalc = round2s(grossCalc - retCalc - dedTot);
+        const additionsTotal = round2s(Number(additions.materialsOnSite || 0) + Number(additions.extraWorks || 0));
+        const dedTot = round2s(Number(ded.materials || 0) + Number(ded.utilities || 0) + Number(ded.performance || 0) + Number(ded.equipment || 0) + Number(ded.backCharges || 0) + Number(ded.other || 0));
+        // حجز الضمان التراكمي: نسبة × إجمالي معتمد تراكمياً (شاملاً هذا المستخلص)، بسقف ضعف نسبة الحجز من القيمة
+        // المعدّلة للعقد (إن أُدخلت)، ناقص المحتجز السابق ناقص أي إفراج (الشهادة الختامية فقط)
+        let retentionCumulativeCalc = round2s(subGrossCumulativeStored(m.subId, grossCalc) * retR / 100);
+        const subOriginal = sub ? Number(sub.originalValue || 0) : 0, subVariations = sub ? Number(sub.variations || 0) : 0;
+        const adjustedValueCalc = round2s(subOriginal + subVariations);
+        if (adjustedValueCalc > 0) {
+          const retentionCeilingCalc = round2s(adjustedValueCalc * (retR * 2) / 100);
+          if (retentionCumulativeCalc > retentionCeilingCalc) retentionCumulativeCalc = retentionCeilingCalc;
+        }
+        const retentionPreviousCalc = subRetentionHeldStored(m.subId);
+        const retentionReleasedCalc = m.type === 'final' ? Number(m.retentionReleased || 0) : 0;
+        if (retentionReleasedCalc < 0) return res.status(400).json({ error: 'قيمة الإفراج عن الضمان غير صحيحة' });
+        const retentionCalc = Math.max(0, round2s(retentionCumulativeCalc - retentionPreviousCalc - retentionReleasedCalc));
+        // استرداد الدفعة المقدمة: بنسبة بطاقة المقاول عادة، بحد أقصى الرصيد المتبقي — والشهادة الختامية تُقفل
+        // كامل الرصيد المتبقي من الدفعة المقدمة بصرف النظر عن النسبة (تسوية نهائية للحساب)
+        const advRate = sub ? Number(sub.advanceRecoveryRate || 0) : 0;
+        const advanceRemainingBeforeCalc = subAdvanceRemainingStored(m.subId);
+        const advanceRecoveryCalc = m.type === 'final' ? advanceRemainingBeforeCalc : (advRate > 0 ? round2s(Math.min(grossCalc * advRate / 100, advanceRemainingBeforeCalc)) : 0);
+        if (Math.abs((Number(m.advanceRecovery) || 0) - advanceRecoveryCalc) > 0.02) {
+          return res.status(400).json({ error: 'قيمة استرداد الدفعة المقدمة غير صحيحة' });
+        }
+        const vatCalc = m.vatApplicable ? round2s((grossCalc + additionsTotal) * vatR / 100) : 0;
+        const invoiceTotalCalc = round2s(grossCalc + additionsTotal + vatCalc);
+        const deductionsTotalCalc = round2s(retentionCalc + advanceRecoveryCalc + dedTot);
+        const netCalc = round2s(invoiceTotalCalc - deductionsTotalCalc);
         if (Math.abs(round2s(m.gross || 0) - grossCalc) > 0.02) {
           return res.status(400).json({ error: 'إجمالي مستخلص مقاول الباطن لا يطابق (الكمية × السعر المتفق)' });
+        }
+        if (m.vatApplicable && Math.abs(round2s(m.vat || 0) - vatCalc) > 0.02) {
+          return res.status(400).json({ error: 'قيمة ضريبة القيمة المضافة غير صحيحة' });
+        }
+        if (Math.abs(round2s(m.retention || 0) - retentionCalc) > 0.02) {
+          return res.status(400).json({ error: 'قيمة حجز الضمان غير صحيحة (لا تطابق الاحتساب التراكمي)' });
         }
         if (Math.abs(round2s(m.net || 0) - netCalc) > 0.02) {
           return res.status(400).json({ error: 'صافي مستخلص مقاول الباطن غير صحيح (لا يطابق الإجمالي ناقص الحجز والخصومات)' });

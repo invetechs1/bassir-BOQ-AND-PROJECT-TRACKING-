@@ -1127,6 +1127,9 @@
       <div class="f-field"><label data-i18n="اسم مقاول الباطن *">اسم مقاول الباطن *</label><input type="text" id="sub-name" placeholder="مؤسسة ..."></div>
       <div class="f-field"><label data-i18n="جوال / تواصل">جوال / تواصل</label><input type="text" id="sub-phone" placeholder="05xxxxxxxx" dir="ltr" style="text-align:left"></div>
       <div class="f-field"><label data-i18n="نسبة حجز الجودة الافتراضية %">نسبة حجز الجودة الافتراضية %</label><input type="number" id="sub-ret" min="0" max="100" step="0.5" value="10"></div>
+      <div class="f-field"><label data-i18n="قيمة العقد الأصلية (ر.س) (اختياري)">قيمة العقد الأصلية (ر.س) (اختياري)</label><input type="number" id="sub-contract-value" min="0" step="0.01" placeholder="0"></div>
+      <div class="f-field"><label data-i18n="أوامر تغيير معتمدة (± ر.س)">أوامر تغيير معتمدة (± ر.س)</label><input type="number" id="sub-contract-variations" step="0.01" placeholder="0"></div>
+      <div class="f-field"><label data-i18n="نسبة استرداد الدفعة المقدمة % (اختياري)">نسبة استرداد الدفعة المقدمة % (اختياري)</label><input type="number" id="sub-adv-recovery-rate" min="0" max="100" step="0.5" placeholder="0"></div>
       <div class="f-field full"><label data-i18n="ملاحظات">ملاحظات</label><input type="text" id="sub-note" placeholder="نطاق أعماله / تفاصيل العقد"></div>
     </div>
     <div class="divider"></div>
@@ -1185,14 +1188,40 @@
     <div class="divider"></div>
     <div class="two-col">
       <div>
+        <div class="card-title" style="font-size:13px" data-i18n="بيانات الشهادة">بيانات الشهادة</div>
+        <div class="f-grid" style="grid-template-columns:1fr 1fr">
+          <div class="f-field"><label data-i18n="نوع الشهادة">نوع الشهادة</label>
+            <select id="sd-type" onchange="sdTypeChanged()">
+              <option value="interim" data-i18n="دوري (Interim)">دوري (Interim)</option>
+              <option value="final" data-i18n="ختامي (Final)">ختامي (Final)</option>
+              <option value="advance" data-i18n="دفعة مقدمة (Advance)">دفعة مقدمة (Advance)</option>
+            </select>
+          </div>
+          <div class="f-field"><label data-i18n="تاريخ المستخلص">تاريخ المستخلص</label><input type="date" id="sd-date"></div>
+          <div class="f-field"><label data-i18n="الفترة من">الفترة من</label><input type="date" id="sd-period-from"></div>
+          <div class="f-field"><label data-i18n="الفترة إلى">الفترة إلى</label><input type="date" id="sd-period-to"></div>
+          <div class="f-field"><label data-i18n="رقم الفاتورة الضريبية (اختياري)">رقم الفاتورة الضريبية (اختياري)</label><input type="text" id="sd-invoice-no" placeholder="INV-..."></div>
+          <div class="f-field"><label data-i18n="تاريخ الفاتورة الضريبية">تاريخ الفاتورة الضريبية</label><input type="date" id="sd-invoice-date"></div>
+        </div>
+        <div class="divider"></div>
+        <div class="card-title" style="font-size:13px" data-i18n="الإضافات">الإضافات</div>
+        <div class="f-grid" style="grid-template-columns:1fr 1fr">
+          <div class="f-field"><label data-i18n="مواد بالموقع (معتمدة، ر.س)">مواد بالموقع (معتمدة، ر.س)</label><input type="number" id="sd-add-materials" min="0" step="0.01" value="0" oninput="renderSubMusTotals()"></div>
+          <div class="f-field"><label data-i18n="أعمال إضافية خارج العقد (معتمدة، ر.س)">أعمال إضافية خارج العقد (معتمدة، ر.س)</label><input type="number" id="sd-add-extra" min="0" step="0.01" value="0" oninput="renderSubMusTotals()"></div>
+        </div>
+        <div class="divider"></div>
         <div class="card-title" style="font-size:13px" data-i18n="الخصومات (يضعها مدير المشروع أو يصفّرها)">الخصومات (يضعها مدير المشروع أو يصفّرها)</div>
         <div class="f-grid" style="grid-template-columns:1fr 1fr">
           <div class="f-field"><label data-i18n="حجز جودة أعمال %">حجز جودة أعمال %</label><input type="number" id="sd-ret" min="0" max="100" step="0.5" oninput="renderSubMusTotals()"></div>
+          <div class="f-field" id="sd-ret-release-wrap" style="display:none"><label data-i18n="إفراج محتجز ضمان (ختامي، ر.س)">إفراج محتجز ضمان (ختامي، ر.س)</label><input type="number" id="sd-ret-release" min="0" step="0.01" value="0" oninput="renderSubMusTotals()"></div>
           <div class="f-field"><label data-i18n="خصم مواد (ر.س)">خصم مواد (ر.س)</label><input type="number" id="sd-materials" min="0" step="0.01" value="0" oninput="renderSubMusTotals()"></div>
           <div class="f-field"><label data-i18n="كهرباء وماء (ر.س)">كهرباء وماء (ر.س)</label><input type="number" id="sd-utilities" min="0" step="0.01" value="0" oninput="renderSubMusTotals()"></div>
           <div class="f-field"><label data-i18n="سوء أداء / غرامات (ر.س)">سوء أداء / غرامات (ر.س)</label><input type="number" id="sd-performance" min="0" step="0.01" value="0" oninput="renderSubMusTotals()"></div>
+          <div class="f-field"><label data-i18n="إيجار معدات/عدد (ر.س)">إيجار معدات/عدد (ر.س)</label><input type="number" id="sd-equipment" min="0" step="0.01" value="0" oninput="renderSubMusTotals()"></div>
+          <div class="f-field"><label data-i18n="تكاليف نيابة عنه (ر.س)">تكاليف نيابة عنه (ر.س)</label><input type="number" id="sd-backcharges" min="0" step="0.01" value="0" oninput="renderSubMusTotals()"></div>
           <div class="f-field"><label data-i18n="خصومات أخرى (ر.س)">خصومات أخرى (ر.س)</label><input type="number" id="sd-other" min="0" step="0.01" value="0" oninput="renderSubMusTotals()"></div>
-          <div class="f-field"><label data-i18n="تاريخ المستخلص">تاريخ المستخلص</label><input type="date" id="sd-date"></div>
+          <div class="f-field" style="display:flex;align-items:flex-end;gap:6px"><label style="display:flex;align-items:center;gap:6px;margin:0"><input type="checkbox" id="sd-vat-on" checked onchange="renderSubMusTotals()"> <span data-i18n="تطبيق ضريبة القيمة المضافة">تطبيق ضريبة القيمة المضافة</span></label></div>
+          <div class="f-field"><label data-i18n="نسبة الضريبة %">نسبة الضريبة %</label><input type="number" id="sd-vat-rate" min="0" max="100" step="0.5" oninput="renderSubMusTotals()"></div>
           <div class="f-field full"><label style="color:var(--red)" data-i18n="📎 المرفقات إلزامية * — تُحفظ في أرشيف المشروع">📎 المرفقات إلزامية * — تُحفظ في أرشيف المشروع</label>
             <div style="font-size:11px;color:var(--text2);margin-bottom:4px">أرفق: <strong>المستخلص المعمول من قِبل الشركة</strong> + <strong>اعتمادات الاستشاري</strong> + التسوية (PDF أو صور)</div>
             <input type="file" id="sd-files" accept="image/*,.pdf,application/pdf" multiple onchange="sdFilesPicked(this)">
@@ -1463,6 +1492,37 @@ Object.assign(I18N_EN, {
   'اسم مقاول الباطن *':'Subcontractor name *',
   'جوال / تواصل':'Mobile / contact',
   'نسبة حجز الجودة الافتراضية %':'Default quality retention rate %',
+  'قيمة العقد الأصلية (ر.س) (اختياري)':'Original contract value (SAR) (optional)',
+  'أوامر تغيير معتمدة (± ر.س)':'Approved variations (± SAR)',
+  'نسبة استرداد الدفعة المقدمة % (اختياري)':'Advance recovery rate % (optional)',
+  'ريال سعودي':'Saudi Riyals', 'و':'and ', 'هللة':'halalas', 'لا غير':'only',
+  'بيانات الشهادة':'Certificate details',
+  'نوع الشهادة':'Certificate type',
+  'دوري (Interim)':'Interim', 'ختامي (Final)':'Final', 'دفعة مقدمة (Advance)':'Advance',
+  'الفترة من':'Period from', 'الفترة إلى':'Period to',
+  'رقم الفاتورة الضريبية (اختياري)':'Tax invoice no. (optional)', 'تاريخ الفاتورة الضريبية':'Tax invoice date',
+  'الإضافات':'Additions',
+  'مواد بالموقع (معتمدة، ر.س)':'Materials on site (approved, SAR)',
+  'أعمال إضافية خارج العقد (معتمدة، ر.س)':'Extra works outside contract (approved, SAR)',
+  'إفراج محتجز ضمان (ختامي، ر.س)':'Retention release (final, SAR)',
+  'إيجار معدات/عدد':'Equipment/tools rental', 'تكاليف نيابة عنه':'Back-charges / on-behalf costs',
+  'تطبيق ضريبة القيمة المضافة':'Apply VAT', 'نسبة الضريبة %':'VAT rate %',
+  '⛔ صدرت شهادة ختامية لهذا المقاول مسبقاً — لا يمكن فتح شهادة دورية جديدة بعد الإقفال.':'⛔ A final certificate has already been issued for this subcontractor — no new interim certificate can be opened after closeout.',
+  'إضافات':'Additions', 'ضريبة القيمة المضافة':'VAT', 'إجمالي الفاتورة':'Invoice total',
+  '(تراكمي)':'(cumulative)', 'أُفرج عن:':'Released:', 'استرداد دفعة مقدمة':'Advance recovery',
+  'الفترة:':'Period:', 'رقم الفاتورة الضريبية:':'Tax invoice no.:', 'العملة:':'Currency:',
+  'موقف العقد':'Contract position', 'قيمة العقد الأصلية:':'Original contract value:',
+  'أوامر تغيير معتمدة:':'Approved variations:', 'القيمة المعدّلة:':'Adjusted value:',
+  'نسبة الإنجاز التراكمية:':'Cumulative % complete:',
+  'كمية العقد':'Contract qty', 'تراكمي معتمد':'Cum. approved', 'قيمة تراكمية':'Cum. value',
+  'قيمة سابقة':'Previous value', 'هذا المستخلص':'This certificate',
+  'قيمة الأعمال هذا المستخلص':'Value of work this certificate',
+  'المبلغ كتابة:':'Amount in words:',
+  'الموقف المالي التراكمي':'Running financial position',
+  'معتمد تراكمياً (شامل الضريبة)':'Cumulative certified (incl. VAT)',
+  'محتجز الضمان الممسوك':'Retention held', 'رصيد الدفعة المقدمة المتبقي':'Advance balance remaining',
+  'الاسم:':'Name:', 'أُعدّ بواسطة (QS)':'Prepared by (QS)', 'روجع بواسطة (PM)':'Reviewed by (PM)',
+  'اعتمد بواسطة (العقود/المالك)':'Approved by (Contracts/Owner)', 'إقرار استلام مقاول الباطن':'Subcontractor acknowledgment of receipt',
   '📋 بنود مقاول الباطن وأسعاره المتفق عليها':'📋 Subcontractor\'s items and agreed rates',
   'اختر بنداً من جدول كميات المشروع وأدخل السعر المتفق عليه مع المقاول (قد يختلف عن سعر العقد الرئيسي). النظام يحسب مستخلصه بهذه الأسعار.':'Choose an item from the project\'s BOQ and enter the rate agreed with the subcontractor (may differ from the main contract rate). The system calculates their claim using these rates.',
   'السعر المتفق (ر.س)':'Agreed rate (SAR)',
@@ -1855,9 +1915,36 @@ function migrateProject(p){
   p.subcontractors = p.subcontractors || []; // مقاولو الباطن (بنودهم وأسعارهم المتفق عليها)
   p.subMustakhlasat = p.subMustakhlasat || []; // مستخلصات مقاولي الباطن (جانب الصرف)
   p.subAlerts = p.subAlerts || []; // إنذارات محاولات تجاوز الكميات
+  p.subAdvances = p.subAdvances || []; // الدفعات المقدمة لمقاولي الباطن
   p.villas = p.villas || []; p.villaProgress = p.villaProgress || {}; p.boqItems = p.boqItems || [];
   p.mustakhlasat = p.mustakhlasat || [];
   p.mustakhlasat.forEach(m => { m.payments = m.payments || []; m.attachments = m.attachments || []; });
+  // موقف العقد مع مقاول الباطن (قيمة أصلية + أوامر تغيير) ونسبة استرداد الدفعة المقدمة — حقول اختيارية جديدة
+  p.subcontractors.forEach(s => {
+    s.originalValue = s.originalValue || 0;
+    s.variations = s.variations || 0;
+    s.advanceRecoveryRate = s.advanceRecoveryRate || 0;
+  });
+  // ترحيل مستخلصات مقاولي الباطن القديمة: حقول نموذج الشهادة الموسّع (ضريبة، موقف تراكمي، دفعة مقدمة...)
+  // بقيم افتراضية محايدة لا تغيّر أي مبلغ محفوظ سابقاً — retention/net تبقى كما هي تماماً، نضيف فقط حقولاً جديدة بجانبها
+  p.subMustakhlasat.forEach(m => {
+    m.type = m.type || 'interim';
+    m.periodFrom = m.periodFrom || ''; m.periodTo = m.periodTo || '';
+    m.taxInvoiceNo = m.taxInvoiceNo || ''; m.taxInvoiceDate = m.taxInvoiceDate || '';
+    m.contract = m.contract || { originalValue: 0, variations: 0, adjustedValue: 0, cumulativePercent: 0 };
+    m.additions = m.additions || { materialsOnSite: 0, extraWorks: 0 };
+    m.ded = m.ded || {};
+    m.ded.equipment = m.ded.equipment || 0; m.ded.backCharges = m.ded.backCharges || 0;
+    if (m.vatApplicable === undefined) m.vatApplicable = false; // لا نفرض ضريبة بأثر رجعي على مستخلصات لم تُحتسب لها أصلاً
+    m.vatRate = m.vatRate || 0; m.vat = m.vat || 0;
+    if (m.invoiceTotal === undefined) m.invoiceTotal = m.gross || 0;
+    m.retentionCumulative = m.retentionCumulative === undefined ? (m.retention || 0) : m.retentionCumulative;
+    m.retentionReleased = m.retentionReleased || 0;
+    m.advanceRecovery = m.advanceRecovery || 0;
+    m.advanceRemaining = m.advanceRemaining === undefined ? 0 : m.advanceRemaining;
+    m.cumulativeCertified = m.cumulativeCertified === undefined ? (m.invoiceTotal || m.gross || 0) : m.cumulativeCertified;
+    m.approvals = m.approvals || {};
+  });
   p.boqItems.forEach(i => {
     if (i.blocker) { i.blocker.since = i.blocker.since || ''; i.blocker.expected = i.blocker.expected || ''; }
     // اعتماد الاستشاري على الكميات: الكميات القائمة تُعامل كمعتمدة (ترحيل)، والجديد يبدأ بانتظار الاعتماد
@@ -5849,6 +5936,85 @@ function subDueSummary(subId){
   const avail = round2(subItemIds(getSub(subId)).reduce((s,id)=>s+subAvailQty(subId,id)*subRate(getSub(subId),id),0));
   return { musCount: ms.length, net, paid, remaining: Math.max(0, round2(net-paid)), availValue: avail };
 }
+// ---- موقف العقد والدفعة المقدمة (لنموذج شهادة الدفع الموسّع) ----
+// إجمالي قيمة الأعمال المعتمدة تراكمياً لمقاول الباطن (مجموع إجمالي كل مستخلصاته غير المرفوضة)
+// extraGross: قيمة المسوّدة الجاري بناؤها الآن (لتضمينها في نسبة الإنجاز قبل الحفظ)
+function subGrossCumulative(subId, extraGross){
+  const certs = subMusOf(subId).filter(m => m.status !== 'rejected');
+  return round2(certs.reduce((s,m) => s + (Number(m.gross)||0), 0) + (Number(extraGross)||0));
+}
+function subContractPosition(subId, extraGross){
+  const s = getSub(subId); if (!s) return { originalValue:0, variations:0, adjustedValue:0, cumulativePercent:0 };
+  const originalValue = Number(s.originalValue)||0, variations = Number(s.variations)||0;
+  const adjustedValue = round2(originalValue + variations);
+  const cum = subGrossCumulative(subId, extraGross);
+  return { originalValue, variations, adjustedValue, cumulativePercent: adjustedValue > 0 ? round2(cum/adjustedValue*100) : 0 };
+}
+// محتجز الضمان التراكمي الممسوك حالياً (قبل احتساب مستخلص جديد) = مجموع المحتجز في كل المستخلصات غير المرفوضة ناقص ما أُفرج عنه
+function subRetentionHeld(subId){
+  const certs = subMusOf(subId).filter(m => m.status !== 'rejected');
+  const held = certs.reduce((s,m) => s + (Number(m.retention)||0), 0) - certs.reduce((s,m) => s + (Number(m.retentionReleased)||0), 0);
+  return Math.max(0, round2(held));
+}
+// شهادة ختامية (type=final) تُقفل حساب المقاول: بعدها لا تُفتح شهادات دورية (interim) جديدة له
+function subHasFinalCert(subId){
+  return subMusOf(subId).some(m => m.type === 'final' && m.status !== 'rejected');
+}
+// الدفعة المقدمة: ما اعتُمد فعلياً من دفتر "الدفعات المقدمة" (ميزة منفصلة قائمة) هو مصدر "الممنوح"،
+// وتُسترد تلقائياً من كل مستخلص جديد بالنسبة المحددة على بطاقة المقاول (advanceRecoveryRate)
+function subAdvanceGranted(subId){
+  return round2((proj().subAdvances||[]).filter(a => a.subId === subId && a.status === 'approved').reduce((s,a) => s + (Number(a.amount)||0), 0));
+}
+function subAdvanceRecoveredToDate(subId){
+  return round2(subMusOf(subId).filter(m => m.status !== 'rejected').reduce((s,m) => s + (Number(m.advanceRecovery)||0), 0));
+}
+function subAdvanceRemaining(subId){
+  return Math.max(0, round2(subAdvanceGranted(subId) - subAdvanceRecoveredToDate(subId)));
+}
+// ---- تفقيط: تحويل مبلغ بالريال السعودي إلى كلمات عربية ----
+function numberToWordsAr(amount){
+  const n = Math.round((Number(amount)||0) * 100);
+  const riyals = Math.floor(n / 100), halalas = n % 100;
+  const ones = ['', 'واحد', 'اثنان', 'ثلاثة', 'أربعة', 'خمسة', 'ستة', 'سبعة', 'ثمانية', 'تسعة'];
+  const teens = ['عشرة', 'أحد عشر', 'اثنا عشر', 'ثلاثة عشر', 'أربعة عشر', 'خمسة عشر', 'ستة عشر', 'سبعة عشر', 'ثمانية عشر', 'تسعة عشر'];
+  const tens = ['', '', 'عشرون', 'ثلاثون', 'أربعون', 'خمسون', 'ستون', 'سبعون', 'ثمانون', 'تسعون'];
+  const hundreds = ['', 'مائة', 'مائتان', 'ثلاثمائة', 'أربعمائة', 'خمسمائة', 'ستمائة', 'سبعمائة', 'ثمانمائة', 'تسعمائة'];
+  function threeDigits(num){
+    const parts = [];
+    const h = Math.floor(num/100), t = Math.floor((num%100)/10), o = num%10;
+    if (h) parts.push(hundreds[h]);
+    if (t === 1) parts.push(teens[o]);
+    else {
+      if (o) parts.push(ones[o]);
+      if (t) parts.push(tens[t]);
+    }
+    return parts.join(' و');
+  }
+  function groupWords(num, single, dual, plural){
+    if (num === 0) return '';
+    if (num === 1) return single;
+    if (num === 2) return dual;
+    if (num >= 3 && num <= 10) return threeDigits(num) + ' ' + plural;
+    return threeDigits(num) + ' ' + single;
+  }
+  function wholeToWords(num){
+    if (num === 0) return 'صفر';
+    const billions = Math.floor(num/1000000000); num %= 1000000000;
+    const millions = Math.floor(num/1000000); num %= 1000000;
+    const thousands = Math.floor(num/1000); num %= 1000;
+    const rest = num;
+    const parts = [];
+    if (billions) parts.push(groupWords(billions, 'مليار', 'ملياران', 'مليارات'));
+    if (millions) parts.push(groupWords(millions, 'مليون', 'مليونان', 'ملايين'));
+    if (thousands) parts.push(groupWords(thousands, 'ألف', 'ألفان', 'آلاف'));
+    if (rest) parts.push(threeDigits(rest));
+    return parts.filter(Boolean).join(' و');
+  }
+  let out = wholeToWords(riyals) + ' ' + T('ريال سعودي');
+  if (halalas) out += ' ' + T('و') + threeDigits(halalas) + ' ' + T('هللة');
+  out += ' ' + T('لا غير');
+  return out;
+}
 // من يعتمد مستخلصات مقاولي الباطن؟ العميل ومدير المشاريع والأدمن
 const canApproveSubMus = () => isAdmin();
 const SUBMUS_STATUS = {
@@ -5958,6 +6124,9 @@ function openSubEdit(id){
   $('sub-name').value = s ? s.name : '';
   $('sub-phone').value = s ? (s.phone||'') : '';
   $('sub-ret').value = s ? (s.retentionRate!=null?s.retentionRate:10) : 10;
+  $('sub-contract-value').value = s ? (s.originalValue||0) : '';
+  $('sub-contract-variations').value = s ? (s.variations||0) : '';
+  $('sub-adv-recovery-rate').value = s ? (s.advanceRecoveryRate||0) : '';
   $('sub-note').value = s ? (s.note||'') : '';
   $('sub-item-id').value = ''; $('sub-item-search').value = ''; $('sub-item-rate').value = '';
   renderSubDraftItems();
@@ -5990,7 +6159,9 @@ function subAddItemRate(){
 function saveSub(){
   const name = $('sub-name').value.trim();
   if (!name) { alert(T('اكتب اسم مقاول الباطن')); return; }
-  const data = { name, phone:$('sub-phone').value.trim(), retentionRate:clamp($('sub-ret').value,0,100), note:$('sub-note').value.trim(), items:subDraftItems };
+  const data = { name, phone:$('sub-phone').value.trim(), retentionRate:clamp($('sub-ret').value,0,100),
+    originalValue:Number($('sub-contract-value').value)||0, variations:Number($('sub-contract-variations').value)||0,
+    advanceRecoveryRate:clamp($('sub-adv-recovery-rate').value,0,100), note:$('sub-note').value.trim(), items:subDraftItems };
   if (editingSubId) { Object.assign(getSub(editingSubId), data); }
   else { proj().subcontractors.push(Object.assign({id: nextSeq()}, data)); }
   closeModal('sub-edit-modal'); save(); renderAll();
@@ -6064,8 +6235,12 @@ function openSubDetail(id){
   sdSubId = id; sdSel = {}; sdPendingFiles = [];
   $('sub-detail-title').textContent = '📂 ' + s.name + ' — ' + T('تعميد الكميات وبناء المستخلص');
   $('sd-ret').value = s.retentionRate!=null?s.retentionRate:10;
-  ['sd-materials','sd-utilities','sd-performance','sd-other'].forEach(k => $(k).value = 0);
+  ['sd-materials','sd-utilities','sd-performance','sd-other','sd-equipment','sd-backcharges','sd-add-materials','sd-add-extra','sd-ret-release'].forEach(k => $(k).value = 0);
   $('sd-date').value = todayStr();
+  $('sd-type').value = 'interim'; sdTypeChanged();
+  $('sd-period-from').value = ''; $('sd-period-to').value = '';
+  $('sd-invoice-no').value = ''; $('sd-invoice-date').value = '';
+  $('sd-vat-on').checked = true; $('sd-vat-rate').value = proj().info.vatRate || 15;
   $('sd-files-list').innerHTML = '';
   $('sd-adv-add-btn').style.display = (state.me.role === 'pm' || isAdmin()) ? '' : 'none';
   closeSdAdvForm();
@@ -6234,31 +6409,79 @@ Object.assign(I18N_EN, {
   'بانتظار اعتماد الاستشاري — لا يمكن التعميد قبل اعتماد الكمية (أدمن النظام أو العميل فقط يملكان استثناءً هنا)':'Awaiting consultant approval — can\'t certify before the quantity is approved (only system admin or the client/owner have an exception here)',
   'استثناء: لم يُعتمد البند من الاستشاري بعد — يُسمح لك بالتعميد بحد أقصى الكمية المنفذة فعلياً':'Exception: this item isn\'t consultant-approved yet — you\'re allowed to certify up to the actually executed quantity'
 });
+function sdTypeChanged(){
+  const isFinal = $('sd-type').value === 'final';
+  $('sd-ret-release-wrap').style.display = isFinal ? '' : 'none';
+  renderSubMusTotals();
+}
+// حساب مسوّدة مستخلص مقاول الباطن بنموذج الشهادة الموسّع (موقف العقد، ضريبة، حجز تراكمي، استرداد دفعة مقدمة، إضافات)
+// ملاحظة توافق: مستخلص أول لمقاول (لا مستخلصات سابقة) ينتج نفس قيمة الحجز القديمة تماماً (تراكمي = آني عند الكمية صفر سابقاً)
 function subMusComputeDraft(){
   const s = getSub(sdSubId); const lines = [];
   Object.entries(sdSel).forEach(([id, q]) => {
     const qty = Number(q)||0; if (qty <= 0) return;
     const it = getItem(id); if (!it) return;
     const rate = subRate(s, id); const prev = subClaimedQty(sdSubId, id);
-    lines.push({itemId:id, desc:it.desc, unit:it.unit, rate, prevQty:prev, currQty:qty, cumQty:round2(prev+qty), amount:round2(qty*rate)});
+    // cumApprovedQty = سقف ما اعتمده الاستشاري تراكمياً لهذا المقاول على هذا البند (مختلف عن cumQty المُطالَب به فعلياً)
+    lines.push({itemId:id, desc:it.desc, unit:it.unit, rate, contractQty: it.totalQty||0, cumApprovedQty: subEligibleQty(sdSubId, id),
+      prevQty:prev, currQty:qty, cumQty:round2(prev+qty), amount:round2(qty*rate),
+      prevValue: round2(prev*rate), cumValue: round2((prev+qty)*rate)});
   });
   const gross = round2(lines.reduce((a,l)=>a+l.amount,0));
+  const type = $('sd-type') ? $('sd-type').value : 'interim';
+  const periodFrom = $('sd-period-from') ? $('sd-period-from').value : '';
+  const periodTo = $('sd-period-to') ? $('sd-period-to').value : '';
+  const taxInvoiceNo = $('sd-invoice-no') ? $('sd-invoice-no').value.trim() : '';
+  const taxInvoiceDate = $('sd-invoice-date') ? $('sd-invoice-date').value : '';
+  const additions = { materialsOnSite: Number($('sd-add-materials').value)||0, extraWorks: Number($('sd-add-extra').value)||0 };
+  const additionsTotal = round2(additions.materialsOnSite + additions.extraWorks);
+  const contract = subContractPosition(sdSubId, gross);
   const retRate = clamp($('sd-ret').value,0,100);
-  const ded = { materials:Number($('sd-materials').value)||0, utilities:Number($('sd-utilities').value)||0, performance:Number($('sd-performance').value)||0, other:Number($('sd-other').value)||0 };
-  const retention = round2(gross*retRate/100);
-  const dedTotal = round2(ded.materials+ded.utilities+ded.performance+ded.other);
+  const ded = { materials:Number($('sd-materials').value)||0, utilities:Number($('sd-utilities').value)||0, performance:Number($('sd-performance').value)||0,
+    equipment:Number($('sd-equipment').value)||0, backCharges:Number($('sd-backcharges').value)||0, other:Number($('sd-other').value)||0 };
+  const dedTotal = round2(ded.materials+ded.utilities+ded.performance+ded.equipment+ded.backCharges+ded.other);
+  // حجز الضمان: تراكمي (نسبة × إجمالي معتمد تراكمياً شاملاً هذا المستخلص) ناقص المحتجز السابق = المحتجز الآن
+  // سقف: المحتجز التراكمي لا يتجاوز ضعف نسبة الحجز من القيمة المعدّلة للعقد (إن كانت قيمة العقد مُدخلة)
+  let retentionCumulative = round2(subGrossCumulative(sdSubId, gross) * retRate/100);
+  const retentionCeiling = contract.adjustedValue > 0 ? round2(contract.adjustedValue * (retRate*2) / 100) : null;
+  if (retentionCeiling != null && retentionCumulative > retentionCeiling) retentionCumulative = retentionCeiling;
+  const retentionPrevious = subRetentionHeld(sdSubId);
+  const retentionReleased = (type === 'final') ? (Number($('sd-ret-release').value)||0) : 0;
+  const retention = Math.max(0, round2(retentionCumulative - retentionPrevious - retentionReleased));
+  // استرداد الدفعة المقدمة: بنسبة بطاقة المقاول عادة، بحد أقصى الرصيد المتبقي — وفي الشهادة الختامية
+  // تُقفل كامل الدفعة المقدمة المتبقية بصرف النظر عن النسبة (تسوية نهائية للحساب)
+  const advRate = s ? (Number(s.advanceRecoveryRate)||0) : 0;
+  const advanceRemainingBefore = subAdvanceRemaining(sdSubId);
+  const advanceRecovery = type === 'final' ? advanceRemainingBefore : (advRate > 0 ? round2(Math.min(gross*advRate/100, advanceRemainingBefore)) : 0);
+  const advanceRemaining = round2(Math.max(0, advanceRemainingBefore - advanceRecovery));
+  const vatApplicable = $('sd-vat-on') ? $('sd-vat-on').checked : false;
+  const vatRate = vatApplicable ? (Number($('sd-vat-rate').value)||0) : 0;
+  const vat = vatApplicable ? round2((gross+additionsTotal)*vatRate/100) : 0;
+  const invoiceTotal = round2(gross + additionsTotal + vat);
+  const deductionsTotal = round2(retention + advanceRecovery + dedTotal);
   const prevPaid = round2(subMusOf(sdSubId).filter(m=>m.status!=='rejected').reduce((a,m)=>a+(m.net||0),0));
-  const net = round2(gross - retention - dedTotal);
-  return {lines, gross, retRate, retention, ded, dedTotal, prevPaid, net};
+  const net = round2(invoiceTotal - deductionsTotal);
+  const cumulativeCertified = round2(subMusOf(sdSubId).filter(m=>m.status!=='rejected').reduce((a,m)=>a+(m.invoiceTotal!==undefined?m.invoiceTotal:(m.gross||0)),0) + invoiceTotal);
+  return { lines, gross, type, periodFrom, periodTo, taxInvoiceNo, taxInvoiceDate, contract,
+    retRate, retention, retentionCumulative, retentionCeiling, retentionPrevious, retentionReleased,
+    additions, additionsTotal, ded, dedTotal, advanceRecovery, advanceRemaining,
+    vatApplicable, vatRate, vat, invoiceTotal, deductionsTotal, prevPaid, net, cumulativeCertified };
 }
 function renderSubMusTotals(){
   const c = subMusComputeDraft();
   $('sd-totals').innerHTML =
     '<div class="sc-item"><span class="sc-item-name">' + T('قيمة الأعمال') + ' (' + c.lines.length + ' ' + T('بند') + ')</span><span class="sc-item-val" style="color:var(--green-bright)">' + money(c.gross) + '</span></div>' +
-    '<div class="sc-item"><span class="sc-item-name">− ' + T('حجز جودة') + ' ' + c.retRate + '%</span><span class="sc-item-val" style="color:var(--red)">' + money(c.retention) + '</span></div>' +
+    (c.additionsTotal?'<div class="sc-item"><span class="sc-item-name">+ ' + T('إضافات') + '</span><span class="sc-item-val" style="color:var(--green-bright)">' + money(c.additionsTotal) + '</span></div>':'') +
+    (c.vatApplicable?'<div class="sc-item"><span class="sc-item-name">+ ' + T('ضريبة القيمة المضافة') + ' ' + c.vatRate + '%</span><span class="sc-item-val">' + money(c.vat) + '</span></div>':'') +
+    '<div class="sc-item"><span class="sc-item-name" style="font-weight:700">' + T('إجمالي الفاتورة') + '</span><span class="sc-item-val" style="font-weight:700">' + money(c.invoiceTotal) + '</span></div>' +
+    '<div class="sc-item"><span class="sc-item-name">− ' + T('حجز جودة') + ' ' + c.retRate + '% ' + T('(تراكمي)') + '</span><span class="sc-item-val" style="color:var(--red)">' + money(c.retention) + '</span></div>' +
+    (c.retentionReleased?'<div class="sc-item"><span class="sc-item-name" style="font-size:11px;color:var(--text3)">(' + T('أُفرج عن:') + ' ' + money(c.retentionReleased) + ')</span><span></span></div>':'') +
+    (c.advanceRecovery?'<div class="sc-item"><span class="sc-item-name">− ' + T('استرداد دفعة مقدمة') + '</span><span class="sc-item-val" style="color:var(--red)">' + money(c.advanceRecovery) + '</span></div>':'') +
     (c.ded.materials?'<div class="sc-item"><span class="sc-item-name">− ' + T('مواد') + '</span><span class="sc-item-val" style="color:var(--red)">' + money(c.ded.materials) + '</span></div>':'') +
     (c.ded.utilities?'<div class="sc-item"><span class="sc-item-name">− ' + T('كهرباء وماء') + '</span><span class="sc-item-val" style="color:var(--red)">' + money(c.ded.utilities) + '</span></div>':'') +
     (c.ded.performance?'<div class="sc-item"><span class="sc-item-name">− ' + T('سوء أداء/غرامات') + '</span><span class="sc-item-val" style="color:var(--red)">' + money(c.ded.performance) + '</span></div>':'') +
+    (c.ded.equipment?'<div class="sc-item"><span class="sc-item-name">− ' + T('إيجار معدات/عدد') + '</span><span class="sc-item-val" style="color:var(--red)">' + money(c.ded.equipment) + '</span></div>':'') +
+    (c.ded.backCharges?'<div class="sc-item"><span class="sc-item-name">− ' + T('تكاليف نيابة عنه') + '</span><span class="sc-item-val" style="color:var(--red)">' + money(c.ded.backCharges) + '</span></div>':'') +
     (c.ded.other?'<div class="sc-item"><span class="sc-item-name">− ' + T('خصومات أخرى') + '</span><span class="sc-item-val" style="color:var(--red)">' + money(c.ded.other) + '</span></div>':'') +
     (c.prevPaid?'<div class="sc-item"><span class="sc-item-name" style="font-size:11px;color:var(--text3)">(' + T('سبق صرفه لهذا المقاول تراكمياً:') + ' ' + money(c.prevPaid) + ')</span><span></span></div>':'') +
     '<div class="sc-item"><span class="sc-item-name" style="font-weight:700">' + T('صافي مستحق هذا المستخلص') + '</span><span class="sc-item-val" style="color:var(--green-bright);font-size:15px;font-weight:700">' + money(c.net) + '</span></div>';
@@ -6279,6 +6502,8 @@ async function buildSubMus(){
   const c = subMusComputeDraft();
   if (!c.lines.length) { alert(T('عمّد كمية بند واحد على الأقل')); return; }
   if (offlineMode) { alert(T('📴 لا يمكن البناء بدون اتصال')); return; }
+  // الشهادة الختامية تُقفل حساب المقاول — لا شهادات دورية جديدة له بعدها
+  if (c.type === 'interim' && subHasFinalCert(sdSubId)) { alert(T('⛔ صدرت شهادة ختامية لهذا المقاول مسبقاً — لا يمكن فتح شهادة دورية جديدة بعد الإقفال.')); return; }
   // فحص أمان أخير: لا تجاوز للمتاح
   for (const l of c.lines) {
     if (l.currQty > subAvailQty(sdSubId, l.itemId) + 0.01) { alert(T('⛔ كمية البند ') + l.itemId + T(' تتجاوز المتاح')); return; }
@@ -6294,33 +6519,121 @@ async function buildSubMus(){
   const no = 'SUB-' + String((proj().subMustakhlasat||[]).length + 1).padStart(3,'0');
   proj().subMustakhlasat.push({
     id: nextSeq(), no, subId: sdSubId, date: $('sd-date').value || todayStr(), status:'submitted',
-    lines:c.lines, gross:c.gross, retRate:c.retRate, retention:c.retention, ded:c.ded, dedTotal:c.dedTotal,
-    prevPaid:c.prevPaid, net:c.net, docs, payments:[], by: currentUser().name, createdAt: new Date().toISOString()
+    type:c.type, periodFrom:c.periodFrom, periodTo:c.periodTo, taxInvoiceNo:c.taxInvoiceNo, taxInvoiceDate:c.taxInvoiceDate,
+    contract:c.contract, lines:c.lines, gross:c.gross,
+    additions:c.additions, additionsTotal:c.additionsTotal,
+    retRate:c.retRate, retention:c.retention, retentionCumulative:c.retentionCumulative, retentionReleased:c.retentionReleased,
+    ded:c.ded, dedTotal:c.dedTotal, advanceRecovery:c.advanceRecovery, advanceRemaining:c.advanceRemaining,
+    vatApplicable:c.vatApplicable, vatRate:c.vatRate, vat:c.vat, invoiceTotal:c.invoiceTotal,
+    prevPaid:c.prevPaid, net:c.net, cumulativeCertified:c.cumulativeCertified,
+    approvals:{ preparedBy: { name: currentUser().name, userId: state.me.id, at: new Date().toISOString() } },
+    docs, payments:[], by: currentUser().name, createdAt: new Date().toISOString()
   });
   closeModal('sub-detail-modal'); save(); renderAll(); switchSubView('mus');
   setTimeout(()=>alert(T('✅ تم رفع مستخلص مقاول الباطن للاعتماد.')), 200);
 }
 
 // ---- عرض/اعتماد/صرف مستخلص مقاول الباطن ----
+const SUBMUS_TYPE_LABEL = { interim: 'دوري (Interim)', final: 'ختامي (Final)', advance: 'دفعة مقدمة (Advance)' };
 function subMusDocHtml(m){
-  const sub = getSub(m.subId);
-  const rows = (m.lines||[]).map(l => '<tr><td style="text-align:right">' + esc(l.itemId) + ' — ' + esc(l.desc) + '</td><td style="text-align:center">' + esc(l.unit) + '</td><td style="text-align:center;font-family:var(--mono)">' + fmtN(l.rate) + '</td><td style="text-align:center;font-family:var(--mono)">' + fmtQ(l.currQty) + '</td><td style="text-align:center;font-family:var(--mono)">' + fmtN(l.amount) + '</td></tr>').join('');
-  const dedRows = [];
-  if (m.retention) dedRows.push([T('حجز جودة') + ' ' + m.retRate + '%', m.retention]);
-  if (m.ded && m.ded.materials) dedRows.push([T('خصم مواد'), m.ded.materials]);
-  if (m.ded && m.ded.utilities) dedRows.push([T('كهرباء وماء'), m.ded.utilities]);
-  if (m.ded && m.ded.performance) dedRows.push([T('سوء أداء/غرامات'), m.ded.performance]);
-  if (m.ded && m.ded.other) dedRows.push([T('خصومات أخرى'), m.ded.other]);
-  const docsHtml = (m.docs||[]).length ? '<div style="margin-top:10px"><strong>' + T('المرفقات والتسوية:') + '</strong><br>' + m.docs.map(d=>'<a href="' + esc(d.url) + '" target="_blank" style="color:var(--blue);font-size:12px">' + (String(d.url).endsWith('.pdf')?'📄':'🖼') + ' ' + esc(d.name||T('ملف')) + ' ↗</a>').join('<br>') + '</div>' : '<div style="margin-top:10px;color:var(--red);font-size:12px">⚠ ' + T('لا مرفقات') + '</div>';
-  return '<div style="font-family:var(--font)"><div style="font-size:14px;font-weight:700;margin-bottom:4px">' + T('مستخلص مقاول باطن') + ' ' + esc(m.no) + '</div>' +
-    '<div style="font-size:12px;color:var(--text2);margin-bottom:10px">' + T('المقاول:') + ' ' + esc(sub?sub.name:'—') + ' · ' + T('التاريخ:') + ' ' + esc(m.date) + ' · ' + T('أعدّه:') + ' ' + esc(m.by||'—') + '</div>' +
-    '<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:var(--bg2)"><th style="text-align:right;padding:5px">' + T('البند') + '</th><th>' + T('الوحدة') + '</th><th>' + T('السعر') + '</th><th>' + T('الكمية') + '</th><th>' + T('القيمة') + '</th></tr></thead><tbody>' + rows + '</tbody></table>' +
-    '<table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:8px">' +
-    '<tr><td style="text-align:right;padding:4px"><strong>' + T('قيمة الأعمال') + '</strong></td><td style="text-align:left;font-family:var(--mono)">' + fmtN(m.gross) + '</td></tr>' +
-    dedRows.map(d=>'<tr><td style="text-align:right;padding:4px;color:var(--red)">− ' + esc(d[0]) + '</td><td style="text-align:left;font-family:var(--mono);color:var(--red)">' + fmtN(d[1]) + '</td></tr>').join('') +
-    '<tr style="background:var(--green-dim)"><td style="text-align:right;padding:6px"><strong style="color:var(--green-bright)">' + T('صافي المستحق') + '</strong></td><td style="text-align:left;font-family:var(--mono);font-weight:700;color:var(--green-bright)">' + fmtN(m.net) + '</td></tr>' +
-    (m.prevPaid?'<tr><td style="text-align:right;padding:4px;font-size:11px;color:var(--text3)">' + T('سبق صرفه تراكمياً') + '</td><td style="text-align:left;font-family:var(--mono);font-size:11px;color:var(--text3)">' + fmtN(m.prevPaid) + '</td></tr>':'') +
-    '</table>' + docsHtml + '</div>';
+  const sub = getSub(m.subId); const p = proj().info; const contract = m.contract || {};
+  const sumRow = (label, val, color, strong) =>
+    '<tr' + (strong ? ' style="background:var(--green-dim)"' : '') + '><td style="padding:6px;border:1px solid var(--border);' + (strong?'font-weight:700;color:var(--green-bright)':'') + '">' + label + '</td>' +
+    '<td style="padding:6px;border:1px solid var(--border);text-align:left;font-family:var(--mono);' + (strong?'font-weight:700;font-size:14px;color:var(--green-bright)':'color:' + color) + '">' + fmtN(val) + '</td></tr>';
+  const rows = (m.lines||[]).map(l =>
+    '<tr><td style="padding:5px;border:1px solid var(--border)">' + esc(l.itemId) + ' — ' + esc(l.desc) + '</td>' +
+    '<td style="padding:5px;border:1px solid var(--border);text-align:center">' + esc(l.unit) + '</td>' +
+    '<td style="padding:5px;border:1px solid var(--border);text-align:center;font-family:var(--mono)">' + fmtN(l.rate) + '</td>' +
+    '<td style="padding:5px;border:1px solid var(--border);text-align:center;font-family:var(--mono);color:var(--text3)">' + fmtQ(l.contractQty||0) + '</td>' +
+    '<td style="padding:5px;border:1px solid var(--border);text-align:center;font-family:var(--mono)">' + fmtQ(l.cumApprovedQty!=null?l.cumApprovedQty:l.cumQty) + '</td>' +
+    '<td style="padding:5px;border:1px solid var(--border);text-align:center;font-family:var(--mono)">' + fmtN(l.cumValue!=null?l.cumValue:l.cumQty*l.rate) + '</td>' +
+    '<td style="padding:5px;border:1px solid var(--border);text-align:center;font-family:var(--mono);color:var(--text3)">' + fmtN(l.prevValue!=null?l.prevValue:l.prevQty*l.rate) + '</td>' +
+    '<td style="padding:5px;border:1px solid var(--border);text-align:center;font-family:var(--mono);font-weight:700;color:var(--green-bright)">' + fmtN(l.amount) + '</td></tr>').join('') +
+    (m.lines && m.lines.length > 1 ? '<tr style="background:var(--bg2);font-weight:700"><td colspan="5" style="padding:5px;border:1px solid var(--border)">' + T('الإجمالي') + '</td>' +
+      '<td style="padding:5px;border:1px solid var(--border);text-align:center;font-family:var(--mono)">' + fmtN(m.lines.reduce((s,l)=>s+(l.cumValue!=null?l.cumValue:l.cumQty*l.rate),0)) + '</td>' +
+      '<td style="padding:5px;border:1px solid var(--border);text-align:center;font-family:var(--mono)">' + fmtN(m.lines.reduce((s,l)=>s+(l.prevValue!=null?l.prevValue:l.prevQty*l.rate),0)) + '</td>' +
+      '<td style="padding:5px;border:1px solid var(--border);text-align:center;font-family:var(--mono);color:var(--green-bright)">' + fmtN(m.lines.reduce((s,l)=>s+l.amount,0)) + '</td></tr>' : '');
+  const ded = m.ded || {};
+  const dedRows = [
+    [T('حجز جودة') + ' ' + (m.retRate||0) + '%' + (m.retentionCumulative?' (' + T('تراكمي') + ' ' + fmtN(m.retentionCumulative) + ')':''), m.retention],
+    m.retentionReleased ? [T('أُفرج عن:'), -m.retentionReleased] : null,
+    m.advanceRecovery ? [T('استرداد دفعة مقدمة'), m.advanceRecovery] : null,
+    ded.materials ? [T('خصم مواد'), ded.materials] : null,
+    ded.utilities ? [T('كهرباء وماء'), ded.utilities] : null,
+    ded.performance ? [T('سوء أداء/غرامات'), ded.performance] : null,
+    ded.equipment ? [T('إيجار معدات/عدد'), ded.equipment] : null,
+    ded.backCharges ? [T('تكاليف نيابة عنه'), ded.backCharges] : null,
+    ded.other ? [T('خصومات أخرى'), ded.other] : null
+  ].filter(Boolean);
+  const additions = m.additions || {};
+  const docsHtml = (m.docs||[]).length ?
+    '<div style="margin-top:14px"><div style="font-size:13px;font-weight:700;color:var(--amber);margin-bottom:6px">📎 ' + T('المرفقات') + ' (' + m.docs.length + ')</div>' +
+    m.docs.map(d=>'<div style="font-size:12px;padding:3px 0"><a href="' + esc(d.url) + '" target="_blank" style="color:var(--blue);text-decoration:none">' + (String(d.url).endsWith('.pdf')?'📄':'🖼') + ' ' + esc(d.name||T('ملف')) + ' ↗</a></div>').join('') + '</div>'
+    : '<div style="margin-top:14px;color:var(--red);font-size:12px">⚠ ' + T('لا مرفقات') + '</div>';
+  const sig = (label, who) => '<div style="text-align:center;border-top:1px solid var(--border);padding-top:8px"><div style="color:var(--text2);font-size:11px">' + T(label) + '</div>' +
+    '<div style="margin-top:4px;font-size:11px">' + T('الاسم:') + ' ' + esc(who && who.name ? who.name : '__________') + '</div>' +
+    '<div style="margin-top:18px;color:var(--text3);font-size:11px">' + T('التوقيع / التاريخ') + (who && who.at ? ' — ' + esc(String(who.at).slice(0,10)) : '') + '</div></div>';
+  const appr = m.approvals || {};
+  return '<div style="font-family:var(--font)">' +
+    '<div style="text-align:center;padding:14px 0;border-bottom:2px solid var(--amber);margin-bottom:14px">' +
+      '<div style="font-size:11px;color:var(--text2);letter-spacing:2px">' + esc(p.contractor||'') + '</div>' +
+      '<div style="font-size:18px;font-weight:700;color:var(--amber);margin:4px 0">' + T('مستخلص مقاول باطن') + ' ' + esc(m.no) + (m.status && m.status!=='submitted' ? ' · ' + (SUBMUS_STATUS[m.status]?T(SUBMUS_STATUS[m.status].label):m.status) : ' · ' + T(SUBMUS_TYPE_LABEL[m.type]||'Interim')) + '</div>' +
+      '<div style="font-size:13px;color:var(--text2)">' + esc(p.name||'') + '</div></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;font-size:12px">' +
+      '<div><span style="color:var(--text2)">' + T('المقاول:') + '</span> <strong>' + esc(sub?sub.name:'—') + '</strong></div>' +
+      '<div><span style="color:var(--text2)">' + T('نوع الشهادة') + ':</span> <strong>' + T(SUBMUS_TYPE_LABEL[m.type]||'Interim') + '</strong></div>' +
+      '<div><span style="color:var(--text2)">' + T('تاريخ المستخلص:') + '</span> <strong>' + esc(m.date) + '</strong></div>' +
+      (m.periodFrom || m.periodTo ? '<div><span style="color:var(--text2)">' + T('الفترة:') + '</span> <strong>' + esc(m.periodFrom||'—') + ' → ' + esc(m.periodTo||'—') + '</strong></div>' : '') +
+      (m.taxInvoiceNo ? '<div><span style="color:var(--text2)">' + T('رقم الفاتورة الضريبية:') + '</span> <strong>' + esc(m.taxInvoiceNo) + (m.taxInvoiceDate?' · '+esc(m.taxInvoiceDate):'') + '</strong></div>' : '') +
+      '<div><span style="color:var(--text2)">' + T('العملة:') + '</span> <strong>SAR</strong></div>' +
+      (m.by ? '<div><span style="color:var(--text2)">' + T('معد المستخلص:') + '</span> <strong>' + esc(m.by) + '</strong></div>' : '') +
+      (m.status ? '<div><span style="color:var(--text2)">' + T('الحالة:') + '</span> <strong>' + (SUBMUS_STATUS[m.status]?T(SUBMUS_STATUS[m.status].label):m.status) + '</strong></div>' : '') +
+      (m.approvedBy && m.status !== 'rejected' ? '<div><span style="color:var(--text2)">' + T('اعتمده:') + '</span> <strong>' + esc(m.approvedBy) + (m.approvedAt ? ' — ' + esc(m.approvedAt) : '') + '</strong></div>' : '') +
+      (m.status === 'rejected' && m.rejectReason ? '<div style="grid-column:1/-1;color:var(--red)"><span>' + T('سبب الإرجاع:') + '</span> <strong>' + esc(m.rejectReason) + '</strong></div>' : '') +
+    '</div>' +
+    (contract.originalValue ?
+      '<div style="font-size:13px;font-weight:700;margin-bottom:6px">' + T('موقف العقد') + '</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;font-size:12px">' +
+        '<div><span style="color:var(--text2)">' + T('قيمة العقد الأصلية:') + '</span> <strong>' + fmtN(contract.originalValue) + '</strong></div>' +
+        '<div><span style="color:var(--text2)">' + T('أوامر تغيير معتمدة:') + '</span> <strong>' + fmtN(contract.variations) + '</strong></div>' +
+        '<div><span style="color:var(--text2)">' + T('القيمة المعدّلة:') + '</span> <strong>' + fmtN(contract.adjustedValue) + '</strong></div>' +
+        '<div><span style="color:var(--text2)">' + T('نسبة الإنجاز التراكمية:') + '</span> <strong>' + fmtN(contract.cumulativePercent) + '%</strong></div>' +
+      '</div>' : '') +
+    '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px">' +
+    '<thead><tr style="background:var(--bg3)">' + [T('البند'),T('الوحدة'),T('السعر'),T('كمية العقد'),T('تراكمي معتمد'),T('قيمة تراكمية'),T('قيمة سابقة'),T('هذا المستخلص')]
+      .map(h=>'<th style="padding:6px;border:1px solid var(--border);color:var(--amber);text-align:center">' + h + '</th>').join('') +
+    '</tr></thead><tbody>' + rows + '</tbody></table></div>' +
+    (additions.materialsOnSite || additions.extraWorks ?
+      '<table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:10px">' +
+      '<tr><td colspan="2" style="padding:5px;border:1px solid var(--border);font-weight:700">' + T('الإضافات') + '</td></tr>' +
+      (additions.materialsOnSite?sumRow(T('مواد بالموقع (معتمدة، ر.س)'), additions.materialsOnSite):'') +
+      (additions.extraWorks?sumRow(T('أعمال إضافية خارج العقد (معتمدة، ر.س)'), additions.extraWorks):'') +
+      '</table>' : '') +
+    '<table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:10px">' +
+    sumRow(T('قيمة الأعمال هذا المستخلص'), m.gross, 'var(--amber)') +
+    (m.additionsTotal?sumRow('+ ' + T('إضافات'), m.additionsTotal, 'var(--green)'):'') +
+    (m.vatApplicable?sumRow('+ ' + T('ضريبة القيمة المضافة') + ' ' + m.vatRate + '%', m.vat, 'var(--text)'):'') +
+    sumRow(T('إجمالي الفاتورة'), m.invoiceTotal!=null?m.invoiceTotal:m.gross, 'var(--teal)', false) +
+    dedRows.map(d=>'<tr><td style="padding:6px;border:1px solid var(--border);color:var(--red)">− ' + d[0] + '</td><td style="padding:6px;border:1px solid var(--border);text-align:left;font-family:var(--mono);color:var(--red)">' + fmtN(d[1]) + '</td></tr>').join('') +
+    sumRow(T('صافي المستحق'), m.net, '', true) +
+    (m.prevPaid?sumRow(T('سبق صرفه تراكمياً'), m.prevPaid, 'var(--text3)'):'') +
+    '</table>' +
+    '<div style="margin-top:10px;padding:8px;border:1px dashed var(--border);border-radius:6px;font-size:12px"><strong>' + T('المبلغ كتابة:') + '</strong> ' + numberToWordsAr(m.net) + '</div>' +
+    (m.cumulativeCertified ?
+      '<div style="font-size:13px;font-weight:700;margin:14px 0 6px">' + T('الموقف المالي التراكمي') + '</div>' +
+      '<table style="width:100%;border-collapse:collapse;font-size:12px">' +
+      sumRow(T('معتمد تراكمياً (شامل الضريبة)'), m.cumulativeCertified, 'var(--text)') +
+      sumRow(T('سبق صرفه'), m.prevPaid||0, 'var(--text)') +
+      sumRow(T('مستحق الآن'), m.net, 'var(--green-bright)') +
+      sumRow(T('محتجز الضمان الممسوك'), m.retentionCumulative||0, 'var(--text)') +
+      sumRow(T('رصيد الدفعة المقدمة المتبقي'), m.advanceRemaining||0, 'var(--text)') +
+      '</table>' : '') +
+    docsHtml +
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:16px;margin-top:28px">' +
+      sig('أُعدّ بواسطة (QS)', appr.preparedBy) + sig('روجع بواسطة (PM)', appr.reviewedBy) + sig('اعتمد بواسطة (العقود/المالك)', appr.approvedBy) + sig('إقرار استلام مقاول الباطن', appr.subAcknowledged) +
+    '</div>' +
+    (m.notes ? '<div style="margin-top:14px;font-size:12px"><span style="color:var(--text2)">' + T('ملاحظات:') + '</span> ' + esc(m.notes) + '</div>' : '') +
+    '</div>';
 }
 function viewSubMus(id){ const m = (proj().subMustakhlasat||[]).find(x=>x.id===id); if (m) showPrintable(T('مستخلص مقاول باطن') + ' ' + m.no, subMusDocHtml(m)); }
 function approveSubMus(id){

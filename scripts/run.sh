@@ -24,6 +24,7 @@ docker run -d \
   -v "${DATA_VOLUME}:/app/data" \
   -e ADMIN_USER="${ADMIN_USER:-admin}" \
   -e ADMIN_PASSWORD="${ADMIN_PASSWORD:-غيرني-فوراً}" \
+  -e PUBLIC_URL="https://boq.bassir.net" \
   "$IMAGE_NAME"
 
 echo "==> تم. النظام متاح على المنفذ $HOST_PORT"

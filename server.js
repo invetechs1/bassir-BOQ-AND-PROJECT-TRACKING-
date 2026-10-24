@@ -374,6 +374,14 @@ const SAAS = require('./saas')({
   fs, crypto
 });
 
+// ---------- وحدة المصاريف وتكاليف المشروع (تتبّع تكاليف + ربحية، تُغذّي Bassir ERP) ----------
+const EXPENSES = require('./expenses')({
+  app, DATA_DIR, PUBLIC_DIR: path.join(__dirname, 'public'),
+  readJSON, writeJSON, fs,
+  auth, isAdmin, loadProject, canAccessProject,
+  companyIntegration, setIntegrationStatus
+});
+
 // ---------- المصادقة ----------
 app.post('/api/auth/login', (req, res) => {
   const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '?';

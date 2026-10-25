@@ -126,7 +126,11 @@ function boot(){
     ST=r.d; show('login-gate',false); show('content',true);
     var sel=document.getElementById('proj-sel');
     sel.innerHTML=(ST.projects||[]).map(function(p){return '<option value="'+p.id+'">'+esc(p.info&&p.info.name||('مشروع '+p.id))+'</option>'}).join('')||'<option value="">لا مشاريع</option>';
-    if((ST.projects||[]).length){ PID=ST.projects[0].id; loadProject(); }
+    if((ST.projects||[]).length){
+      var qp=new URLSearchParams(location.search).get('project');
+      var want=(qp && (ST.projects||[]).some(function(p){return String(p.id)===String(qp)})) ? Number(qp) : ST.projects[0].id;
+      PID=want; sel.value=String(want); loadProject();
+    }
   });
 }
 function doLogin(){

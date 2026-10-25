@@ -45,11 +45,15 @@
     </div>
 
     <!-- ربحية -->
+    <div id="verdict" style="display:flex;align-items:center;justify-content:space-between;gap:14px;border-radius:16px;padding:16px 22px;margin-bottom:14px;border:2px solid var(--line)">
+      <div><div id="verdict-title" style="font-size:22px;font-weight:800">—</div><div id="verdict-sub" class="muted" style="font-size:13px"></div></div>
+      <div id="verdict-amt" style="font-size:30px;font-weight:800">—</div>
+    </div>
     <div class="grid g4" style="margin-bottom:12px">
-      <div class="kpi"><div class="k-label">📈 الإيراد المعتمد</div><div class="k-val" id="k-rev">—</div><div class="k-sub" id="k-rev-sub"></div></div>
-      <div class="kpi k-cost"><div class="k-label">📉 إجمالي التكاليف</div><div class="k-val" id="k-cost" style="color:var(--red)">—</div></div>
-      <div class="kpi"><div class="k-label">💰 هامش المشروع</div><div class="k-val" id="k-margin">—</div></div>
-      <div class="kpi"><div class="k-label">٪ نسبة الهامش</div><div class="k-val" id="k-marginpct">—</div></div>
+      <div class="kpi"><div class="k-label">📈 الإنتاجية المعتمدة</div><div class="k-val" id="k-rev">—</div><div class="k-sub" id="k-rev-sub"></div></div>
+      <div class="kpi k-cost"><div class="k-label">📉 إجمالي المصاريف والتكاليف</div><div class="k-val" id="k-cost" style="color:var(--red)">—</div></div>
+      <div class="kpi"><div class="k-label">💰 الفرق (ربح/خسارة)</div><div class="k-val" id="k-margin">—</div></div>
+      <div class="kpi"><div class="k-label">٪ النسبة</div><div class="k-val" id="k-marginpct">—</div></div>
     </div>
     <div class="breakdown" id="cost-breakdown"></div>
     <p class="hint" id="prof-note" style="margin:8px 2px 18px"></p>
@@ -152,11 +156,28 @@ function loadProject(){
 }
 function renderProfit(){
   var pf=DATA.profitability;
-  document.getElementById('k-rev').textContent=money(pf.revenue.certified)+' ر.س';
-  document.getElementById('k-rev-sub').textContent='محصّل: '+money(pf.revenue.collected)+(pf.revenue.submitted?(' · قيد الاعتماد: '+money(pf.revenue.submitted)):'');
+  var income=(pf.income!=null)?pf.income:(pf.productivity?pf.productivity.approved:pf.revenue.certified);
+  var profit=pf.isProfit!==undefined?pf.isProfit:(pf.margin>=0);
+  // الإنتاجية المعتمدة
+  document.getElementById('k-rev').textContent=money(income)+' ر.س';
+  document.getElementById('k-rev-sub').textContent=(pf.productivity?('المنفّذ: '+money(pf.productivity.executed)+' · '):'')+'محصّل: '+money(pf.revenue.collected);
   document.getElementById('k-cost').textContent=money(pf.costs.total)+' ر.س';
-  var m=document.getElementById('k-margin'); m.textContent=money(pf.margin)+' ر.س'; m.style.color=pf.margin>=0?'var(--green)':'var(--red)';
-  var mp=document.getElementById('k-marginpct'); mp.textContent=pf.marginPct+'%'; mp.style.color=pf.margin>=0?'var(--green)':'var(--red)';
+  var m=document.getElementById('k-margin'); m.textContent=money(pf.margin)+' ر.س'; m.style.color=profit?'var(--green)':'var(--red)';
+  var mp=document.getElementById('k-marginpct'); mp.textContent=pf.marginPct+'%'; mp.style.color=profit?'var(--green)':'var(--red)';
+  // بانر الحكم: رابح أم خاسر
+  var v=document.getElementById('verdict');
+  var noData=income<=0 && pf.costs.total<=0;
+  v.style.background=noData?'var(--surface)':(profit?'#0c331f':'#331414');
+  v.style.borderColor=noData?'var(--line)':(profit?'#1c6b47':'#7a2626');
+  document.getElementById('verdict-title').innerHTML=noData?'لا توجد بيانات بعد'
+    :(profit?'✅ المشروع رابح':'⚠️ المشروع خاسر');
+  document.getElementById('verdict-title').style.color=noData?'var(--text2)':(profit?'#7ff0bb':'#ff9d9d');
+  document.getElementById('verdict-sub').textContent=noData?'أضف المصاريف وستظهر المقارنة مع الإنتاجية'
+    :(profit?('الإنتاجية المعتمدة أكبر من المصاريف — هامش '+pf.marginPct+'%')
+            :('المصاريف أكبر من الإنتاجية المعتمدة — راجع التكاليف'));
+  var amt=document.getElementById('verdict-amt');
+  amt.textContent=(profit?'+':'')+money(pf.margin)+' ر.س';
+  amt.style.color=noData?'var(--text3)':(profit?'#7ff0bb':'#ff9d9d');
   document.getElementById('cost-breakdown').innerHTML=
     bd('🧱 مقاولو الباطن',pf.costs.subcontractors)+bd('🧱 مواد',pf.costs.materials)+bd('👷 رواتب',pf.costs.salaries)+bd('🧾 أخرى/نثريات',pf.costs.other);
   document.getElementById('prof-note').textContent=pf.note;

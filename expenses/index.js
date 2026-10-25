@@ -28,9 +28,10 @@ module.exports = function initExpenses(ctx) {
   function saveExpenses(projectId, obj) { obj.version = (obj.version || 0) + 1; writeJSON(expFile(projectId), obj); return obj; }
   function nextExpId(store) { return 'exp_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 
-  // صلاحية الكتابة: الأدمن/العميل/مدير المشاريع ممن يملك وصولاً للمشروع (مدير الموقع: قراءة فقط)
+  // صلاحية الكتابة: الأدمن/العميل/مدير المشاريع/مدير المشروع ممن يملك وصولاً للمشروع.
+  // مدير المشروع (pm) يصل فقط لمشروعه المعيّن (canAccessProject يفرض ذلك) ويُدخل مصاريف مشروعه.
   function canWrite(user, project) {
-    return canAccessProject(user, project) && ['admin', 'client', 'pmo'].includes(user.role);
+    return canAccessProject(user, project) && ['admin', 'client', 'pmo', 'pm'].includes(user.role);
   }
 
   // تطبيع سجل مصروف وحسابه
@@ -59,7 +60,14 @@ module.exports = function initExpenses(ctx) {
   function profitability(project, items) {
     const mus = project.mustakhlasat || [];
     const subs = project.subMustakhlasat || [];
-    // الإيراد: قيمة الأعمال (gross، قبل الضريبة) للمستخلصات غير المرفوضة
+    const boq = project.boqItems || [];
+    // الإنتاجية (قيمة الأعمال المعتمدة من الاستشاري) = الكمية المعتمدة × سعر الوحدة — المقياس الذي يهم مدير المشروع
+    const approvedWork = round2(boq.reduce((s, it) => {
+      const aq = it.approvedQty != null ? (Number(it.approvedQty) || 0) : (Number(it.executedQty) || 0);
+      return s + aq * (Number(it.unitRate) || 0);
+    }, 0));
+    const executedWork = round2(boq.reduce((s, it) => s + (Number(it.executedQty) || 0) * (Number(it.unitRate) || 0), 0));
+    // الإيراد عبر المستخلصات (معلومة إضافية للمالك)
     const revenueCertified = round2(mus.filter(m => m.status !== 'rejected' && m.status !== 'submitted').reduce((s, m) => s + (Number(m.gross) || 0), 0));
     const revenueSubmitted = round2(mus.filter(m => m.status === 'submitted').reduce((s, m) => s + (Number(m.gross) || 0), 0));
     const collected = round2(mus.reduce((s, m) => s + (m.payments || []).reduce((a, p) => a + (Number(p.amount) || 0), 0), 0));
@@ -69,13 +77,16 @@ module.exports = function initExpenses(ctx) {
     const byType = { material: 0, salary: 0, other: 0 };
     items.forEach(e => { byType[e.type] = round2((byType[e.type] || 0) + (Number(e.amount) || 0)); });
     const totalCost = round2(subCost + byType.material + byType.salary + byType.other);
-    const margin = round2(revenueCertified - totalCost);
-    const marginPct = revenueCertified > 0 ? round2(margin / revenueCertified * 100) : 0;
+    // الحكم: الإنتاجية المعتمدة مقابل المصاريف
+    const income = approvedWork;
+    const margin = round2(income - totalCost);
+    const marginPct = income > 0 ? round2(margin / income * 100) : 0;
     return {
+      productivity: { approved: approvedWork, executed: executedWork },
       revenue: { certified: revenueCertified, submitted: revenueSubmitted, collected },
       costs: { subcontractors: subCost, subPaid, materials: byType.material, salaries: byType.salary, other: byType.other, total: totalCost },
-      margin, marginPct,
-      note: 'قيم قبل الضريبة (قيمة الأعمال). الإيراد = مستخلصات العميل المعتمدة؛ تكلفة الباطن = مستخلصاته المعتمدة.'
+      income, margin, marginPct, isProfit: margin >= 0,
+      note: 'قيم قبل الضريبة. الإنتاجية = قيمة الأعمال المعتمدة من الاستشاري (الكمية المعتمدة × السعر). تكلفة الباطن = مستخلصاته المعتمدة.'
     };
   }
 

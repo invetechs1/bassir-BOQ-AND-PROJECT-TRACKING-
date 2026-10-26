@@ -16,44 +16,48 @@
 </head>
 <body>
 <div class="topbar"><div class="wrap">
-  <div class="logo"><span class="mark">ب</span><span>لوحة المالك</span></div>
+  <div class="logo"><span class="mark">ب</span><span data-i18n="لوحة المالك">لوحة المالك</span></div>
   <div class="row"><span id="mode-chip" class="mode-chip mode-sim" style="align-self:center">—</span>
-    <a class="btn btn-ghost btn-sm" href="/">→ النظام</a>
-    <button class="btn btn-ghost btn-sm" onclick="logout()">خروج</button>
+    <button class="btn btn-ghost btn-sm" id="lang-switch" onclick="toggleLang()">🌐 English</button>
+    <a class="btn btn-ghost btn-sm" href="/" data-i18n="→ النظام">→ النظام</a>
+    <button class="btn btn-ghost btn-sm" onclick="logout()" data-i18n="خروج">خروج</button>
   </div>
 </div></div>
 
 <div class="wrap" style="padding:24px 20px">
   <div id="login-gate" class="card hide" style="max-width:420px;margin:40px auto">
-    <h2>دخول مالك المنصّة</h2>
-    <div id="login-err" class="note note-err hide"></div>
-    <div class="field"><label>اسم المستخدم</label><input id="lg-user" autocomplete="username"></div>
-    <div class="field"><label>كلمة المرور</label><input id="lg-pass" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
-    <button class="btn btn-primary btn-block" onclick="doLogin()">دخول</button>
+    <h2 data-i18n="دخول مالك المنصّة">دخول مالك المنصّة</h2>
+    <div id="login-err" class="note note-err hide" role="alert"></div>
+    <div class="field"><label for="lg-user" data-i18n="اسم المستخدم">اسم المستخدم</label><input id="lg-user" autocomplete="username"></div>
+    <div class="field"><label for="lg-pass" data-i18n="كلمة المرور">كلمة المرور</label><input id="lg-pass" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')submitLogin()"></div>
+    <button class="btn btn-primary btn-block" onclick="submitLogin()" data-i18n="دخول">دخول</button>
   </div>
+
+  <div id="page-state"></div>
 
   <div id="content" class="hide">
     <div class="tabs">
-      <div class="tab active" data-t="dash" onclick="tab('dash')">📊 اللوحة</div>
-      <div class="tab" data-t="tenants" onclick="tab('tenants')">🏢 المستأجرون</div>
-      <div class="tab" data-t="settings" onclick="tab('settings')">⚙️ الإعدادات</div>
+      <div class="tab active" data-t="dash" onclick="tab('dash')" data-i18n="📊 اللوحة">📊 اللوحة</div>
+      <div class="tab" data-t="tenants" onclick="tab('tenants')" data-i18n="🏢 المستأجرون">🏢 المستأجرون</div>
+      <div class="tab" data-t="projects" onclick="tab('projects')" data-i18n="📁 كل المشاريع">📁 كل المشاريع</div>
+      <div class="tab" data-t="settings" onclick="tab('settings')" data-i18n="⚙️ الإعدادات">⚙️ الإعدادات</div>
     </div>
 
     <!-- اللوحة -->
     <div id="pane-dash">
       <div class="grid g4" style="margin-bottom:16px">
-        <div class="kpi"><div class="k-label">🏢 المستأجرون</div><div class="k-val" id="k-total">—</div><div class="k-sub" id="k-breakdown"></div></div>
-        <div class="kpi"><div class="k-label">💰 الإيراد الشهري المتكرر (MRR)</div><div class="k-val" id="k-mrr">—</div><div class="k-sub" id="k-mrr-vat"></div></div>
-        <div class="kpi"><div class="k-label">📆 إيراد هذا الشهر</div><div class="k-val" id="k-rev-month">—</div><div class="k-sub">مدفوعات محصّلة</div></div>
-        <div class="kpi"><div class="k-label">🗂️ مشاريع فعّالة</div><div class="k-val" id="k-proj">—</div><div class="k-sub" id="k-storage"></div></div>
+        <div class="kpi"><div class="k-label" data-i18n="🏢 المستأجرون">🏢 المستأجرون</div><div class="k-val" id="k-total">—</div><div class="k-sub" id="k-breakdown"></div></div>
+        <div class="kpi"><div class="k-label" data-i18n="💰 الإيراد الشهري المتكرر (MRR)">💰 الإيراد الشهري المتكرر (MRR)</div><div class="k-val" id="k-mrr">—</div><div class="k-sub" id="k-mrr-vat"></div></div>
+        <div class="kpi"><div class="k-label" data-i18n="📆 إيراد هذا الشهر">📆 إيراد هذا الشهر</div><div class="k-val" id="k-rev-month">—</div><div class="k-sub" data-i18n="مدفوعات محصّلة">مدفوعات محصّلة</div></div>
+        <div class="kpi"><div class="k-label" data-i18n="🗂️ مشاريع فعّالة">🗂️ مشاريع فعّالة</div><div class="k-val" id="k-proj">—</div><div class="k-sub" id="k-storage"></div></div>
       </div>
       <div class="grid g2">
-        <div class="panel"><div class="spread" style="margin-bottom:8px"><h3 style="margin:0">حالة المستأجرين</h3><button class="btn btn-ghost btn-sm" onclick="runBilling()">⟳ تشغيل الفوترة الآن</button></div>
+        <div class="panel"><div class="spread" style="margin-bottom:8px"><h3 style="margin:0" data-i18n="حالة المستأجرين">حالة المستأجرين</h3><button class="btn btn-ghost btn-sm" onclick="runBilling()" data-i18n="⟳ تشغيل الفوترة الآن">⟳ تشغيل الفوترة الآن</button></div>
           <div id="status-cards" class="grid" style="grid-template-columns:1fr 1fr;gap:10px"></div>
-          <div class="note note-info" style="margin-top:12px;font-size:12.5px">إجمالي الإيراد منذ البداية: <strong id="rev-all">—</strong></div>
+          <div class="note note-info" style="margin-top:12px;font-size:12.5px"><span data-i18n="إجمالي الإيراد منذ البداية:">إجمالي الإيراد منذ البداية:</span> <strong id="rev-all">—</strong></div>
         </div>
-        <div class="panel"><h3 style="margin:0 0 8px">أحدث المدفوعات</h3>
-          <div style="overflow:auto"><table><thead><tr><th>التاريخ</th><th>النوع</th><th>المبلغ</th><th class="hs">البطاقة</th></tr></thead><tbody id="pay-body"></tbody></table></div>
+        <div class="panel"><h3 style="margin:0 0 8px" data-i18n="أحدث المدفوعات">أحدث المدفوعات</h3>
+          <div style="overflow:auto"><table><thead><tr><th data-i18n="التاريخ">التاريخ</th><th data-i18n="النوع">النوع</th><th data-i18n="المبلغ">المبلغ</th><th class="hs" data-i18n="البطاقة">البطاقة</th></tr></thead><tbody id="pay-body"></tbody></table></div>
         </div>
       </div>
     </div>
@@ -61,151 +65,273 @@
     <!-- المستأجرون -->
     <div id="pane-tenants" class="hide">
       <div class="panel"><div style="overflow:auto"><table>
-        <thead><tr><th>الشركة</th><th>الحالة</th><th class="hs">المالك</th><th>المشاريع</th><th>الشهري</th><th class="hs">التجديد</th><th class="hs">التخزين</th><th>إجراءات</th></tr></thead>
+        <thead><tr><th data-i18n="الشركة">الشركة</th><th data-i18n="الحالة">الحالة</th><th class="hs" data-i18n="المالك">المالك</th><th data-i18n="المشاريع">المشاريع</th><th data-i18n="الشهري">الشهري</th><th class="hs" data-i18n="التجديد">التجديد</th><th class="hs" data-i18n="التخزين">التخزين</th><th data-i18n="إجراءات">إجراءات</th></tr></thead>
         <tbody id="tenants-body"></tbody>
       </table></div></div>
+    </div>
+
+    <!-- كل المشاريع (مالك المنصّة فقط) -->
+    <div id="pane-projects" class="hide">
+      <div class="panel">
+        <div class="spread" style="margin-bottom:12px">
+          <h3 style="margin:0" data-i18n="كل المشاريع عبر جميع الشركات">كل المشاريع عبر جميع الشركات</h3>
+          <input id="proj-search" data-i18n-ph="بحث بالاسم أو الشركة…" placeholder="بحث بالاسم أو الشركة…" style="max-width:260px">
+        </div>
+        <div style="overflow:auto"><table>
+          <thead><tr>
+            <th data-i18n="المشروع">المشروع</th><th data-i18n="الشركة">الشركة</th><th class="hs" data-i18n="مدير المشروع">مدير المشروع</th>
+            <th data-i18n="التقدّم">التقدّم</th><th class="hs" data-i18n="البنود">البنود</th><th data-i18n="المستخلصات">المستخلصات</th>
+            <th class="hs" data-i18n="مقاولو الباطن">مقاولو الباطن</th><th class="hs" data-i18n="التخزين">التخزين</th><th data-i18n="الحالة">الحالة</th><th></th>
+          </tr></thead>
+          <tbody id="all-projects-body"></tbody>
+        </table></div>
+      </div>
     </div>
 
     <!-- الإعدادات -->
     <div id="pane-settings" class="hide">
       <div class="grid g2">
         <div class="panel">
-          <h3 style="margin:0 0 12px">💳 بوابة الدفع (Tap)</h3>
+          <h3 style="margin:0 0 12px" data-i18n="💳 بوابة الدفع (Tap)">💳 بوابة الدفع (Tap)</h3>
           <div class="note note-warn" id="tap-hint"></div>
-          <div class="field"><label>وضع التشغيل</label><select id="st-mode"><option value="sim">محاكاة (تجربة بلا أموال)</option><option value="test">اختبار Tap (مفاتيح test)</option><option value="live">تشغيل فعلي (مفاتيح live)</option></select></div>
-          <div class="field"><label>Public Key (يُستخدم في صفحة الدفع)</label><input id="st-pub" placeholder="pk_live_... أو pk_test_..."></div>
-          <div class="field"><label>Secret Key (سرّي — لا يُعرض بعد الحفظ)</label><input id="st-sec" placeholder="اتركه فارغاً للإبقاء على الحالي"></div>
-          <div class="field"><label>Webhook Secret</label><input id="st-wh" placeholder="اتركه فارغاً للإبقاء على الحالي"></div>
-          <div class="field"><label>Tap API Base URL</label><input id="st-base" value="https://api.tap.company"></div>
-          <button class="btn btn-primary" onclick="saveConfig()">حفظ إعدادات الدفع</button>
+          <div class="field"><label for="st-mode" data-i18n="وضع التشغيل">وضع التشغيل</label><select id="st-mode"><option value="sim" data-i18n="محاكاة (تجربة بلا أموال)">محاكاة (تجربة بلا أموال)</option><option value="test" data-i18n="اختبار Tap (مفاتيح test)">اختبار Tap (مفاتيح test)</option><option value="live" data-i18n="تشغيل فعلي (مفاتيح live)">تشغيل فعلي (مفاتيح live)</option></select></div>
+          <div class="field"><label for="st-pub">Public Key <span data-i18n="(يُستخدم في صفحة الدفع)">(يُستخدم في صفحة الدفع)</span></label><input id="st-pub" placeholder="pk_live_... أو pk_test_..."></div>
+          <div class="field"><label for="st-sec">Secret Key <span data-i18n="(سرّي — لا يُعرض بعد الحفظ)">(سرّي — لا يُعرض بعد الحفظ)</span></label><input id="st-sec" data-i18n-ph="اتركه فارغاً للإبقاء على الحالي" placeholder="اتركه فارغاً للإبقاء على الحالي"></div>
+          <div class="field"><label for="st-wh">Webhook Secret</label><input id="st-wh" data-i18n-ph="اتركه فارغاً للإبقاء على الحالي" placeholder="اتركه فارغاً للإبقاء على الحالي"></div>
+          <div class="field"><label for="st-base">Tap API Base URL</label><input id="st-base" value="https://api.tap.company"></div>
+          <button class="btn btn-primary" onclick="saveConfig()" data-i18n="حفظ إعدادات الدفع">حفظ إعدادات الدفع</button>
         </div>
         <div class="panel">
-          <h3 style="margin:0 0 12px">💵 التسعير والضريبة</h3>
-          <div class="row"><div class="field" style="flex:1"><label>سعر باقة 15 ج.ب / شهر</label><input id="st-t15" type="number"></div>
-          <div class="field" style="flex:1"><label>سعر باقة 20 ج.ب / شهر</label><input id="st-t20" type="number"></div></div>
-          <div class="row"><div class="field" style="flex:1"><label>ضريبة القيمة المضافة %</label><input id="st-vat" type="number"></div>
-          <div class="field" style="flex:1"><label>مهلة السداد (أيام)</label><input id="st-grace" type="number"></div></div>
-          <div class="field"><label>طريقة احتساب الضريبة</label><select id="st-inc"><option value="false">تُضاف على السعر (750 + ضريبة)</option><option value="true">السعر شامل الضريبة</option></select></div>
+          <h3 style="margin:0 0 12px" data-i18n="💵 التسعير والضريبة">💵 التسعير والضريبة</h3>
+          <div class="row"><div class="field" style="flex:1"><label for="st-t15" data-i18n="سعر باقة 15 ج.ب / شهر">سعر باقة 15 ج.ب / شهر</label><input id="st-t15" type="number"></div>
+          <div class="field" style="flex:1"><label for="st-t20" data-i18n="سعر باقة 20 ج.ب / شهر">سعر باقة 20 ج.ب / شهر</label><input id="st-t20" type="number"></div></div>
+          <div class="row"><div class="field" style="flex:1"><label for="st-vat" data-i18n="ضريبة القيمة المضافة %">ضريبة القيمة المضافة %</label><input id="st-vat" type="number"></div>
+          <div class="field" style="flex:1"><label for="st-grace" data-i18n="مهلة السداد (أيام)">مهلة السداد (أيام)</label><input id="st-grace" type="number"></div></div>
+          <div class="field"><label class="toggle-row" for="st-inc">
+            <span class="toggle"><input type="checkbox" id="st-inc"><span class="slider"></span></span>
+            <span id="st-inc-label" data-i18n="السعر شامل الضريبة">السعر شامل الضريبة</span>
+          </label></div>
           <hr style="border:0;border-top:1px solid var(--line);margin:14px 0">
-          <div class="field"><label>اسم المنصّة (يظهر للعملاء)</label><input id="st-brand"></div>
-          <div class="row"><div class="field" style="flex:1"><label>جوال الدعم</label><input id="st-phone"></div>
-          <div class="field" style="flex:1"><label>بريد الدعم</label><input id="st-email"></div></div>
-          <button class="btn btn-primary" onclick="saveConfig()">حفظ التسعير</button>
+          <div class="field"><label for="st-brand" data-i18n="اسم المنصّة (يظهر للعملاء)">اسم المنصّة (يظهر للعملاء)</label><input id="st-brand"></div>
+          <div class="row"><div class="field" style="flex:1"><label for="st-phone" data-i18n="جوال الدعم">جوال الدعم</label><input id="st-phone"></div>
+          <div class="field" style="flex:1"><label for="st-email" data-i18n="بريد الدعم">بريد الدعم</label><input id="st-email"></div></div>
+          <button class="btn btn-primary" onclick="saveConfig()" data-i18n="حفظ التسعير">حفظ التسعير</button>
+        </div>
+        <div class="panel">
+          <h3 style="margin:0 0 12px" data-i18n="🧮 Bassir ERP (إيرادات المنصّة)">🧮 Bassir ERP (إيرادات المنصّة)</h3>
+          <p class="muted" style="font-size:12.5px;margin-top:0" data-i18n="تغذية إيراد اشتراكات SaaS (مدفوعات العملاء لكم) في حسابات Bassir ERP الخاصة بمنصّتكم — منفصل تماماً عن تكامل كل شركة بحساباتها.">تغذية إيراد اشتراكات SaaS (مدفوعات العملاء لكم) في حسابات Bassir ERP الخاصة بمنصّتكم — منفصل تماماً عن تكامل كل شركة بحساباتها.</p>
+          <div class="field"><label class="toggle-row" for="erp-enabled">
+            <span class="toggle"><input type="checkbox" id="erp-enabled"><span class="slider"></span></span>
+            <span data-i18n="تفعيل الإرسال التلقائي">تفعيل الإرسال التلقائي</span>
+          </label></div>
+          <div class="field"><label for="erp-url" data-i18n="رابط Webhook">رابط Webhook</label><input id="erp-url" placeholder="https://erp.example.com/hooks/saas-revenue"></div>
+          <div class="field"><label for="erp-key">مفتاح API <span data-i18n="(سرّي — لا يُعرض بعد الحفظ)">(سرّي — لا يُعرض بعد الحفظ)</span></label><input id="erp-key" data-i18n-ph="اتركه فارغاً للإبقاء على الحالي" placeholder="اتركه فارغاً للإبقاء على الحالي"></div>
+          <div class="note note-info" id="erp-status" style="font-size:12.5px"></div>
+          <button class="btn btn-primary" onclick="saveErpConfig()" data-i18n="حفظ إعدادات ERP">حفظ إعدادات ERP</button>
         </div>
       </div>
-      <div class="note note-info" style="margin-top:14px">رابط صفحة التسجيل لعملائك: <a href="/landing" target="_blank"><strong id="landing-link">/landing</strong></a> — شاركه في موقعك أو إعلاناتك.</div>
+      <div class="note note-info" style="margin-top:14px"><span data-i18n="رابط صفحة التسجيل لعملائك:">رابط صفحة التسجيل لعملائك:</span> <a href="/landing" target="_blank"><strong id="landing-link">/landing</strong></a> — <span data-i18n="شاركه في موقعك أو إعلاناتك.">شاركه في موقعك أو إعلاناتك.</span></div>
     </div>
   </div>
 </div>
 
 <!-- تفاصيل مستأجر -->
 <div class="overlay" id="t-ov"><div class="modal" id="t-modal" style="max-width:640px"></div></div>
+<!-- تأكيد إجراء -->
+<div class="overlay" id="confirm-ov"><div class="modal" style="max-width:400px">
+  <h3 id="confirm-msg" style="margin-top:0"></h3>
+  <div class="row" style="justify-content:flex-end;margin-top:16px">
+    <button class="btn btn-ghost btn-sm" onclick="document.getElementById('confirm-ov').classList.remove('open')" data-i18n="إلغاء">إلغاء</button>
+    <button class="btn btn-danger btn-sm" id="confirm-go" data-i18n="تأكيد">تأكيد</button>
+  </div>
+</div></div>
 <div class="toast" id="toast"><span></span></div>
 
+<script src="/saas/shared.js"></script>
 <script>
-var TOKEN=localStorage.getItem('azoom_token')||'', CFG=null;
-function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
-function money(n){return Number(n||0).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:2})}
-function toast(m){var t=document.getElementById('toast');t.querySelector('span').textContent=m;t.classList.add('show');setTimeout(function(){t.classList.remove('show')},2800)}
-function fmtDate(iso){ if(!iso) return '—'; try{return new Date(iso).toLocaleDateString('ar-SA-u-nu-latn',{year:'numeric',month:'short',day:'numeric'})}catch(e){return String(iso).slice(0,10)} }
-function api(method,path,body){return fetch(path,{method:method,headers:{'Content-Type':'application/json',Authorization:'Bearer '+TOKEN},body:body?JSON.stringify(body):undefined}).then(function(r){return r.json().then(function(d){return{status:r.status,ok:r.ok,d:d}})})}
-function show(el,on){document.getElementById(el).classList[on?'remove':'add']('hide')}
-function tab(t){['dash','tenants','settings'].forEach(function(x){document.getElementById('pane-'+x).classList.toggle('hide',x!==t);document.querySelector('.tab[data-t='+x+']').classList.toggle('active',x===t)});if(t==='tenants')loadTenants();if(t==='settings')loadConfig()}
+var CFG=null, ALL_PROJECTS=[], LAST_DASH=null;
+Object.assign(I18N_EN, {
+  'لوحة المالك':'Owner Dashboard', '→ النظام':'→ System', 'خروج':'Log out', 'دخول مالك المنصّة':'Platform owner login',
+  'اسم المستخدم':'Username', 'كلمة المرور':'Password', 'دخول':'Log in',
+  '📊 اللوحة':'📊 Dashboard', '🏢 المستأجرون':'🏢 Tenants', '📁 كل المشاريع':'📁 All Projects', '⚙️ الإعدادات':'⚙️ Settings',
+  '💰 الإيراد الشهري المتكرر (MRR)':'💰 Monthly Recurring Revenue (MRR)', '📆 إيراد هذا الشهر':'📆 Revenue this month',
+  'مدفوعات محصّلة':'Collected payments', '🗂️ مشاريع فعّالة':'🗂️ Active projects', 'حالة المستأجرين':'Tenant status',
+  '⟳ تشغيل الفوترة الآن':'⟳ Run billing now', 'إجمالي الإيراد منذ البداية:':'Total revenue since launch:',
+  'أحدث المدفوعات':'Recent payments', 'التاريخ':'Date', 'النوع':'Type', 'المبلغ':'Amount', 'البطاقة':'Card',
+  'الشركة':'Company', 'الحالة':'Status', 'المالك':'Owner', 'المشاريع':'Projects', 'الشهري':'Monthly', 'التجديد':'Renewal',
+  'التخزين':'Storage', 'إجراءات':'Actions', 'كل المشاريع عبر جميع الشركات':'All projects across every company',
+  'بحث بالاسم أو الشركة…':'Search by name or company…', 'المشروع':'Project', 'مدير المشروع':'Project manager',
+  'التقدّم':'Progress', 'البنود':'BOQ items', 'المستخلصات':'Claims', 'مقاولو الباطن':'Subcontractors',
+  '💳 بوابة الدفع (Tap)':'💳 Payment gateway (Tap)', 'وضع التشغيل':'Mode', 'محاكاة (تجربة بلا أموال)':'Simulation (no real money)',
+  'اختبار Tap (مفاتيح test)':'Tap test (test keys)', 'تشغيل فعلي (مفاتيح live)':'Live (live keys)',
+  '(يُستخدم في صفحة الدفع)':'(used on the payment page)', '(سرّي — لا يُعرض بعد الحفظ)':'(secret — not shown after saving)',
+  'اتركه فارغاً للإبقاء على الحالي':'Leave blank to keep the current one', 'حفظ إعدادات الدفع':'Save payment settings',
+  '💵 التسعير والضريبة':'💵 Pricing & VAT', 'سعر باقة 15 ج.ب / شهر':'15 GB package price / month', 'سعر باقة 20 ج.ب / شهر':'20 GB package price / month',
+  'ضريبة القيمة المضافة %':'VAT %', 'مهلة السداد (أيام)':'Payment grace period (days)', 'السعر شامل الضريبة':'Price is VAT-inclusive',
+  'اسم المنصّة (يظهر للعملاء)':'Platform name (shown to clients)', 'جوال الدعم':'Support phone', 'بريد الدعم':'Support email',
+  'حفظ التسعير':'Save pricing', '🧮 Bassir ERP (إيرادات المنصّة)':'🧮 Bassir ERP (platform revenue)',
+  'تغذية إيراد اشتراكات SaaS (مدفوعات العملاء لكم) في حسابات Bassir ERP الخاصة بمنصّتكم — منفصل تماماً عن تكامل كل شركة بحساباتها.':'Feeds SaaS subscription revenue (client payments to you) into your platform\'s own Bassir ERP accounts — fully separate from each company\'s own integration.',
+  'تفعيل الإرسال التلقائي':'Enable automatic sending', 'رابط Webhook':'Webhook URL', 'حفظ إعدادات ERP':'Save ERP settings',
+  'رابط صفحة التسجيل لعملائك:':'Your clients\' signup page link:', 'شاركه في موقعك أو إعلاناتك.':'Share it on your website or ads.',
+  'إلغاء':'Cancel', 'تأكيد':'Confirm',
+  'صلاحية المالك فقط':'Owner permission only', 'هذه اللوحة لمالك المنصّة (admin).':'This dashboard is for the platform owner (admin) only.',
+  'تعذّر تحميل لوحة التحكم':'Could not load the dashboard', 'Tap: تشغيل فعلي':'Tap: Live', 'Tap: اختبار':'Tap: Test', 'Tap: محاكاة':'Tap: Simulation',
+  'فعّال':'Active', 'موقوف':'Suspended', 'ر.س':'SAR', 'مع الضريبة':'With VAT', 'تخزين':'Storage', 'ج.ب':'GB',
+  'بانتظار الدفع':'Awaiting payment', 'متأخر':'Past due', 'ملغى':'Cancelled', 'اشتراك':'Subscription', 'مشروع':'Project',
+  'تجديد':'Renewal', 'بطاقة':'Card', 'لا مدفوعات بعد':'No payments yet', 'جارٍ تشغيل الفوترة…':'Running billing…',
+  'تمّ: جُدّد':'Done: renewed', 'أوقف':'suspended', 'فشل':'failed', 'بانتظار':'Pending', 'تفاصيل':'Details',
+  'لا مستأجرين بعد':'No tenants yet', 'تعذّر':'Failed', 'إيقاف':'Suspend', 'تفعيل':'Activate', 'تجديد الآن':'Renew now',
+  'مدفوعة':'Paid', 'غير مدفوعة':'Unpaid', 'فشلت':'Failed', 'المالك:':'Owner:', 'آخر الفواتير':'Latest invoices', 'رقم':'No.',
+  'الإجمالي':'Total', 'تمّ':'Done', 'إلغاء اشتراك هذا المستأجر؟':'Cancel this tenant\'s subscription?',
+  'تعذّر تحميل المشاريع':'Could not load projects', 'مُدار مباشرة':'Directly managed', 'فتح':'Open', 'لا مشاريع بعد':'No projects yet',
+  'محفوظ — اتركه فارغاً للإبقاء':'Saved — leave blank to keep', 'pk غير مضبوط':'pk not set', 'محفوظ — اتركه فارغاً':'Saved — leave blank',
+  'غير مضبوط':'Not set', 'الوضع الحالي:':'Current mode:', 'محاكاة':'Simulation',
+  'للتجربة فقط. أدخل مفاتيح Tap وبدّل الوضع إلى «تشغيل فعلي» لقبول مدفوعات حقيقية.':'For testing only. Enter Tap keys and switch the mode to "Live" to accept real payments.',
+  'مفاتيح Tap محفوظة.':'Tap keys are saved.', '⚠️ لم تُحفظ مفاتيح Tap بعد — لن تنجح المدفوعات.':'⚠️ Tap keys not saved yet — payments will fail.',
+  'غير مضبوط (اختياري)':'Not set (optional)', 'آخر محاولة:':'Last attempt:', 'لم تُرسَل بيانات بعد.':'No data sent yet.',
+  'حُفظت الإعدادات':'Settings saved', 'حُفظت إعدادات ERP':'ERP settings saved'
+});
+applyDir(); translateStaticDOM();
+window.onLangChange = function(){
+  if (LAST_DASH) renderDash(LAST_DASH);
+  var activeTab = document.querySelector('.tab.active');
+  var t = activeTab ? activeTab.dataset.t : null;
+  if (t === 'tenants') loadTenants();
+  if (t === 'projects') renderAllProjects();
+  if (t === 'settings' && CFG) loadConfig();
+};
+function tab(t){['dash','tenants','projects','settings'].forEach(function(x){document.getElementById('pane-'+x).classList.toggle('hide',x!==t);document.querySelector('.tab[data-t='+x+']').classList.toggle('active',x===t)});if(t==='tenants')loadTenants();if(t==='projects')loadAllProjects();if(t==='settings')loadConfig()}
+function clearState(){ var s=document.getElementById('page-state'); if(s) s.innerHTML=''; }
 
 function boot(){
-  if(!TOKEN){ show('login-gate',true); show('content',false); return; }
+  if(!TOKEN){ show('login-gate',true); show('content',false); clearState(); return; }
+  show('login-gate',false); show('content',false); clearState();
+  renderLoading(document.getElementById('page-state'));
   api('GET','/api/saas/admin/overview').then(function(r){
-    if(r.status===401){ localStorage.removeItem('azoom_token'); TOKEN=''; show('login-gate',true); show('content',false); return; }
-    if(r.status===403){ show('login-gate',false); document.getElementById('content').classList.add('hide'); document.querySelector('.wrap').insertAdjacentHTML('beforeend','<div class="card" style="max-width:480px;margin:40px auto"><h2>صلاحية المالك فقط</h2><p class="muted">هذه اللوحة لمالك المنصّة (admin).</p><a class="btn btn-primary" href="/">→ النظام</a></div>'); return; }
-    show('login-gate',false); show('content',true); renderDash(r.d);
+    if(r.networkError){ renderError(document.getElementById('page-state'), r.d.error, boot); return; }
+    if(r.status===401){ localStorage.removeItem('azoom_token'); TOKEN=''; clearState(); show('login-gate',true); show('content',false); return; }
+    if(r.status===403){ clearState(); show('login-gate',false); document.getElementById('content').classList.add('hide'); document.querySelector('.wrap').insertAdjacentHTML('beforeend','<div class="card" style="max-width:480px;margin:40px auto"><h2>'+T('صلاحية المالك فقط')+'</h2><p class="muted">'+T('هذه اللوحة لمالك المنصّة (admin).')+'</p><a class="btn btn-primary" href="/">'+T('→ النظام')+'</a></div>'); return; }
+    if(!r.ok){ renderError(document.getElementById('page-state'), r.d.error||T('تعذّر تحميل لوحة التحكم'), boot); return; }
+    clearState(); show('login-gate',false); show('content',true); LAST_DASH=r.d; renderDash(r.d);
     document.getElementById('landing-link').textContent=location.origin+'/landing';
   });
 }
-function doLogin(){
-  var u=document.getElementById('lg-user').value.trim(), p=document.getElementById('lg-pass').value;
-  fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})}).then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d}})}).then(function(res){
-    if(!res.ok){ var e=document.getElementById('login-err'); e.textContent=res.d.error||'فشل الدخول'; e.classList.remove('hide'); return; }
-    TOKEN=res.d.token; localStorage.setItem('azoom_token',TOKEN); boot();
-  });
+function submitLogin(){ doLogin({ onSuccess: boot }); }
+function askConfirm(msg, onYes){
+  document.getElementById('confirm-msg').textContent=msg;
+  var ov=document.getElementById('confirm-ov'), btn=document.getElementById('confirm-go');
+  btn.onclick=function(){ ov.classList.remove('open'); onYes(); };
+  ov.classList.add('open');
 }
-function logout(){ localStorage.removeItem('azoom_token'); location.href='/'; }
 
 function renderDash(d){
   var chip=document.getElementById('mode-chip'); chip.className='mode-chip mode-'+d.tap.mode;
-  chip.textContent=d.tap.mode==='live'?'Tap: تشغيل فعلي':(d.tap.mode==='test'?'Tap: اختبار':'Tap: محاكاة');
+  chip.textContent=d.tap.mode==='live'?T('Tap: تشغيل فعلي'):(d.tap.mode==='test'?T('Tap: اختبار'):T('Tap: محاكاة'));
   document.getElementById('k-total').textContent=d.counts.total;
-  document.getElementById('k-breakdown').textContent='فعّال '+d.counts.active+' · موقوف '+d.counts.suspended;
-  document.getElementById('k-mrr').textContent=money(d.mrrNet)+' ر.س';
-  document.getElementById('k-mrr-vat').textContent='مع الضريبة '+money(d.mrrWithVat)+' ر.س';
-  document.getElementById('k-rev-month').textContent=money(d.revenueMonth)+' ر.س';
+  document.getElementById('k-breakdown').textContent=T('فعّال')+' '+d.counts.active+' · '+T('موقوف')+' '+d.counts.suspended;
+  document.getElementById('k-mrr').textContent=money(d.mrrNet)+' '+T('ر.س');
+  document.getElementById('k-mrr-vat').textContent=T('مع الضريبة')+' '+money(d.mrrWithVat)+' '+T('ر.س');
+  document.getElementById('k-rev-month').textContent=money(d.revenueMonth)+' '+T('ر.س');
   document.getElementById('k-proj').textContent=d.activeProjects;
-  document.getElementById('k-storage').textContent='تخزين '+money(d.storageGB)+' ج.ب';
-  document.getElementById('rev-all').textContent=money(d.revenueAll)+' ر.س';
-  var sc=[['active','فعّال','b-green'],['pending','بانتظار الدفع','b-amber'],['past_due','متأخر','b-amber'],['suspended','موقوف','b-red'],['cancelled','ملغى','b-gray']];
+  document.getElementById('k-storage').textContent=T('تخزين')+' '+money(d.storageGB)+' '+T('ج.ب');
+  document.getElementById('rev-all').textContent=money(d.revenueAll)+' '+T('ر.س');
+  var sc=[['active',T('فعّال'),'b-green'],['pending',T('بانتظار الدفع'),'b-amber'],['past_due',T('متأخر'),'b-amber'],['suspended',T('موقوف'),'b-red'],['cancelled',T('ملغى'),'b-gray']];
   document.getElementById('status-cards').innerHTML=sc.map(function(s){return '<div class="panel" style="padding:12px;text-align:center"><div class="k-val" style="font-size:24px">'+(d.counts[s[0]]||0)+'</div><span class="badge '+s[2]+'">'+s[1]+'</span></div>'}).join('');
-  var kinds={signup:'اشتراك',project_add:'مشروع',renewal:'تجديد',card_update:'بطاقة'};
-  document.getElementById('pay-body').innerHTML=(d.recentPayments||[]).map(function(p){return '<tr><td>'+fmtDate(p.at)+'</td><td>'+(kinds[p.kind]||p.kind||'')+'</td><td class="amount">'+money(p.amount)+' '+esc(p.currency||'')+'</td><td class="hs">'+(p.cardLast4?esc(p.cardBrand||'')+' ****'+esc(p.cardLast4):'—')+'</td></tr>'}).join('')||'<tr><td colspan="4" class="muted center">لا مدفوعات بعد</td></tr>';
+  var kinds={signup:T('اشتراك'),project_add:T('مشروع'),renewal:T('تجديد'),card_update:T('بطاقة')};
+  document.getElementById('pay-body').innerHTML=(d.recentPayments||[]).map(function(p){return '<tr><td>'+fmtDate(p.at)+'</td><td>'+(kinds[p.kind]||p.kind||'')+'</td><td class="amount">'+money(p.amount)+' '+esc(p.currency||'')+'</td><td class="hs">'+(p.cardLast4?esc(p.cardBrand||'')+' ****'+esc(p.cardLast4):'—')+'</td></tr>'}).join('')||'<tr><td colspan="4" class="muted center">'+T('لا مدفوعات بعد')+'</td></tr>';
 }
-function runBilling(){ toast('جارٍ تشغيل الفوترة…'); api('POST','/api/saas/admin/run-billing',{}).then(function(r){ toast('تمّ: جُدّد '+r.d.renewed+' · أوقف '+r.d.suspended+' · فشل '+r.d.failed); boot(); }); }
+function runBilling(){ toast(T('جارٍ تشغيل الفوترة…')); api('POST','/api/saas/admin/run-billing',{}).then(function(r){ toast(T('تمّ: جُدّد')+' '+r.d.renewed+' · '+T('أوقف')+' '+r.d.suspended+' · '+T('فشل')+' '+r.d.failed); boot(); }); }
 
-function statusBadge(s){var map={active:['b-green','فعّال'],pending:['b-amber','بانتظار'],past_due:['b-amber','متأخر'],suspended:['b-red','موقوف'],cancelled:['b-gray','ملغى']};var m=map[s]||['b-gray',s];return '<span class="badge '+m[0]+'">'+m[1]+'</span>'}
+function statusBadge(s){var map={active:['b-green',T('فعّال')],pending:['b-amber',T('بانتظار')],past_due:['b-amber',T('متأخر')],suspended:['b-red',T('موقوف')],cancelled:['b-gray',T('ملغى')]};var m=map[s]||['b-gray',s];return '<span class="badge '+m[0]+'">'+m[1]+'</span>'}
 function loadTenants(){
   api('GET','/api/saas/admin/tenants').then(function(r){
     document.getElementById('tenants-body').innerHTML=(r.d||[]).map(function(t){
       return '<tr><td><strong>'+esc(t.company)+'</strong></td><td>'+statusBadge(t.status)+'</td>'+
         '<td class="hs">'+esc((t.owner&&t.owner.name)||'—')+'</td>'+
         '<td>'+t.activeProjects+'/'+t.projects+'</td><td class="amount">'+money(t.monthlyNet)+'</td>'+
-        '<td class="hs">'+fmtDate(t.nextRenewalAt)+'</td><td class="hs">'+money(t.storageGB)+' ج.ب</td>'+
-        '<td><button class="btn btn-ghost btn-sm" onclick="viewTenant('+t.companyId+')">تفاصيل</button></td></tr>';
-    }).join('')||'<tr><td colspan="8" class="muted center">لا مستأجرين بعد</td></tr>';
+        '<td class="hs">'+fmtDate(t.nextRenewalAt)+'</td><td class="hs">'+money(t.storageGB)+' '+T('ج.ب')+'</td>'+
+        '<td><button class="btn btn-ghost btn-sm" onclick="viewTenant('+t.companyId+')">'+T('تفاصيل')+'</button></td></tr>';
+    }).join('')||'<tr><td colspan="8" class="muted center">'+T('لا مستأجرين بعد')+'</td></tr>';
   });
 }
 function viewTenant(id){
   api('GET','/api/saas/admin/tenants/'+id).then(function(r){
-    if(!r.ok) return toast('تعذّر'); var t=r.d.tenant, invs=r.d.invoices||[];
+    if(!r.ok) return toast(T('تعذّر')); var t=r.d.tenant, invs=r.d.invoices||[];
     var acts='';
-    if(t.status!=='suspended'&&t.status!=='cancelled') acts+='<button class="btn btn-danger btn-sm" onclick="tAction('+id+',\'suspend\')">إيقاف</button> ';
-    if(t.status!=='active') acts+='<button class="btn btn-primary btn-sm" onclick="tAction('+id+',\'activate\')">تفعيل</button> ';
-    acts+='<button class="btn btn-ghost btn-sm" onclick="tAction('+id+',\'renew-now\')">تجديد الآن</button> ';
-    if(t.status!=='cancelled') acts+='<button class="btn btn-ghost btn-sm" onclick="tAction('+id+',\'cancel\')">إلغاء</button>';
-    var st={paid:['b-green','مدفوعة'],unpaid:['b-amber','غير مدفوعة'],failed:['b-red','فشلت']};
+    if(t.status!=='suspended'&&t.status!=='cancelled') acts+='<button class="btn btn-danger btn-sm" onclick="tAction('+id+',\'suspend\')">'+T('إيقاف')+'</button> ';
+    if(t.status!=='active') acts+='<button class="btn btn-primary btn-sm" onclick="tAction('+id+',\'activate\')">'+T('تفعيل')+'</button> ';
+    acts+='<button class="btn btn-ghost btn-sm" onclick="tAction('+id+',\'renew-now\')">'+T('تجديد الآن')+'</button> ';
+    if(t.status!=='cancelled') acts+='<button class="btn btn-ghost btn-sm" onclick="tAction('+id+',\'cancel\')">'+T('إلغاء')+'</button>';
+    var st={paid:['b-green',T('مدفوعة')],unpaid:['b-amber',T('غير مدفوعة')],failed:['b-red',T('فشلت')]};
     var irows=invs.slice(0,12).map(function(v){var s=st[v.status]||['b-gray',v.status];return '<tr><td>'+esc(v.no)+'</td><td>'+fmtDate(v.issuedAt)+'</td><td class="amount">'+money(v.total)+'</td><td><span class="badge '+s[0]+'">'+s[1]+'</span></td></tr>'}).join('');
     document.getElementById('t-modal').innerHTML='<span class="modal-x" onclick="document.getElementById(\'t-ov\').classList.remove(\'open\')">✕</span>'+
       '<h2>'+esc(t.company)+' '+statusBadge(t.status)+'</h2>'+
-      '<div class="muted" style="margin-bottom:10px">المالك: '+esc((t.contact&&t.contact.name)||'—')+' · '+esc((t.contact&&t.contact.phone)||'')+' · '+esc((t.contact&&t.contact.email)||'')+'</div>'+
+      '<div class="muted" style="margin-bottom:10px">'+T('المالك:')+' '+esc((t.contact&&t.contact.name)||'—')+' · '+esc((t.contact&&t.contact.phone)||'')+' · '+esc((t.contact&&t.contact.email)||'')+'</div>'+
       '<div class="row" style="margin-bottom:12px">'+acts+'</div>'+
-      '<div class="panel" style="padding:12px;margin-bottom:12px"><strong>المشاريع ('+(t.projects||[]).length+')</strong>'+
-        (t.projects||[]).map(function(p){return '<div class="spread" style="padding:5px 0;border-bottom:1px solid var(--line)"><span>'+esc(p.name)+' <span class="badge b-blue">'+(Number(p.tier)||15)+' ج.ب</span></span>'+statusBadge(p.status)+'</div>'}).join('')+'</div>'+
-      '<strong>آخر الفواتير</strong><table style="margin-top:6px"><thead><tr><th>رقم</th><th>التاريخ</th><th>الإجمالي</th><th>الحالة</th></tr></thead><tbody>'+irows+'</tbody></table>';
+      '<div class="panel" style="padding:12px;margin-bottom:12px"><strong>'+T('المشاريع')+' ('+(t.projects||[]).length+')</strong>'+
+        (t.projects||[]).map(function(p){return '<div class="spread" style="padding:5px 0;border-bottom:1px solid var(--line)"><span>'+esc(p.name)+' <span class="badge b-blue">'+(Number(p.tier)||15)+' '+T('ج.ب')+'</span></span>'+statusBadge(p.status)+'</div>'}).join('')+'</div>'+
+      '<strong>'+T('آخر الفواتير')+'</strong><table style="margin-top:6px"><thead><tr><th>'+T('رقم')+'</th><th>'+T('التاريخ')+'</th><th>'+T('الإجمالي')+'</th><th>'+T('الحالة')+'</th></tr></thead><tbody>'+irows+'</tbody></table>';
     document.getElementById('t-ov').classList.add('open');
   });
 }
 function tAction(id,action){
-  if(action==='cancel'&&!confirm('إلغاء اشتراك هذا المستأجر؟')) return;
-  api('POST','/api/saas/admin/tenants/'+id+'/action',{action:action}).then(function(r){
-    if(r.ok){ toast('تمّ'); document.getElementById('t-ov').classList.remove('open'); loadTenants(); boot(); } else toast(r.d.error||'تعذّر');
+  function go(){
+    api('POST','/api/saas/admin/tenants/'+id+'/action',{action:action}).then(function(r){
+      if(r.ok){ toast(T('تمّ')); document.getElementById('t-ov').classList.remove('open'); loadTenants(); boot(); } else toast(r.d.error||T('تعذّر'));
+    });
+  }
+  if(action==='cancel') askConfirm(T('إلغاء اشتراك هذا المستأجر؟'), go); else go();
+}
+
+// ---------- كل المشاريع عبر جميع الشركات ----------
+function loadAllProjects(){
+  api('GET','/api/saas/admin/projects').then(function(r){
+    if(!r.ok){ toast(r.d.error||T('تعذّر تحميل المشاريع')); return; }
+    ALL_PROJECTS=r.d||[]; renderAllProjects();
   });
 }
+function renderAllProjects(){
+  var q=(document.getElementById('proj-search').value||'').toLowerCase();
+  var rows=ALL_PROJECTS.filter(function(p){ return !q || p.name.toLowerCase().indexOf(q)>-1 || p.company.toLowerCase().indexOf(q)>-1; });
+  document.getElementById('all-projects-body').innerHTML = rows.map(function(p){
+    return '<tr><td><strong>'+esc(p.name)+'</strong></td><td>'+esc(p.company)+'</td>'+
+      '<td class="hs">'+esc(p.managerName||'—')+'</td>'+
+      '<td><div class="muted" style="font-size:11px;margin-bottom:3px">'+p.progressPct+'%</div><div class="progress"><i style="width:'+Math.min(100,p.progressPct)+'%"></i></div></td>'+
+      '<td class="hs">'+p.boqItemsCount+'</td>'+
+      '<td>'+p.mustakhlasatCount+' <span class="muted" style="font-size:11px">('+money(p.mustakhlasatApprovedValue)+' '+T('ر.س')+')</span></td>'+
+      '<td class="hs">'+p.subcontractorsCount+'</td>'+
+      '<td class="hs">'+money(p.storageGB)+' '+T('ج.ب')+'</td>'+
+      '<td>'+(p.saasManaged?statusBadge(p.status):'<span class="badge b-gray">'+T('مُدار مباشرة')+'</span>')+'</td>'+
+      '<td><a class="btn btn-ghost btn-sm" href="/?project='+p.id+'" target="_blank">'+T('فتح')+'</a></td></tr>';
+  }).join('') || '<tr><td colspan="9" class="muted center">'+T('لا مشاريع بعد')+'</td></tr>';
+}
+document.getElementById('proj-search').addEventListener('input', renderAllProjects);
 
 function loadConfig(){
   api('GET','/api/saas/admin/config').then(function(r){
     CFG=r.d;
     document.getElementById('st-mode').value=r.d.tap.mode;
     document.getElementById('st-pub').value=r.d.tap.publicKey||'';
-    document.getElementById('st-sec').placeholder=r.d.tap.secretKeySet?'محفوظ — اتركه فارغاً للإبقاء':'pk غير مضبوط';
-    document.getElementById('st-wh').placeholder=r.d.tap.webhookSecretSet?'محفوظ — اتركه فارغاً':'غير مضبوط';
+    document.getElementById('st-sec').placeholder=r.d.tap.secretKeySet?T('محفوظ — اتركه فارغاً للإبقاء'):T('pk غير مضبوط');
+    document.getElementById('st-wh').placeholder=r.d.tap.webhookSecretSet?T('محفوظ — اتركه فارغاً'):T('غير مضبوط');
     document.getElementById('st-base').value=r.d.tap.baseUrl||'https://api.tap.company';
     document.getElementById('st-t15').value=r.d.tiers['15'];
     document.getElementById('st-t20').value=r.d.tiers['20'];
     document.getElementById('st-vat').value=r.d.vatRate;
     document.getElementById('st-grace').value=r.d.graceDays;
-    document.getElementById('st-inc').value=String(!!r.d.priceInclusiveVat);
+    document.getElementById('st-inc').checked=!!r.d.priceInclusiveVat;
     document.getElementById('st-brand').value=(r.d.brand&&r.d.brand.name)||'';
     document.getElementById('st-phone').value=(r.d.brand&&r.d.brand.supportPhone)||'';
     document.getElementById('st-email').value=(r.d.brand&&r.d.brand.supportEmail)||'';
     document.getElementById('tap-hint').innerHTML = r.d.tap.mode==='sim'
-      ? 'الوضع الحالي: <strong>محاكاة</strong> — للتجربة فقط. أدخل مفاتيح Tap وبدّل الوضع إلى «تشغيل فعلي» لقبول مدفوعات حقيقية.'
-      : (r.d.tap.secretKeySet?'مفاتيح Tap محفوظة.':'⚠️ لم تُحفظ مفاتيح Tap بعد — لن تنجح المدفوعات.');
+      ? T('الوضع الحالي:')+' <strong>'+T('محاكاة')+'</strong> — '+T('للتجربة فقط. أدخل مفاتيح Tap وبدّل الوضع إلى «تشغيل فعلي» لقبول مدفوعات حقيقية.')
+      : (r.d.tap.secretKeySet?T('مفاتيح Tap محفوظة.'):T('⚠️ لم تُحفظ مفاتيح Tap بعد — لن تنجح المدفوعات.'));
+    document.getElementById('erp-enabled').checked=!!r.d.erpWebhook.enabled;
+    document.getElementById('erp-url').value=r.d.erpWebhook.url||'';
+    document.getElementById('erp-key').placeholder=r.d.erpWebhook.apiKeySet?T('محفوظ — اتركه فارغاً للإبقاء'):T('غير مضبوط (اختياري)');
+    document.getElementById('erp-status').textContent = r.d.erpWebhook.lastStatus
+      ? (T('آخر محاولة:')+' '+r.d.erpWebhook.lastStatus+(r.d.erpWebhook.lastAt?' — '+fmtDate(r.d.erpWebhook.lastAt):''))
+      : T('لم تُرسَل بيانات بعد.');
   });
 }
 function saveConfig(){
@@ -213,12 +339,20 @@ function saveConfig(){
     tap:{ mode:document.getElementById('st-mode').value, publicKey:document.getElementById('st-pub').value.trim(), baseUrl:document.getElementById('st-base').value.trim() },
     tiers:{ '15':Number(document.getElementById('st-t15').value), '20':Number(document.getElementById('st-t20').value) },
     vatRate:Number(document.getElementById('st-vat').value), graceDays:Number(document.getElementById('st-grace').value),
-    priceInclusiveVat: document.getElementById('st-inc').value==='true',
+    priceInclusiveVat: document.getElementById('st-inc').checked,
     brand:{ name:document.getElementById('st-brand').value.trim(), supportPhone:document.getElementById('st-phone').value.trim(), supportEmail:document.getElementById('st-email').value.trim() }
   };
   var sec=document.getElementById('st-sec').value.trim(), wh=document.getElementById('st-wh').value.trim();
   if(sec) body.tap.secretKey=sec; if(wh) body.tap.webhookSecret=wh;
-  api('PUT','/api/saas/admin/config',body).then(function(r){ if(r.ok){ toast('✅ حُفظت الإعدادات'); document.getElementById('st-sec').value=''; document.getElementById('st-wh').value=''; loadConfig(); boot(); } else toast(r.d.error||'تعذّر'); });
+  api('PUT','/api/saas/admin/config',body).then(function(r){ if(r.ok){ toast('✅ '+T('حُفظت الإعدادات')); document.getElementById('st-sec').value=''; document.getElementById('st-wh').value=''; loadConfig(); boot(); } else toast(r.d.error||T('تعذّر')); });
+}
+function saveErpConfig(){
+  var body={ erpWebhook:{ enabled:document.getElementById('erp-enabled').checked, url:document.getElementById('erp-url').value.trim() } };
+  var key=document.getElementById('erp-key').value.trim();
+  if(key) body.erpWebhook.apiKey=key;
+  api('PUT','/api/saas/admin/config',body).then(function(r){
+    if(r.ok){ toast('✅ '+T('حُفظت إعدادات ERP')); document.getElementById('erp-key').value=''; loadConfig(); } else toast(r.d.error||T('تعذّر'));
+  });
 }
 boot();
 </script>

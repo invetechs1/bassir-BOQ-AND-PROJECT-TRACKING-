@@ -28,11 +28,6 @@ section{padding:36px 0}
 footer{border-top:1px solid var(--line);padding:26px 0;color:var(--text3);font-size:13px;text-align:center}
 .formgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 @media(max-width:520px){.formgrid{grid-template-columns:1fr}.hero h1{font-size:33px}}
-.tierpick{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:4px 0 8px}
-.tierpick .opt{border:1.5px solid var(--line);border-radius:12px;padding:12px;cursor:pointer;text-align:center;transition:.15s}
-.tierpick .opt.sel{border-color:var(--brand);background:#0e2e3340}
-.tierpick .opt .p{font-size:22px;font-weight:800}
-.tierpick .opt .c{font-size:12px;color:var(--text3)}
 /* لماذا تشتري + قبل/بعد */
 .why .ic{width:46px;height:46px;border-radius:12px;background:linear-gradient(135deg,#0e3a41,#143a6e);display:grid;place-items:center;font-size:22px;margin-bottom:12px}
 .ba{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:22px}
@@ -60,181 +55,265 @@ footer{border-top:1px solid var(--line);padding:26px 0;color:var(--text3);font-s
 </head>
 <body>
 <div class="topbar"><div class="wrap">
-  <div class="logo"><span class="mark">ب</span><span>نظام بصير</span></div>
+  <div class="logo"><span class="mark">ب</span><span data-i18n="نظام بصير">نظام بصير</span></div>
   <div class="row">
-    <a class="btn btn-ghost btn-sm" href="/">دخول العملاء</a>
-    <button class="btn btn-primary btn-sm" onclick="openSignup()">ابدأ الآن</button>
+    <button class="btn btn-ghost btn-sm" id="lang-switch" onclick="toggleLang()">🌐 English</button>
+    <a class="btn btn-ghost btn-sm" href="/" data-i18n="دخول العملاء">دخول العملاء</a>
+    <button class="btn btn-primary btn-sm" onclick="openSignup()" data-i18n="ابدأ الآن">ابدأ الآن</button>
   </div>
 </div></div>
 
 <div class="wrap">
   <div class="hero">
-    <span class="pill">☁️ نظام سحابي — بدون تثبيت · يعمل على الجوال والحاسب</span>
-    <h1>أدر مشاريعك ومستخلصاتك<br>من مكان واحد</h1>
-    <p class="sub">جداول الكميات، الإنتاجية اليومية، اعتمادات الاستشاري، مستخلصات الشركة ومقاولي الباطن، والأرشيف الكامل — في نظام واحد آمن. اشترك أونلاين وابدأ خلال دقائق.</p>
+    <span class="pill" data-i18n="☁️ نظام سحابي — بدون تثبيت · يعمل على الجوال والحاسب">☁️ نظام سحابي — بدون تثبيت · يعمل على الجوال والحاسب</span>
+    <h1><span data-i18n="أدر مشاريعك ومستخلصاتك">أدر مشاريعك ومستخلصاتك</span><br><span data-i18n="من مكان واحد">من مكان واحد</span></h1>
+    <p class="sub" data-i18n="جداول الكميات، الإنتاجية اليومية، اعتمادات الاستشاري، مستخلصات الشركة ومقاولي الباطن، والأرشيف الكامل — في نظام واحد آمن. اشترك أونلاين وابدأ خلال دقائق.">جداول الكميات، الإنتاجية اليومية، اعتمادات الاستشاري، مستخلصات الشركة ومقاولي الباطن، والأرشيف الكامل — في نظام واحد آمن. اشترك أونلاين وابدأ خلال دقائق.</p>
     <div class="cta">
-      <button class="btn btn-primary" onclick="openSignup()">🚀 اشترك الآن</button>
-      <a class="btn btn-ghost" href="#pricing">عرض الأسعار</a>
+      <button class="btn btn-primary" onclick="openSignup()" data-i18n="🚀 اشترك الآن">🚀 اشترك الآن</button>
+      <a class="btn btn-ghost" href="#pricing" data-i18n="عرض الأسعار">عرض الأسعار</a>
     </div>
   </div>
 
   <div class="grid g3 feat-grid">
-    <div class="card feat"><div class="ic">📊</div><h3>جداول الكميات والمستخلصات</h3><p>BOQ كامل، احتساب تلقائي للمستخلص، ضريبة ومحتجزات ودفعات مقدمة.</p></div>
-    <div class="card feat"><div class="ic">📷</div><h3>الإنتاجية اليومية الموثّقة</h3><p>رفع يومي بالصور مع ختم التاريخ والموقع الجغرافي واسم المشروع.</p></div>
-    <div class="card feat"><div class="ic">✅</div><h3>اعتمادات الاستشاري</h3><p>كل كمية معتمدة مربوطة باستلام موقّع، ونسبها لمقاول الباطن الصحيح.</p></div>
-    <div class="card feat"><div class="ic">🧱</div><h3>مقاولو الباطن</h3><p>عقود وأسعار ومستخلصات ومدفوعات مقاولي الباطن مع ضوابط منع التلاعب.</p></div>
-    <div class="card feat"><div class="ic">🗂️</div><h3>الأرشيف والمستندات</h3><p>كل ملف مرفق محفوظ ومنظّم في مجلدات يومية يسهل الرجوع إليها.</p></div>
-    <div class="card feat"><div class="ic">🔒</div><h3>صلاحيات وأمان</h3><p>أدوار دقيقة (مالك/مدير مشاريع/مهندس موقع) وعزل كامل لبيانات كل عميل.</p></div>
+    <div class="card feat"><div class="ic">📊</div><h3 data-i18n="جداول الكميات والمستخلصات">جداول الكميات والمستخلصات</h3><p data-i18n="BOQ كامل، احتساب تلقائي للمستخلص، ضريبة ومحتجزات ودفعات مقدمة.">BOQ كامل، احتساب تلقائي للمستخلص، ضريبة ومحتجزات ودفعات مقدمة.</p></div>
+    <div class="card feat"><div class="ic">📷</div><h3 data-i18n="الإنتاجية اليومية الموثّقة">الإنتاجية اليومية الموثّقة</h3><p data-i18n="رفع يومي بالصور مع ختم التاريخ والموقع الجغرافي واسم المشروع.">رفع يومي بالصور مع ختم التاريخ والموقع الجغرافي واسم المشروع.</p></div>
+    <div class="card feat"><div class="ic">✅</div><h3 data-i18n="اعتمادات الاستشاري">اعتمادات الاستشاري</h3><p data-i18n="كل كمية معتمدة مربوطة باستلام موقّع، ونسبها لمقاول الباطن الصحيح.">كل كمية معتمدة مربوطة باستلام موقّع، ونسبها لمقاول الباطن الصحيح.</p></div>
+    <div class="card feat"><div class="ic">🧱</div><h3 data-i18n="مقاولو الباطن">مقاولو الباطن</h3><p data-i18n="عقود وأسعار ومستخلصات ومدفوعات مقاولي الباطن مع ضوابط منع التلاعب.">عقود وأسعار ومستخلصات ومدفوعات مقاولي الباطن مع ضوابط منع التلاعب.</p></div>
+    <div class="card feat"><div class="ic">🗂️</div><h3 data-i18n="الأرشيف والمستندات">الأرشيف والمستندات</h3><p data-i18n="كل ملف مرفق محفوظ ومنظّم في مجلدات يومية يسهل الرجوع إليها.">كل ملف مرفق محفوظ ومنظّم في مجلدات يومية يسهل الرجوع إليها.</p></div>
+    <div class="card feat"><div class="ic">🔒</div><h3 data-i18n="صلاحيات وأمان">صلاحيات وأمان</h3><p data-i18n="أدوار دقيقة (مالك/مدير مشاريع/مهندس موقع) وعزل كامل لبيانات كل عميل.">أدوار دقيقة (مالك/مدير مشاريع/مهندس موقع) وعزل كامل لبيانات كل عميل.</p></div>
   </div>
 
   <section id="why">
-    <div class="sec-title"><h2>لماذا تشتري نظام بصير؟</h2><p>صُمّم خصيصاً للمقاول الصغير والمتوسط — ينظّم مشروعك ويُسرّع تحصيل مستخلصاتك دون تعقيد أو تكاليف ضخمة.</p></div>
+    <div class="sec-title"><h2 data-i18n="لماذا تشتري نظام بصير؟">لماذا تشتري نظام بصير؟</h2><p data-i18n="صُمّم خصيصاً للمقاول الصغير والمتوسط — ينظّم مشروعك ويُسرّع تحصيل مستخلصاتك دون تعقيد أو تكاليف ضخمة.">صُمّم خصيصاً للمقاول الصغير والمتوسط — ينظّم مشروعك ويُسرّع تحصيل مستخلصاتك دون تعقيد أو تكاليف ضخمة.</p></div>
     <div class="grid g3 why">
-      <div class="card"><div class="ic">💸</div><h3>حصّل مستخلصاتك أسرع</h3><p>كل كمية مربوطة باعتماد موقّع من الاستشاري، فيُعتمد مستخلصك بلا جدال ويصل تحصيلك أسرع ونزاعات أقل.</p></div>
-      <div class="card"><div class="ic">🧾</div><h3>وداعاً لإكسل المبعثر</h3><p>جدول الكميات والمستخلصات والإنتاجية في نظام واحد — لا ملفات ضائعة ولا نسخ متضاربة بين الموقع والمكتب.</p></div>
-      <div class="card"><div class="ic">🛡️</div><h3>احمِ أموالك من التلاعب</h3><p>ضوابط آلية تمنع تضخيم كميات مقاول الباطن أو تكرارها أو صرف أكثر مما اعتمده الاستشاري.</p></div>
-      <div class="card"><div class="ic">📸</div><h3>إثبات ميداني لا يُنكَر</h3><p>صور الإنجاز اليومي مختومة تلقائياً بالتاريخ والموقع الجغرافي واسم المشروع — مرجعك عند أي خلاف.</p></div>
-      <div class="card"><div class="ic">📊</div><h3>المالك يرى كل شيء من جواله</h3><p>نسبة الإنجاز، المستخلصات المعلّقة، مديونية مقاولي الباطن، والتنبيهات — لحظياً ومن أي مكان.</p></div>
-      <div class="card"><div class="ic">⚙️</div><h3>بلا سيرفرات ولا مبرمجين</h3><p>اشتراك شهري بسيط، نسخ احتياطية وتحديثات تلقائية، يعمل من المتصفح على الجوال والحاسب.</p></div>
-      <div class="card"><div class="ic">💰</div><h3>تكلفة على مقاسك</h3><p>ادفع فقط عن المشاريع الفعّالة؛ أضِف مشروعاً عند ترسيته وأوقفه عند تسليمه — بلا التزامات طويلة.</p></div>
-      <div class="card"><div class="ic">🕒</div><h3>جاهز خلال دقائق</h3><p>سجّل، ادفع، وابدأ العمل اليوم — واجهة عربية سهلة بلا تركيب ولا تدريب طويل.</p></div>
-      <div class="card"><div class="ic">👷</div><h3>انضباط فريق الموقع</h3><p>أدوار واضحة (مالك / مدير مشاريع / مهندس موقع) وتذكير يومي تلقائي لرفع الإنتاجية.</p></div>
+      <div class="card"><div class="ic">💸</div><h3 data-i18n="حصّل مستخلصاتك أسرع">حصّل مستخلصاتك أسرع</h3><p data-i18n="كل كمية مربوطة باعتماد موقّع من الاستشاري، فيُعتمد مستخلصك بلا جدال ويصل تحصيلك أسرع ونزاعات أقل.">كل كمية مربوطة باعتماد موقّع من الاستشاري، فيُعتمد مستخلصك بلا جدال ويصل تحصيلك أسرع ونزاعات أقل.</p></div>
+      <div class="card"><div class="ic">🧾</div><h3 data-i18n="وداعاً لإكسل المبعثر">وداعاً لإكسل المبعثر</h3><p data-i18n="جدول الكميات والمستخلصات والإنتاجية في نظام واحد — لا ملفات ضائعة ولا نسخ متضاربة بين الموقع والمكتب.">جدول الكميات والمستخلصات والإنتاجية في نظام واحد — لا ملفات ضائعة ولا نسخ متضاربة بين الموقع والمكتب.</p></div>
+      <div class="card"><div class="ic">🛡️</div><h3 data-i18n="احمِ أموالك من التلاعب">احمِ أموالك من التلاعب</h3><p data-i18n="ضوابط آلية تمنع تضخيم كميات مقاول الباطن أو تكرارها أو صرف أكثر مما اعتمده الاستشاري.">ضوابط آلية تمنع تضخيم كميات مقاول الباطن أو تكرارها أو صرف أكثر مما اعتمده الاستشاري.</p></div>
+      <div class="card"><div class="ic">📸</div><h3 data-i18n="إثبات ميداني لا يُنكَر">إثبات ميداني لا يُنكَر</h3><p data-i18n="صور الإنجاز اليومي مختومة تلقائياً بالتاريخ والموقع الجغرافي واسم المشروع — مرجعك عند أي خلاف.">صور الإنجاز اليومي مختومة تلقائياً بالتاريخ والموقع الجغرافي واسم المشروع — مرجعك عند أي خلاف.</p></div>
+      <div class="card"><div class="ic">📊</div><h3 data-i18n="المالك يرى كل شيء من جواله">المالك يرى كل شيء من جواله</h3><p data-i18n="نسبة الإنجاز، المستخلصات المعلّقة، مديونية مقاولي الباطن، والتنبيهات — لحظياً ومن أي مكان.">نسبة الإنجاز، المستخلصات المعلّقة، مديونية مقاولي الباطن، والتنبيهات — لحظياً ومن أي مكان.</p></div>
+      <div class="card"><div class="ic">⚙️</div><h3 data-i18n="بلا سيرفرات ولا مبرمجين">بلا سيرفرات ولا مبرمجين</h3><p data-i18n="اشتراك شهري بسيط، نسخ احتياطية وتحديثات تلقائية، يعمل من المتصفح على الجوال والحاسب.">اشتراك شهري بسيط، نسخ احتياطية وتحديثات تلقائية، يعمل من المتصفح على الجوال والحاسب.</p></div>
+      <div class="card"><div class="ic">💰</div><h3 data-i18n="تكلفة على مقاسك">تكلفة على مقاسك</h3><p data-i18n="ادفع فقط عن المشاريع الفعّالة؛ أضِف مشروعاً عند ترسيته وأوقفه عند تسليمه — بلا التزامات طويلة.">ادفع فقط عن المشاريع الفعّالة؛ أضِف مشروعاً عند ترسيته وأوقفه عند تسليمه — بلا التزامات طويلة.</p></div>
+      <div class="card"><div class="ic">🕒</div><h3 data-i18n="جاهز خلال دقائق">جاهز خلال دقائق</h3><p data-i18n="سجّل، ادفع، وابدأ العمل اليوم — واجهة عربية سهلة بلا تركيب ولا تدريب طويل.">سجّل، ادفع، وابدأ العمل اليوم — واجهة عربية سهلة بلا تركيب ولا تدريب طويل.</p></div>
+      <div class="card"><div class="ic">👷</div><h3 data-i18n="انضباط فريق الموقع">انضباط فريق الموقع</h3><p data-i18n="أدوار واضحة (مالك / مدير مشاريع / مهندس موقع) وتذكير يومي تلقائي لرفع الإنتاجية.">أدوار واضحة (مالك / مدير مشاريع / مهندس موقع) وتذكير يومي تلقائي لرفع الإنتاجية.</p></div>
     </div>
 
     <div class="ba">
-      <div class="col before"><h4>❌ قبل نظام بصير</h4><ul>
-        <li>جداول إكسل متفرقة وملفات تضيع بين الموقع والمكتب</li>
-        <li>مستخلصات تتأخر وتُرفض لنقص المستندات</li>
-        <li>كميات مقاولي الباطن بلا رقابة وعرضة للتلاعب</li>
-        <li>صور إنجاز بلا تاريخ ولا موقع موثّق</li>
-        <li>المالك لا يعرف وضع مشاريعه إلا بزيارة الموقع</li>
+      <div class="col before"><h4 data-i18n="❌ قبل نظام بصير">❌ قبل نظام بصير</h4><ul>
+        <li data-i18n="جداول إكسل متفرقة وملفات تضيع بين الموقع والمكتب">جداول إكسل متفرقة وملفات تضيع بين الموقع والمكتب</li>
+        <li data-i18n="مستخلصات تتأخر وتُرفض لنقص المستندات">مستخلصات تتأخر وتُرفض لنقص المستندات</li>
+        <li data-i18n="كميات مقاولي الباطن بلا رقابة وعرضة للتلاعب">كميات مقاولي الباطن بلا رقابة وعرضة للتلاعب</li>
+        <li data-i18n="صور إنجاز بلا تاريخ ولا موقع موثّق">صور إنجاز بلا تاريخ ولا موقع موثّق</li>
+        <li data-i18n="المالك لا يعرف وضع مشاريعه إلا بزيارة الموقع">المالك لا يعرف وضع مشاريعه إلا بزيارة الموقع</li>
       </ul></div>
-      <div class="col after"><h4>✅ بعد نظام بصير</h4><ul>
-        <li>نظام واحد سحابي يجمع كل بيانات المشروع</li>
-        <li>مستخلص معتمد بمستندات واستلامات موقّعة</li>
-        <li>رقابة آلية تمنع تجاوز الكميات المعتمدة</li>
-        <li>توثيق مختوم بالتاريخ والموقع لكل صورة</li>
-        <li>متابعة لحظية من الجوال لكل المشاريع والمبالغ</li>
+      <div class="col after"><h4 data-i18n="✅ بعد نظام بصير">✅ بعد نظام بصير</h4><ul>
+        <li data-i18n="نظام واحد سحابي يجمع كل بيانات المشروع">نظام واحد سحابي يجمع كل بيانات المشروع</li>
+        <li data-i18n="مستخلص معتمد بمستندات واستلامات موقّعة">مستخلص معتمد بمستندات واستلامات موقّعة</li>
+        <li data-i18n="رقابة آلية تمنع تجاوز الكميات المعتمدة">رقابة آلية تمنع تجاوز الكميات المعتمدة</li>
+        <li data-i18n="توثيق مختوم بالتاريخ والموقع لكل صورة">توثيق مختوم بالتاريخ والموقع لكل صورة</li>
+        <li data-i18n="متابعة لحظية من الجوال لكل المشاريع والمبالغ">متابعة لحظية من الجوال لكل المشاريع والمبالغ</li>
       </ul></div>
     </div>
   </section>
 
   <section id="pricing">
-    <div class="sec-title"><h2>تسعير بسيط — لكل مشروع</h2><p>تدفع فقط عن المشاريع التي تحتاجها. أضِف أو أوقِف في أي وقت.</p></div>
+    <div class="sec-title"><h2 data-i18n="تسعير بسيط — لكل مشروع">تسعير بسيط — لكل مشروع</h2><p data-i18n="تدفع فقط عن المشاريع التي تحتاجها. أضِف أو أوقِف في أي وقت.">تدفع فقط عن المشاريع التي تحتاجها. أضِف أو أوقِف في أي وقت.</p></div>
     <div class="grid g2" id="pricing-cards" style="max-width:760px;margin:0 auto"></div>
     <p class="center muted" style="margin-top:16px;font-size:13px" id="vat-note"></p>
   </section>
 
   <section id="tutorial">
-    <div class="sec-title"><h2>دليل الاستخدام الكامل — خطوة بخطوة</h2><p>من التسجيل حتى رفع المستخلص وإدارة مقاولي الباطن. رحلة مشروعك كاملة.</p></div>
+    <div class="sec-title"><h2 data-i18n="دليل الاستخدام الكامل — خطوة بخطوة">دليل الاستخدام الكامل — خطوة بخطوة</h2><p data-i18n="من التسجيل حتى رفع المستخلص وإدارة مقاولي الباطن. رحلة مشروعك كاملة.">من التسجيل حتى رفع المستخلص وإدارة مقاولي الباطن. رحلة مشروعك كاملة.</p></div>
     <div class="panel" style="max-width:820px;margin:0 auto">
 
       <div class="tut-stage">
-        <div class="st-head"><span class="dot">1</span> البداية: الحساب والدفع</div>
-        <div class="tut-step"><div class="num">1</div><div class="body"><h4>سجّل حسابك</h4><p>اضغط «ابدأ الآن»، وأدخل اسم الشركة والمالك، واسم مستخدم وكلمة مرور للدخول، ثم اسم أول مشروع واختر باقته (15 أو 20 جيجابايت). دقيقة واحدة فقط.</p></div></div>
-        <div class="tut-step"><div class="num">2</div><div class="body"><h4>ادفع وفعّل فوراً</h4><p>ادفع اشتراك أول مشروع بالبطاقة (Visa / Mada / Apple Pay) عبر بوابة Tap الآمنة — بيانات بطاقتك لا تمر عبر خوادمنا. بمجرد نجاح الدفع يُفعّل حسابك وتدخل النظام مباشرة، ويتجدد الاشتراك شهرياً تلقائياً.</p></div></div>
+        <div class="st-head"><span class="dot">1</span> <span data-i18n="البداية: الحساب والدفع">البداية: الحساب والدفع</span></div>
+        <div class="tut-step"><div class="num">1</div><div class="body"><h4 data-i18n="سجّل حسابك">سجّل حسابك</h4><p data-i18n="اضغط «ابدأ الآن»، وأدخل اسم الشركة والمالك، واسم مستخدم وكلمة مرور للدخول، ثم اسم أول مشروع واختر باقته (15 أو 20 جيجابايت). دقيقة واحدة فقط.">اضغط «ابدأ الآن»، وأدخل اسم الشركة والمالك، واسم مستخدم وكلمة مرور للدخول، ثم اسم أول مشروع واختر باقته (15 أو 20 جيجابايت). دقيقة واحدة فقط.</p></div></div>
+        <div class="tut-step"><div class="num">2</div><div class="body"><h4 data-i18n="ادفع وفعّل فوراً">ادفع وفعّل فوراً</h4><p data-i18n="ادفع اشتراك أول مشروع بالبطاقة (Visa / Mada / Apple Pay) عبر بوابة Tap الآمنة — بيانات بطاقتك لا تمر عبر خوادمنا. بمجرد نجاح الدفع يُفعّل حسابك وتدخل النظام مباشرة، ويتجدد الاشتراك شهرياً تلقائياً.">ادفع اشتراك أول مشروع بالبطاقة (Visa / Mada / Apple Pay) عبر بوابة Tap الآمنة — بيانات بطاقتك لا تمر عبر خوادمنا. بمجرد نجاح الدفع يُفعّل حسابك وتدخل النظام مباشرة، ويتجدد الاشتراك شهرياً تلقائياً.</p></div></div>
       </div>
 
       <div class="tut-stage">
-        <div class="st-head"><span class="dot">2</span> تجهيز المشروع</div>
-        <div class="tut-step"><div class="num">3</div><div class="body"><h4>افتح مشروعك <span class="tut-chip">🗂 المشاريع</span></h4><p>من تبويب «المشاريع» اضغط «فتح المشروع» لتدخل لوحة تحكمه. (لإضافة مشروع جديد لاحقاً، تضيفه وتدفعه من صفحة «الاشتراك» فيُفعّل مباشرة.)</p></div></div>
-        <div class="tut-step"><div class="num">4</div><div class="body"><h4>ارفع جدول الكميات (BOQ) <span class="tut-chip">📋 جدول الكميات</span></h4><p>أضف بنود المشروع (الوصف، الوحدة، الكمية، السعر) يدوياً أو جلباً من «قاعدة الأسعار»، وحدّد نطاق كل بند: تنفيذ ذاتي أو مقاول باطن. يمكنك ترتيبها كبنود رئيسية وفرعية.</p></div></div>
-        <div class="tut-step"><div class="num">5</div><div class="body"><h4>اضبط إعدادات المشروع</h4><p>حدّد نسبة ضريبة القيمة المضافة، نسبة المحتجزات (الضمان)، الدفعة المقدمة ونسبة استردادها، ونوع المشروع ووحداته (فلل/أدوار/…).</p></div></div>
+        <div class="st-head"><span class="dot">2</span> <span data-i18n="تجهيز المشروع">تجهيز المشروع</span></div>
+        <div class="tut-step"><div class="num">3</div><div class="body"><h4><span data-i18n="افتح مشروعك">افتح مشروعك</span> <span class="tut-chip" data-i18n="🗂 المشاريع">🗂 المشاريع</span></h4><p data-i18n="من تبويب «المشاريع» اضغط «فتح المشروع» لتدخل لوحة تحكمه. (لإضافة مشروع جديد لاحقاً، تضيفه وتدفعه من صفحة «الاشتراك» فيُفعّل مباشرة.)">من تبويب «المشاريع» اضغط «فتح المشروع» لتدخل لوحة تحكمه. (لإضافة مشروع جديد لاحقاً، تضيفه وتدفعه من صفحة «الاشتراك» فيُفعّل مباشرة.)</p></div></div>
+        <div class="tut-step"><div class="num">4</div><div class="body"><h4><span data-i18n="ارفع جدول الكميات (BOQ)">ارفع جدول الكميات (BOQ)</span> <span class="tut-chip" data-i18n="📋 جدول الكميات">📋 جدول الكميات</span></h4><p data-i18n="أضف بنود المشروع (الوصف، الوحدة، الكمية، السعر) يدوياً أو جلباً من «قاعدة الأسعار»، وحدّد نطاق كل بند: تنفيذ ذاتي أو مقاول باطن. يمكنك ترتيبها كبنود رئيسية وفرعية.">أضف بنود المشروع (الوصف، الوحدة، الكمية، السعر) يدوياً أو جلباً من «قاعدة الأسعار»، وحدّد نطاق كل بند: تنفيذ ذاتي أو مقاول باطن. يمكنك ترتيبها كبنود رئيسية وفرعية.</p></div></div>
+        <div class="tut-step"><div class="num">5</div><div class="body"><h4 data-i18n="اضبط إعدادات المشروع">اضبط إعدادات المشروع</h4><p data-i18n="حدّد نسبة ضريبة القيمة المضافة، نسبة المحتجزات (الضمان)، الدفعة المقدمة ونسبة استردادها، ونوع المشروع ووحداته (فلل/أدوار/…).">حدّد نسبة ضريبة القيمة المضافة، نسبة المحتجزات (الضمان)، الدفعة المقدمة ونسبة استردادها، ونوع المشروع ووحداته (فلل/أدوار/…).</p></div></div>
       </div>
 
       <div class="tut-stage">
-        <div class="st-head"><span class="dot">3</span> التنفيذ اليومي في الموقع</div>
-        <div class="tut-step"><div class="num">6</div><div class="body"><h4>اعرف ماذا تنفّذ اليوم <span class="tut-chip">🧭 خطة العمل</span></h4><p>يرتّب لك النظام البنود الجاهزة للتنفيذ حسب الأسبقيات (ما يسبق ما) والعوائق، فيعرف مهندس الموقع أولوياته فوراً.</p></div></div>
-        <div class="tut-step"><div class="num">7</div><div class="body"><h4>سجّل الإنتاجية اليومية بالصور <span class="tut-chip">👷 الإنتاجية</span></h4><p>أدخل الكمية المنفذة لكل بند، وأرفق صور الموقع — تُختم تلقائياً بالتاريخ والموقع الجغرافي واسم المشروع — واربط التنفيذ بمقاول الباطن المنفّذ إن وجد. كل يومية محفوظة ولا يُعدّلها مهندس الموقع بعد رفعها.</p></div></div>
-        <div class="tut-step"><div class="num">8</div><div class="body"><h4>وثّق العوائق <span class="tut-chip">🚫 العوائق</span></h4><p>سجّل ما يعطّل العمل (تصميم، مواد، طقس…) وأثره على الجدول، ليكون مرجعاً موثّقاً عند المطالبات والتمديدات.</p></div></div>
+        <div class="st-head"><span class="dot">3</span> <span data-i18n="التنفيذ اليومي في الموقع">التنفيذ اليومي في الموقع</span></div>
+        <div class="tut-step"><div class="num">6</div><div class="body"><h4><span data-i18n="اعرف ماذا تنفّذ اليوم">اعرف ماذا تنفّذ اليوم</span> <span class="tut-chip" data-i18n="🧭 خطة العمل">🧭 خطة العمل</span></h4><p data-i18n="يرتّب لك النظام البنود الجاهزة للتنفيذ حسب الأسبقيات (ما يسبق ما) والعوائق، فيعرف مهندس الموقع أولوياته فوراً.">يرتّب لك النظام البنود الجاهزة للتنفيذ حسب الأسبقيات (ما يسبق ما) والعوائق، فيعرف مهندس الموقع أولوياته فوراً.</p></div></div>
+        <div class="tut-step"><div class="num">7</div><div class="body"><h4><span data-i18n="سجّل الإنتاجية اليومية بالصور">سجّل الإنتاجية اليومية بالصور</span> <span class="tut-chip" data-i18n="👷 الإنتاجية">👷 الإنتاجية</span></h4><p data-i18n="أدخل الكمية المنفذة لكل بند، وأرفق صور الموقع — تُختم تلقائياً بالتاريخ والموقع الجغرافي واسم المشروع — واربط التنفيذ بمقاول الباطن المنفّذ إن وجد. كل يومية محفوظة ولا يُعدّلها مهندس الموقع بعد رفعها.">أدخل الكمية المنفذة لكل بند، وأرفق صور الموقع — تُختم تلقائياً بالتاريخ والموقع الجغرافي واسم المشروع — واربط التنفيذ بمقاول الباطن المنفّذ إن وجد. كل يومية محفوظة ولا يُعدّلها مهندس الموقع بعد رفعها.</p></div></div>
+        <div class="tut-step"><div class="num">8</div><div class="body"><h4><span data-i18n="وثّق العوائق">وثّق العوائق</span> <span class="tut-chip" data-i18n="🚫 العوائق">🚫 العوائق</span></h4><p data-i18n="سجّل ما يعطّل العمل (تصميم، مواد، طقس…) وأثره على الجدول، ليكون مرجعاً موثّقاً عند المطالبات والتمديدات.">سجّل ما يعطّل العمل (تصميم، مواد، طقس…) وأثره على الجدول، ليكون مرجعاً موثّقاً عند المطالبات والتمديدات.</p></div></div>
       </div>
 
       <div class="tut-stage">
-        <div class="st-head"><span class="dot">4</span> الاعتماد ورفع المستخلص</div>
-        <div class="tut-step"><div class="num">9</div><div class="body"><h4>اعتماد الاستشاري للكميات <span class="tut-chip">📋 جدول الكميات</span></h4><p>اعتمد الكمية المنفذة وأرفق الاستلام الموقّع من الاستشاري. هذا شرط إلزامي: لا تُرفع أي كمية في مستخلص قبل اعتمادها بمستند موقّع — وهذا ما يحمي مستخلصك من الرفض.</p></div></div>
-        <div class="tut-step"><div class="num">10</div><div class="body"><h4>أنشئ المستخلص وارفعه <span class="tut-chip">💰 المستخلصات</span></h4><p>اختر «مستخلص جديد» وحدّد البنود المعتمدة؛ يحسب النظام الإجمالي وضريبة القيمة المضافة والمحتجزات واسترداد الدفعة المقدمة تلقائياً. يُرفع المستخلص للمراجعة والاعتماد ثم تصدر الفاتورة — وكل مستنداته محفوظة في الأرشيف.</p></div></div>
+        <div class="st-head"><span class="dot">4</span> <span data-i18n="الاعتماد ورفع المستخلص">الاعتماد ورفع المستخلص</span></div>
+        <div class="tut-step"><div class="num">9</div><div class="body"><h4><span data-i18n="اعتماد الاستشاري للكميات">اعتماد الاستشاري للكميات</span> <span class="tut-chip" data-i18n="📋 جدول الكميات">📋 جدول الكميات</span></h4><p data-i18n="اعتمد الكمية المنفذة وأرفق الاستلام الموقّع من الاستشاري. هذا شرط إلزامي: لا تُرفع أي كمية في مستخلص قبل اعتمادها بمستند موقّع — وهذا ما يحمي مستخلصك من الرفض.">اعتمد الكمية المنفذة وأرفق الاستلام الموقّع من الاستشاري. هذا شرط إلزامي: لا تُرفع أي كمية في مستخلص قبل اعتمادها بمستند موقّع — وهذا ما يحمي مستخلصك من الرفض.</p></div></div>
+        <div class="tut-step"><div class="num">10</div><div class="body"><h4><span data-i18n="أنشئ المستخلص وارفعه">أنشئ المستخلص وارفعه</span> <span class="tut-chip" data-i18n="💰 المستخلصات">💰 المستخلصات</span></h4><p data-i18n="اختر «مستخلص جديد» وحدّد البنود المعتمدة؛ يحسب النظام الإجمالي وضريبة القيمة المضافة والمحتجزات واسترداد الدفعة المقدمة تلقائياً. يُرفع المستخلص للمراجعة والاعتماد ثم تصدر الفاتورة — وكل مستنداته محفوظة في الأرشيف.">اختر «مستخلص جديد» وحدّد البنود المعتمدة؛ يحسب النظام الإجمالي وضريبة القيمة المضافة والمحتجزات واسترداد الدفعة المقدمة تلقائياً. يُرفع المستخلص للمراجعة والاعتماد ثم تصدر الفاتورة — وكل مستنداته محفوظة في الأرشيف.</p></div></div>
       </div>
 
       <div class="tut-stage">
-        <div class="st-head"><span class="dot">5</span> مقاولو الباطن</div>
-        <div class="tut-step"><div class="num">11</div><div class="body"><h4>أنشئ مقاول باطن <span class="tut-chip">🧱 مقاولو الباطن</span></h4><p>أضف المقاول وعقده وبنوده وأسعاره المتفق عليها، ونسبة المحتجزات الخاصة به.</p></div></div>
-        <div class="tut-step"><div class="num">12</div><div class="body"><h4>مستخلص المقاول ومدفوعاته</h4><p>ارفع مستخلص مقاول الباطن بحدود الكمية المعتمدة له فقط (مع إرفاق مستخلصه واعتمادات الاستشاري إلزامياً)، ثم سجّل دفعاته ومحتجزاته. ضوابط النظام تمنع صرف أكثر من المعتمد.</p></div></div>
+        <div class="st-head"><span class="dot">5</span> <span data-i18n="مقاولو الباطن">مقاولو الباطن</span></div>
+        <div class="tut-step"><div class="num">11</div><div class="body"><h4><span data-i18n="أنشئ مقاول باطن">أنشئ مقاول باطن</span> <span class="tut-chip" data-i18n="🧱 مقاولو الباطن">🧱 مقاولو الباطن</span></h4><p data-i18n="أضف المقاول وعقده وبنوده وأسعاره المتفق عليها، ونسبة المحتجزات الخاصة به.">أضف المقاول وعقده وبنوده وأسعاره المتفق عليها، ونسبة المحتجزات الخاصة به.</p></div></div>
+        <div class="tut-step"><div class="num">12</div><div class="body"><h4 data-i18n="مستخلص المقاول ومدفوعاته">مستخلص المقاول ومدفوعاته</h4><p data-i18n="ارفع مستخلص مقاول الباطن بحدود الكمية المعتمدة له فقط (مع إرفاق مستخلصه واعتمادات الاستشاري إلزامياً)، ثم سجّل دفعاته ومحتجزاته. ضوابط النظام تمنع صرف أكثر من المعتمد.">ارفع مستخلص مقاول الباطن بحدود الكمية المعتمدة له فقط (مع إرفاق مستخلصه واعتمادات الاستشاري إلزامياً)، ثم سجّل دفعاته ومحتجزاته. ضوابط النظام تمنع صرف أكثر من المعتمد.</p></div></div>
       </div>
 
       <div class="tut-stage">
-        <div class="st-head"><span class="dot">6</span> المتابعة والإدارة</div>
-        <div class="tut-step"><div class="num">13</div><div class="body"><h4>لوحة التحكم <span class="tut-chip">📊</span></h4><p>نظرة شاملة: نسب الإنجاز، المبالغ المنفذة والمعتمدة والمرفوعة، والتنبيهات (بنود تنتظر الاعتماد، مستخلصات تنتظر المراجعة).</p></div></div>
-        <div class="tut-step"><div class="num">14</div><div class="body"><h4>الأرشيف والمستندات <span class="tut-chip">📁 الأرشيف</span></h4><p>ارجع لأي استلام أو صورة أو ملف مرفق في أي وقت، منظّمة في مجلدات يومية سهلة البحث.</p></div></div>
-        <div class="tut-step"><div class="num">15</div><div class="body"><h4>المستخدمون والصلاحيات وإضافة المشاريع</h4><p>أضف مدير مشاريع ومهندسي موقع بأدوار محددة لكل منهم. ولكل مشروع جديد، أضفه وادفع اشتراكه من صفحة «الاشتراك» فيُفعّل مباشرة.</p></div></div>
+        <div class="st-head"><span class="dot">6</span> <span data-i18n="المتابعة والإدارة">المتابعة والإدارة</span></div>
+        <div class="tut-step"><div class="num">13</div><div class="body"><h4><span data-i18n="لوحة التحكم">لوحة التحكم</span> <span class="tut-chip">📊</span></h4><p data-i18n="نظرة شاملة: نسب الإنجاز، المبالغ المنفذة والمعتمدة والمرفوعة، والتنبيهات (بنود تنتظر الاعتماد، مستخلصات تنتظر المراجعة).">نظرة شاملة: نسب الإنجاز، المبالغ المنفذة والمعتمدة والمرفوعة، والتنبيهات (بنود تنتظر الاعتماد، مستخلصات تنتظر المراجعة).</p></div></div>
+        <div class="tut-step"><div class="num">14</div><div class="body"><h4><span data-i18n="الأرشيف والمستندات">الأرشيف والمستندات</span> <span class="tut-chip" data-i18n="📁 الأرشيف">📁 الأرشيف</span></h4><p data-i18n="ارجع لأي استلام أو صورة أو ملف مرفق في أي وقت، منظّمة في مجلدات يومية سهلة البحث.">ارجع لأي استلام أو صورة أو ملف مرفق في أي وقت، منظّمة في مجلدات يومية سهلة البحث.</p></div></div>
+        <div class="tut-step"><div class="num">15</div><div class="body"><h4 data-i18n="المستخدمون والصلاحيات وإضافة المشاريع">المستخدمون والصلاحيات وإضافة المشاريع</h4><p data-i18n="أضف مدير مشاريع ومهندسي موقع بأدوار محددة لكل منهم. ولكل مشروع جديد، أضفه وادفع اشتراكه من صفحة «الاشتراك» فيُفعّل مباشرة.">أضف مدير مشاريع ومهندسي موقع بأدوار محددة لكل منهم. ولكل مشروع جديد، أضفه وادفع اشتراكه من صفحة «الاشتراك» فيُفعّل مباشرة.</p></div></div>
       </div>
 
-      <div class="center" style="margin-top:20px"><button class="btn btn-primary" onclick="openSignup()">جرّب كل هذا الآن — ابدأ اشتراكك</button></div>
+      <div class="center" style="margin-top:20px"><button class="btn btn-primary" onclick="openSignup()" data-i18n="جرّب كل هذا الآن — ابدأ اشتراكك">جرّب كل هذا الآن — ابدأ اشتراكك</button></div>
     </div>
   </section>
 
   <section class="center">
-    <button class="btn btn-primary" style="font-size:16px;padding:14px 28px" onclick="openSignup()">ابدأ اشتراكك الآن</button>
+    <button class="btn btn-primary" style="font-size:16px;padding:14px 28px" onclick="openSignup()" data-i18n="ابدأ اشتراكك الآن">ابدأ اشتراكك الآن</button>
   </section>
 </div>
 
-<footer><div class="wrap" id="footer-brand">نظام بصير — الإدارة التقنية لشركة بصير · ذراع شركة عزوم التقني</div></footer>
+<footer><div class="wrap" id="footer-brand" data-i18n="نظام بصير — الإدارة التقنية لشركة بصير · ذراع شركة عزوم التقني">نظام بصير — الإدارة التقنية لشركة بصير · ذراع شركة عزوم التقني</div></footer>
 
 <!-- نافذة التسجيل -->
 <div class="overlay" id="signup-ov">
   <div class="modal">
     <span class="modal-x" onclick="closeSignup()">✕</span>
-    <h2 style="margin-bottom:4px">إنشاء حساب جديد</h2>
-    <p class="muted" style="margin-top:0;font-size:14px">أكمل البيانات ثم تابع للدفع الآمن.</p>
-    <div id="signup-err" class="note note-err hide"></div>
-    <div class="field"><label>اسم الشركة *</label><input id="su-company" placeholder="مثال: شركة البناء الحديثة"></div>
+    <h2 style="margin-bottom:4px" data-i18n="إنشاء حساب جديد">إنشاء حساب جديد</h2>
+    <p class="muted" style="margin-top:0;font-size:14px" data-i18n="أكمل البيانات ثم تابع للدفع الآمن.">أكمل البيانات ثم تابع للدفع الآمن.</p>
+    <div id="signup-err" class="note note-err hide" role="alert"></div>
+    <div class="field"><label for="su-company" data-i18n="اسم الشركة *">اسم الشركة *</label><input id="su-company" data-i18n-ph="مثال: شركة البناء الحديثة" placeholder="مثال: شركة البناء الحديثة"></div>
     <div class="formgrid">
-      <div class="field"><label>اسم المالك *</label><input id="su-owner" placeholder="الاسم الكامل"></div>
-      <div class="field"><label>الجوال</label><input id="su-phone" placeholder="05xxxxxxxx" inputmode="tel"></div>
+      <div class="field"><label for="su-owner" data-i18n="اسم المالك *">اسم المالك *</label><input id="su-owner" data-i18n-ph="الاسم الكامل" placeholder="الاسم الكامل"></div>
+      <div class="field"><label for="su-phone" data-i18n="الجوال">الجوال</label><input id="su-phone" placeholder="05xxxxxxxx" inputmode="tel"></div>
     </div>
     <div class="formgrid">
-      <div class="field"><label>اسم المستخدم للدخول *</label><input id="su-username" placeholder="بالإنجليزية" autocomplete="username"></div>
-      <div class="field"><label>البريد الإلكتروني</label><input id="su-email" placeholder="للإيصالات" inputmode="email"></div>
+      <div class="field"><label for="su-username" data-i18n="اسم المستخدم للدخول *">اسم المستخدم للدخول *</label><input id="su-username" data-i18n-ph="بالإنجليزية" placeholder="بالإنجليزية" autocomplete="username"></div>
+      <div class="field"><label for="su-email" data-i18n="البريد الإلكتروني">البريد الإلكتروني</label><input id="su-email" data-i18n-ph="للإيصالات" placeholder="للإيصالات" inputmode="email"></div>
     </div>
-    <div class="field"><label>كلمة المرور * (6 أحرف فأكثر)</label><input id="su-pass" type="password" autocomplete="new-password"></div>
+    <div class="field"><label for="su-pass" data-i18n="كلمة المرور * (6 أحرف فأكثر)">كلمة المرور * (6 أحرف فأكثر)</label><input id="su-pass" type="password" autocomplete="new-password"></div>
     <hr style="border:0;border-top:1px solid var(--line);margin:16px 0">
-    <div class="field"><label>اسم أول مشروع *</label><input id="su-proj" placeholder="مثال: برج الرياض"></div>
-    <label>اختر باقة المشروع</label>
-    <div class="tierpick" id="su-tiers"></div>
+    <div class="field"><label for="su-proj" data-i18n="اسم أول مشروع *">اسم أول مشروع *</label><input id="su-proj" data-i18n-ph="مثال: برج الرياض" placeholder="مثال: برج الرياض"></div>
+    <label id="su-tiers-label" data-i18n="اختر باقة المشروع">اختر باقة المشروع</label>
+    <div class="tierpick" id="su-tiers" role="group" aria-labelledby="su-tiers-label"></div>
     <div class="note note-info" id="su-summary"></div>
-    <button class="btn btn-primary btn-block" id="su-go" style="font-size:15px" onclick="submitSignup()">متابعة للدفع الآمن ←</button>
-    <p class="center muted" style="font-size:12px;margin-top:10px">🔒 الدفع عبر بوابة Tap المرخّصة. بيانات بطاقتك لا تُخزّن لدينا.</p>
+    <button class="btn btn-primary btn-block" id="su-go" style="font-size:15px" onclick="submitSignup()" data-i18n="متابعة للدفع الآمن ←">متابعة للدفع الآمن ←</button>
+    <p class="center muted" style="font-size:12px;margin-top:10px" data-i18n="🔒 الدفع عبر بوابة Tap المرخّصة. بيانات بطاقتك لا تُخزّن لدينا.">🔒 الدفع عبر بوابة Tap المرخّصة. بيانات بطاقتك لا تُخزّن لدينا.</p>
   </div>
 </div>
 
 <div class="toast" id="toast"><span></span></div>
 
+<script src="/saas/shared.js"></script>
 <script>
 var CFG = null, selTier = '15';
-function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
-function money(n){return Number(n||0).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:2})}
-function toast(m){var t=document.getElementById('toast');t.querySelector('span').textContent=m;t.classList.add('show');setTimeout(function(){t.classList.remove('show')},2600)}
+Object.assign(I18N_EN, {
+  'نظام بصير':'Bassir System', 'دخول العملاء':'Client login', 'ابدأ الآن':'Start now',
+  '☁️ نظام سحابي — بدون تثبيت · يعمل على الجوال والحاسب':'☁️ Cloud system — no install · works on mobile and desktop',
+  'أدر مشاريعك ومستخلصاتك':'Manage your projects and claims', 'من مكان واحد':'from one place',
+  'جداول الكميات، الإنتاجية اليومية، اعتمادات الاستشاري، مستخلصات الشركة ومقاولي الباطن، والأرشيف الكامل — في نظام واحد آمن. اشترك أونلاين وابدأ خلال دقائق.':'Bills of quantities, daily productivity, consultant approvals, company and subcontractor claims, and the full archive — in one secure system. Subscribe online and start in minutes.',
+  '🚀 اشترك الآن':'🚀 Subscribe now', 'عرض الأسعار':'View pricing',
+  'جداول الكميات والمستخلصات':'BOQ & claims', 'BOQ كامل، احتساب تلقائي للمستخلص، ضريبة ومحتجزات ودفعات مقدمة.':'Full BOQ, automatic claim calculation, VAT, retention and advance payments.',
+  'الإنتاجية اليومية الموثّقة':'Documented daily productivity', 'رفع يومي بالصور مع ختم التاريخ والموقع الجغرافي واسم المشروع.':'Daily photo uploads stamped with date, GPS location and project name.',
+  'اعتمادات الاستشاري':'Consultant approvals', 'كل كمية معتمدة مربوطة باستلام موقّع، ونسبها لمقاول الباطن الصحيح.':'Every approved quantity is tied to a signed handover and allocated to the right subcontractor.',
+  'مقاولو الباطن':'Subcontractors', 'عقود وأسعار ومستخلصات ومدفوعات مقاولي الباطن مع ضوابط منع التلاعب.':'Subcontractor contracts, rates, claims and payments with anti-fraud controls.',
+  'الأرشيف والمستندات':'Archive & documents', 'كل ملف مرفق محفوظ ومنظّم في مجلدات يومية يسهل الرجوع إليها.':'Every attached file is saved and organized in daily folders, easy to find again.',
+  '📁 الأرشيف':'📁 Archive',
+  'صلاحيات وأمان':'Permissions & security', 'أدوار دقيقة (مالك/مدير مشاريع/مهندس موقع) وعزل كامل لبيانات كل عميل.':'Fine-grained roles (owner/projects manager/site engineer) and complete data isolation per client.',
+  'لماذا تشتري نظام بصير؟':'Why buy Bassir System?', 'صُمّم خصيصاً للمقاول الصغير والمتوسط — ينظّم مشروعك ويُسرّع تحصيل مستخلصاتك دون تعقيد أو تكاليف ضخمة.':'Built specifically for small and mid-size contractors — organizes your project and speeds up claim collection without complexity or heavy costs.',
+  'حصّل مستخلصاتك أسرع':'Collect your claims faster', 'كل كمية مربوطة باعتماد موقّع من الاستشاري، فيُعتمد مستخلصك بلا جدال ويصل تحصيلك أسرع ونزاعات أقل.':'Every quantity is tied to a signed consultant approval, so your claim is approved without dispute and you collect faster with fewer conflicts.',
+  'وداعاً لإكسل المبعثر':'Goodbye scattered Excel', 'جدول الكميات والمستخلصات والإنتاجية في نظام واحد — لا ملفات ضائعة ولا نسخ متضاربة بين الموقع والمكتب.':'BOQ, claims and productivity in one system — no lost files, no conflicting copies between site and office.',
+  'احمِ أموالك من التلاعب':'Protect your money from manipulation', 'ضوابط آلية تمنع تضخيم كميات مقاول الباطن أو تكرارها أو صرف أكثر مما اعتمده الاستشاري.':'Automatic controls prevent inflating or duplicating subcontractor quantities, or paying more than the consultant approved.',
+  'إثبات ميداني لا يُنكَر':'Undeniable field proof', 'صور الإنجاز اليومي مختومة تلقائياً بالتاريخ والموقع الجغرافي واسم المشروع — مرجعك عند أي خلاف.':'Daily progress photos are automatically stamped with date, GPS location and project name — your reference in any dispute.',
+  'المالك يرى كل شيء من جواله':'The owner sees everything from their phone', 'نسبة الإنجاز، المستخلصات المعلّقة، مديونية مقاولي الباطن، والتنبيهات — لحظياً ومن أي مكان.':'Progress %, pending claims, subcontractor debt, and alerts — live, from anywhere.',
+  'بلا سيرفرات ولا مبرمجين':'No servers, no developers needed', 'اشتراك شهري بسيط، نسخ احتياطية وتحديثات تلقائية، يعمل من المتصفح على الجوال والحاسب.':'A simple monthly subscription, automatic backups and updates, works from the browser on mobile and desktop.',
+  'تكلفة على مقاسك':'Cost that fits you', 'ادفع فقط عن المشاريع الفعّالة؛ أضِف مشروعاً عند ترسيته وأوقفه عند تسليمه — بلا التزامات طويلة.':'Pay only for active projects; add one when you win it and stop it when you hand it over — no long commitments.',
+  'جاهز خلال دقائق':'Ready in minutes', 'سجّل، ادفع، وابدأ العمل اليوم — واجهة عربية سهلة بلا تركيب ولا تدريب طويل.':'Sign up, pay, and start working today — an easy interface with no installation or long training.',
+  'انضباط فريق الموقع':'Site team discipline', 'أدوار واضحة (مالك / مدير مشاريع / مهندس موقع) وتذكير يومي تلقائي لرفع الإنتاجية.':'Clear roles (owner / projects manager / site engineer) and an automatic daily reminder to log productivity.',
+  '❌ قبل نظام بصير':'❌ Before Bassir System', 'جداول إكسل متفرقة وملفات تضيع بين الموقع والمكتب':'Scattered Excel sheets and files lost between site and office',
+  'مستخلصات تتأخر وتُرفض لنقص المستندات':'Claims delayed and rejected for missing documents', 'كميات مقاولي الباطن بلا رقابة وعرضة للتلاعب':'Subcontractor quantities unsupervised and open to manipulation',
+  'صور إنجاز بلا تاريخ ولا موقع موثّق':'Progress photos with no documented date or location', 'المالك لا يعرف وضع مشاريعه إلا بزيارة الموقع':'The owner only learns project status by visiting the site',
+  '✅ بعد نظام بصير':'✅ After Bassir System', 'نظام واحد سحابي يجمع كل بيانات المشروع':'One cloud system holding all project data',
+  'مستخلص معتمد بمستندات واستلامات موقّعة':'Claims approved with documents and signed handovers', 'رقابة آلية تمنع تجاوز الكميات المعتمدة':'Automatic controls prevent exceeding approved quantities',
+  'توثيق مختوم بالتاريخ والموقع لكل صورة':'Every photo stamped with date and location', 'متابعة لحظية من الجوال لكل المشاريع والمبالغ':'Live tracking from your phone for every project and amount',
+  'تسعير بسيط — لكل مشروع':'Simple pricing — per project', 'تدفع فقط عن المشاريع التي تحتاجها. أضِف أو أوقِف في أي وقت.':'Pay only for the projects you need. Add or stop any time.',
+  'دليل الاستخدام الكامل — خطوة بخطوة':'Full step-by-step usage guide', 'من التسجيل حتى رفع المستخلص وإدارة مقاولي الباطن. رحلة مشروعك كاملة.':'From signing up to submitting a claim and managing subcontractors. Your whole project journey.',
+  'البداية: الحساب والدفع':'Getting started: account & payment', 'سجّل حسابك':'Register your account',
+  'اضغط «ابدأ الآن»، وأدخل اسم الشركة والمالك، واسم مستخدم وكلمة مرور للدخول، ثم اسم أول مشروع واختر باقته (15 أو 20 جيجابايت). دقيقة واحدة فقط.':'Click "Start now", enter the company and owner name, a username and password to log in, then your first project\'s name and pick its package (15 or 20 GB). Just one minute.',
+  'ادفع وفعّل فوراً':'Pay and activate instantly',
+  'ادفع اشتراك أول مشروع بالبطاقة (Visa / Mada / Apple Pay) عبر بوابة Tap الآمنة — بيانات بطاقتك لا تمر عبر خوادمنا. بمجرد نجاح الدفع يُفعّل حسابك وتدخل النظام مباشرة، ويتجدد الاشتراك شهرياً تلقائياً.':'Pay for your first project\'s subscription by card (Visa / Mada / Apple Pay) via the secure Tap gateway — your card details never pass through our servers. As soon as payment succeeds, your account is activated and you enter the system immediately; the subscription then renews monthly automatically.',
+  'تجهيز المشروع':'Setting up the project', 'افتح مشروعك':'Open your project', '🗂 المشاريع':'🗂 Projects',
+  'من تبويب «المشاريع» اضغط «فتح المشروع» لتدخل لوحة تحكمه. (لإضافة مشروع جديد لاحقاً، تضيفه وتدفعه من صفحة «الاشتراك» فيُفعّل مباشرة.)':'From the "Projects" tab, click "Open project" to enter its dashboard. (To add a new project later, add and pay for it from the "Subscription" page and it activates immediately.)',
+  'ارفع جدول الكميات (BOQ)':'Upload the bill of quantities (BOQ)', '📋 جدول الكميات':'📋 BOQ',
+  'أضف بنود المشروع (الوصف، الوحدة، الكمية، السعر) يدوياً أو جلباً من «قاعدة الأسعار»، وحدّد نطاق كل بند: تنفيذ ذاتي أو مقاول باطن. يمكنك ترتيبها كبنود رئيسية وفرعية.':'Add project items (description, unit, quantity, price) manually or pull them from the "Price Database", and set each item\'s scope: self-executed or subcontracted. You can organize them as main and sub-items.',
+  'اضبط إعدادات المشروع':'Configure project settings',
+  'حدّد نسبة ضريبة القيمة المضافة، نسبة المحتجزات (الضمان)، الدفعة المقدمة ونسبة استردادها، ونوع المشروع ووحداته (فلل/أدوار/…).':'Set the VAT rate, retention (warranty) percentage, the advance payment and its recovery rate, and the project type and its units (villas/floors/…).',
+  'التنفيذ اليومي في الموقع':'Daily execution on site', 'اعرف ماذا تنفّذ اليوم':'Know what to execute today', '🧭 خطة العمل':'🧭 Work plan',
+  'يرتّب لك النظام البنود الجاهزة للتنفيذ حسب الأسبقيات (ما يسبق ما) والعوائق، فيعرف مهندس الموقع أولوياته فوراً.':'The system orders items ready for execution by precedence (what comes before what) and blockers, so the site engineer instantly knows their priorities.',
+  'سجّل الإنتاجية اليومية بالصور':'Log daily productivity with photos', '👷 الإنتاجية':'👷 Productivity',
+  'أدخل الكمية المنفذة لكل بند، وأرفق صور الموقع — تُختم تلقائياً بالتاريخ والموقع الجغرافي واسم المشروع — واربط التنفيذ بمقاول الباطن المنفّذ إن وجد. كل يومية محفوظة ولا يُعدّلها مهندس الموقع بعد رفعها.':'Enter the executed quantity for each item, attach site photos — automatically stamped with date, GPS location and project name — and link the work to the executing subcontractor if any. Each daily log is saved and cannot be edited by the site engineer after submitting.',
+  'وثّق العوائق':'Document blockers', '🚫 العوائق':'🚫 Blockers',
+  'سجّل ما يعطّل العمل (تصميم، مواد، طقس…) وأثره على الجدول، ليكون مرجعاً موثّقاً عند المطالبات والتمديدات.':'Log whatever stops work (design, materials, weather…) and its effect on the schedule, as a documented reference for claims and extensions.',
+  'الاعتماد ورفع المستخلص':'Approval & claim submission', 'اعتماد الاستشاري للكميات':'Consultant approval of quantities',
+  'اعتمد الكمية المنفذة وأرفق الاستلام الموقّع من الاستشاري. هذا شرط إلزامي: لا تُرفع أي كمية في مستخلص قبل اعتمادها بمستند موقّع — وهذا ما يحمي مستخلصك من الرفض.':'Approve the executed quantity and attach the signed handover from the consultant. This is mandatory: no quantity can be put into a claim before being approved with a signed document — this is what protects your claim from rejection.',
+  'أنشئ المستخلص وارفعه':'Create and submit the claim', '💰 المستخلصات':'💰 Claims',
+  'اختر «مستخلص جديد» وحدّد البنود المعتمدة؛ يحسب النظام الإجمالي وضريبة القيمة المضافة والمحتجزات واسترداد الدفعة المقدمة تلقائياً. يُرفع المستخلص للمراجعة والاعتماد ثم تصدر الفاتورة — وكل مستنداته محفوظة في الأرشيف.':'Choose "New claim" and select the approved items; the system automatically computes the total, VAT, retention and advance recovery. The claim goes for review and approval, then the invoice is issued — with all its documents saved in the archive.',
+  'أنشئ مقاول باطن':'Create a subcontractor', '🧱 مقاولو الباطن':'🧱 Subcontractors',
+  'أضف المقاول وعقده وبنوده وأسعاره المتفق عليها، ونسبة المحتجزات الخاصة به.':'Add the subcontractor, their contract, items, agreed rates, and their own retention rate.',
+  'مستخلص المقاول ومدفوعاته':'Subcontractor claim & payments',
+  'ارفع مستخلص مقاول الباطن بحدود الكمية المعتمدة له فقط (مع إرفاق مستخلصه واعتمادات الاستشاري إلزامياً)، ثم سجّل دفعاته ومحتجزاته. ضوابط النظام تمنع صرف أكثر من المعتمد.':'Submit the subcontractor claim limited to their approved quantity only (attaching their claim and consultant approvals is mandatory), then log their payments and retention. System controls prevent paying out more than approved.',
+  'المتابعة والإدارة':'Tracking & management', 'لوحة التحكم':'Dashboard',
+  'نظرة شاملة: نسب الإنجاز، المبالغ المنفذة والمعتمدة والمرفوعة، والتنبيهات (بنود تنتظر الاعتماد، مستخلصات تنتظر المراجعة).':'A full overview: progress %, executed, approved and submitted amounts, and alerts (items awaiting approval, claims awaiting review).',
+  'ارجع لأي استلام أو صورة أو ملف مرفق في أي وقت، منظّمة في مجلدات يومية سهلة البحث.':'Go back to any handover, photo or attached file any time, organized in daily folders that are easy to search.',
+  'المستخدمون والصلاحيات وإضافة المشاريع':'Users, permissions & adding projects',
+  'أضف مدير مشاريع ومهندسي موقع بأدوار محددة لكل منهم. ولكل مشروع جديد، أضفه وادفع اشتراكه من صفحة «الاشتراك» فيُفعّل مباشرة.':'Add a projects manager and site engineers with defined roles for each. For every new project, add and pay for it from the "Subscription" page and it activates immediately.',
+  'جرّب كل هذا الآن — ابدأ اشتراكك':'Try all this now — start your subscription', 'ابدأ اشتراكك الآن':'Start your subscription now',
+  'نظام بصير — الإدارة التقنية لشركة بصير · ذراع شركة عزوم التقني':'Bassir System — technical management for Bassir Co · an arm of Azoom Tech',
+  'إنشاء حساب جديد':'Create a new account', 'أكمل البيانات ثم تابع للدفع الآمن.':'Fill in the details then proceed to secure payment.',
+  'اسم الشركة *':'Company name *', 'مثال: شركة البناء الحديثة':'e.g. Modern Construction Co', 'اسم المالك *':'Owner name *', 'الاسم الكامل':'Full name',
+  'الجوال':'Mobile', 'اسم المستخدم للدخول *':'Login username *', 'بالإنجليزية':'In English', 'البريد الإلكتروني':'Email', 'للإيصالات':'For receipts',
+  'كلمة المرور * (6 أحرف فأكثر)':'Password * (6+ characters)', 'اسم أول مشروع *':'First project name *', 'مثال: برج الرياض':'e.g. Riyadh Tower',
+  'اختر باقة المشروع':'Choose the project package', 'متابعة للدفع الآمن ←':'Continue to secure payment ←',
+  '🔒 الدفع عبر بوابة Tap المرخّصة. بيانات بطاقتك لا تُخزّن لدينا.':'🔒 Payment via the licensed Tap gateway. Your card details are not stored with us.',
+  'تعذّر تحميل الأسعار':'Could not load pricing', 'الأكثر سعة':'Most capacity', 'باقة المشروع':'Project package', 'ر.س / شهر':'SAR / month',
+  'شامل':'Inclusive of', '+ ':'+ ', 'ضريبة':'VAT', 'شاملة':'inclusive',
+  'سعة تخزين':'Storage capacity', 'جيجابايت للمشروع':'GB for the project', 'مستخدمون غير محدودين للمشروع':'Unlimited users for the project',
+  'كل مزايا النظام':'All system features', 'تجديد شهري تلقائي':'Automatic monthly renewal', 'أضف/أوقف في أي وقت':'Add/stop any time',
+  'اختر هذه الباقة':'Choose this package', 'ر.س/شهر':'SAR/month', 'ج.ب':'GB',
+  'الأسعار شاملة ضريبة القيمة المضافة':'Prices are VAT-inclusive at', 'تُضاف ضريبة القيمة المضافة':'VAT of', 'على الأسعار أعلاه.':'is added to the prices above.',
+  'الإجمالي الآن:':'Total now:', 'ر.س':'SAR', '(شامل الضريبة)':'(VAT inclusive)', '(شامل ضريبة ':'(plus VAT ',
+  'عن أول شهر، ثم يتجدد تلقائياً شهرياً.':'for the first month, then it renews automatically every month.',
+  'أكمل الحقول المطلوبة (*)':'Complete the required fields (*)', 'كلمة المرور 6 أحرف على الأقل':'Password must be at least 6 characters',
+  'جارٍ التحويل للدفع…':'Redirecting to payment…', 'تعذّر التسجيل':'Could not sign up', 'تعذّر الاتصال بالخادم':'Could not connect to the server',
+  'نظام بصير —':'Bassir System —', 'إدارة المشاريع':'Project Management'
+});
+applyDir(); translateStaticDOM();
+window.onLangChange = function(){ if(CFG){ renderPricing(); renderTierPicker(); updateVatNote(); } };
+
 function priceWithVat(net){ if(!CFG) return net; if(CFG.priceInclusiveVat) return net; return Math.round((net*(1+(CFG.vatRate||0)/100))*100)/100; }
 
+function updateVatNote(){
+  var vr=(CFG&&CFG.vatRate)||0;
+  document.getElementById('vat-note').textContent = CFG&&CFG.priceInclusiveVat
+    ? (T('الأسعار شاملة ضريبة القيمة المضافة')+' '+vr+'%.')
+    : (T('تُضاف ضريبة القيمة المضافة')+' '+vr+'% '+T('على الأسعار أعلاه.'));
+}
 function load(){
   fetch('/api/saas/public/config').then(function(r){return r.json()}).then(function(c){
     CFG=c;
-    document.title='نظام بصير — '+(c.brand&&c.brand.name||'إدارة المشاريع');
+    document.title=T('نظام بصير —')+' '+(c.brand&&c.brand.name||T('إدارة المشاريع'));
     if(c.brand&&c.brand.name) document.getElementById('footer-brand').textContent=c.brand.name;
-    renderPricing(); renderTierPicker();
-    var vr=c.vatRate||0;
-    document.getElementById('vat-note').textContent = c.priceInclusiveVat
-      ? ('الأسعار شاملة ضريبة القيمة المضافة '+vr+'%.')
-      : ('تُضاف ضريبة القيمة المضافة '+vr+'% على الأسعار أعلاه.');
-  }).catch(function(){ toast('تعذّر تحميل الأسعار'); });
+    renderPricing(); renderTierPicker(); updateVatNote();
+  }).catch(function(){ toast(T('تعذّر تحميل الأسعار')); });
 }
 function tierCard(gb,feat){
   var net=CFG.tiers[gb]; var total=priceWithVat(net);
-  return '<div class="price-card'+(feat?' feat':'')+'">'+(feat?'<span class="tag">الأكثر سعة</span>':'')+
-    '<div class="muted">باقة المشروع</div>'+
-    '<div class="amt">'+money(net)+' <small>ر.س / شهر</small></div>'+
-    '<div class="muted" style="font-size:13px">'+ (CFG.priceInclusiveVat?'شامل':'+ ')+' ضريبة '+(CFG.vatRate||0)+'% = '+money(total)+' ر.س'+(CFG.priceInclusiveVat?'':' شاملة')+'</div>'+
-    '<ul><li>سعة تخزين '+gb+' جيجابايت للمشروع</li><li>مستخدمون غير محدودين للمشروع</li><li>كل مزايا النظام</li><li>تجديد شهري تلقائي</li><li>أضف/أوقف في أي وقت</li></ul>'+
-    '<button class="btn '+(feat?'btn-primary':'btn-ghost')+' btn-block" onclick="openSignup(\''+gb+'\')">اختر هذه الباقة</button></div>';
+  return '<div class="price-card'+(feat?' feat':'')+'">'+(feat?'<span class="tag">'+T('الأكثر سعة')+'</span>':'')+
+    '<div class="muted">'+T('باقة المشروع')+'</div>'+
+    '<div class="amt">'+money(net)+' <small>'+T('ر.س / شهر')+'</small></div>'+
+    '<div class="muted" style="font-size:13px">'+ (CFG.priceInclusiveVat?T('شامل'):T('+ '))+' '+T('ضريبة')+' '+(CFG.vatRate||0)+'% = '+money(total)+' '+T('ر.س')+(CFG.priceInclusiveVat?'':' '+T('شاملة'))+'</div>'+
+    '<ul><li>'+T('سعة تخزين')+' '+gb+' '+T('جيجابايت للمشروع')+'</li><li>'+T('مستخدمون غير محدودين للمشروع')+'</li><li>'+T('كل مزايا النظام')+'</li><li>'+T('تجديد شهري تلقائي')+'</li><li>'+T('أضف/أوقف في أي وقت')+'</li></ul>'+
+    '<button class="btn '+(feat?'btn-primary':'btn-ghost')+' btn-block" onclick="openSignup(\''+gb+'\')">'+T('اختر هذه الباقة')+'</button></div>';
 }
 function renderPricing(){
   document.getElementById('pricing-cards').innerHTML = tierCard('15',false)+tierCard('20',true);
@@ -243,15 +322,15 @@ function renderTierPicker(){
   var el=document.getElementById('su-tiers');
   el.innerHTML=['15','20'].map(function(gb){
     return '<div class="opt'+(gb===selTier?' sel':'')+'" data-gb="'+gb+'" onclick="pickTier(\''+gb+'\')">'+
-      '<div class="p">'+money(CFG.tiers[gb])+'</div><div class="c">ر.س/شهر · '+gb+' ج.ب</div></div>';
+      '<div class="p">'+money(CFG.tiers[gb])+'</div><div class="c">'+T('ر.س/شهر')+' · '+gb+' '+T('ج.ب')+'</div></div>';
   }).join('');
   updateSummary();
 }
 function pickTier(gb){ selTier=gb; renderTierPicker(); }
 function updateSummary(){
   var net=CFG.tiers[selTier], total=priceWithVat(net);
-  document.getElementById('su-summary').innerHTML='الإجمالي الآن: <strong>'+money(total)+' ر.س</strong> '+
-    (CFG.priceInclusiveVat?'(شامل الضريبة)':'(شامل ضريبة '+(CFG.vatRate||0)+'%)')+' — عن أول شهر، ثم يتجدد تلقائياً شهرياً.';
+  document.getElementById('su-summary').innerHTML=T('الإجمالي الآن:')+' <strong>'+money(total)+' '+T('ر.س')+'</strong> '+
+    (CFG.priceInclusiveVat?T('(شامل الضريبة)'):(T('(شامل ضريبة ')+(CFG.vatRate||0)+'%)'))+' — '+T('عن أول شهر، ثم يتجدد تلقائياً شهرياً.');
 }
 function openSignup(gb){ if(gb) selTier=gb; if(CFG) renderTierPicker(); document.getElementById('signup-ov').classList.add('open'); }
 function closeSignup(){ document.getElementById('signup-ov').classList.remove('open'); }
@@ -264,20 +343,19 @@ function submitSignup(){
     username:val('su-username'), email:val('su-email'), password:val('su-pass'),
     project:{ name:val('su-proj'), tier:selTier }
   };
-  if(!body.company||!body.ownerName||!body.username||!body.password||!body.project.name) return showErr('أكمل الحقول المطلوبة (*)');
-  if(body.password.length<6) return showErr('كلمة المرور 6 أحرف على الأقل');
-  var btn=document.getElementById('su-go'); btn.disabled=true; btn.innerHTML='<span class="spin"></span> جارٍ التحويل للدفع…';
+  if(!body.company||!body.ownerName||!body.username||!body.password||!body.project.name) return showErr(T('أكمل الحقول المطلوبة (*)'));
+  if(body.password.length<6) return showErr(T('كلمة المرور 6 أحرف على الأقل'));
+  var btn=document.getElementById('su-go'); btn.disabled=true; btn.innerHTML='<span class="spin"></span> '+T('جارٍ التحويل للدفع…');
   fetch('/api/saas/public/signup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
     .then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d}})})
     .then(function(res){
-      if(!res.ok){ btn.disabled=false; btn.textContent='متابعة للدفع الآمن ←'; return showErr(res.d.error||'تعذّر التسجيل'); }
+      if(!res.ok){ btn.disabled=false; btn.textContent=T('متابعة للدفع الآمن ←'); return showErr(res.d.error||T('تعذّر التسجيل')); }
       try{ localStorage.setItem('azoom_pending_user',res.d.username||''); }catch(e){}
       if(res.d.captured){ window.location='/saas/return?inv='+res.d.invoiceId; return; }
       window.location = res.d.redirectUrl;
-    }).catch(function(){ btn.disabled=false; btn.textContent='متابعة للدفع الآمن ←'; showErr('تعذّر الاتصال بالخادم'); });
+    }).catch(function(){ btn.disabled=false; btn.textContent=T('متابعة للدفع الآمن ←'); showErr(T('تعذّر الاتصال بالخادم')); });
 }
 function val(id){return (document.getElementById(id).value||'').trim()}
-['su-company','su-owner','su-username','su-pass','su-proj'].forEach(function(){});
 load();
 </script>
 </body>

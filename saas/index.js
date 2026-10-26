@@ -13,7 +13,7 @@ module.exports = function initSaas(ctx) {
     app, express, DATA_DIR, UPLOADS_DIR, PUBLIC_DIR,
     readJSON, writeJSON, nextId,
     loadCompanies, saveCompanies, loadUsers, saveUsers,
-    saveProject,
+    listProjects, saveProject,
     bcrypt, auth, isAdmin,
     fs
   } = ctx;
@@ -75,6 +75,7 @@ module.exports = function initSaas(ctx) {
         cardBrand: result.cardBrand || inv.cardBrand || null, kind: inv.kind, at: now()
       });
       provisionPaid(tenant, inv, result);
+      pushErpRevenue(tenant, store.getInvoice(inv.id));
       return { ok: true, invoice: store.getInvoice(inv.id) };
     }
     // فشل الدفع
@@ -127,6 +128,37 @@ module.exports = function initSaas(ctx) {
       (tenant.projects || []).forEach(p => { if (p.status === 'suspended') p.status = 'active'; });
     }
     store.upsertTenant(tenant);
+  }
+
+  // دفعة مؤكدة من مستأجر مُدار بالاشتراك → تغذية إيرادات SaaS في Bassir ERP الخاص بمنصّتكم (أحادي الاتجاه،
+  // لا يوقف أو يؤخر عملية الدفع نفسها مهما حدث — منفصل تماماً عن تكامل كل شركة بحساباتها الخاصة)
+  async function pushErpRevenue(tenant, inv) {
+    const cfg = store.loadConfig().erpWebhook;
+    if (!cfg || !cfg.enabled || !cfg.url) return;
+    const payload = {
+      event: 'saas_payment.captured', source: 'azoom-project-tracking-saas', sentAt: now(),
+      tenant: { companyId: tenant.companyId, company: companyName(tenant.companyId), status: tenant.status },
+      invoice: { id: inv.id, no: inv.no, kind: inv.kind, total: inv.total, currency: inv.currency, paidAt: inv.paidAt }
+    };
+    try {
+      const headers = { 'Content-Type': 'application/json' };
+      if (cfg.apiKey) headers['Authorization'] = 'Bearer ' + cfg.apiKey;
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 12000);
+      const r = await fetch(cfg.url, { method: 'POST', headers, body: JSON.stringify(payload), signal: ctrl.signal });
+      clearTimeout(t);
+      const c = store.loadConfig();
+      c.erpWebhook.lastStatus = r.ok ? ('success — ' + inv.no + ' (HTTP ' + r.status + ')') : ('failed — HTTP ' + r.status);
+      c.erpWebhook.lastAt = now();
+      store.saveConfig(c);
+    } catch (e) {
+      try {
+        const c = store.loadConfig();
+        c.erpWebhook.lastStatus = 'send failed: ' + (e && e.message ? e.message : 'connection error');
+        c.erpWebhook.lastAt = now();
+        store.saveConfig(c);
+      } catch (e2) {}
+    }
   }
 
   // ---------- تسجيل جديد (عام) ----------
@@ -320,6 +352,19 @@ module.exports = function initSaas(ctx) {
       if (t.status === 'suspended') return { ok: false, code: 402, error: 'الاشتراك موقوف لعدم السداد — جدّد من صفحة الاشتراك لتفعيل الكتابة', billing: '/billing' };
       return { ok: true };
     },
+    // منع الكتابة على مشروع بانتظار تأكيد الدفع (أُنشئ عبر "إضافة مشروع" ولم يُسدَّد بعد) — يُفعَّل تلقائياً
+    // بمجرد نجاح الدفع (provisionPaid يُحوّل حالته إلى active)؛ قبل ذلك يبقى المشروع مرئياً لكن خاملاً تماماً
+    projectActive(user, project) {
+      if (isAdmin(user)) return { ok: true };
+      if (!project) return { ok: true };
+      const t = store.getTenant(project.companyId);
+      if (!t || !t.saasManaged) return { ok: true };
+      const rec = (t.projects || []).find(p => p.projectId === project.id);
+      if (rec && rec.status === 'pending') {
+        return { ok: false, code: 402, error: 'هذا المشروع بانتظار تأكيد الدفع — أكمل الدفع من صفحة الاشتراك', billing: '/billing' };
+      }
+      return { ok: true };
+    },
     // حدّ السعة لكل مشروع حسب الباقة
     upload(project, incomingBytes) {
       const t = store.getTenant(project.companyId);
@@ -482,6 +527,37 @@ module.exports = function initSaas(ctx) {
     })).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')));
   });
 
+  // ---- كل المشاريع عبر جميع الشركات (مُدارة بالاشتراك أو لا) — لوحة مالك المنصّة فقط ----
+  app.get('/api/saas/admin/projects', auth, adminOnly, (req, res) => {
+    const companies = loadCompanies();
+    const users = loadUsers();
+    const tenants = store.loadTenants();
+    const companyName = id => { const c = companies.find(x => x.id === id); return c ? c.name : ('#' + id); };
+    const userName = id => { const u = users.find(x => x.id === id); return u ? u.name : null; };
+    const rows = listProjects().map(p => {
+      const boq = p.boqItems || [];
+      const totalValue = boq.reduce((s, i) => s + (Number(i.totalQty) || 0) * (Number(i.unitRate) || 0), 0);
+      const executedValue = boq.reduce((s, i) => s + (Number(i.executedQty) || 0) * (Number(i.unitRate) || 0), 0);
+      const mus = p.mustakhlasat || [];
+      const tenant = tenants.find(t => t.companyId === p.companyId);
+      const trec = tenant && (tenant.projects || []).find(x => x.projectId === p.id);
+      return {
+        id: p.id, name: (p.info || {}).name || ('#' + p.id), companyId: p.companyId, company: companyName(p.companyId),
+        managerName: userName(p.managerUserId),
+        boqItemsCount: boq.length,
+        progressPct: totalValue > 0 ? Math.round((executedValue / totalValue) * 1000) / 10 : 0,
+        mustakhlasatCount: mus.length,
+        mustakhlasatApprovedValue: B.money(mus.filter(m => ['approved', 'paid'].includes(m.status)).reduce((s, m) => s + (Number(m.gross) || 0), 0)),
+        subcontractorsCount: (p.subcontractors || []).length,
+        subMustakhlasatCount: (p.subMustakhlasat || []).length,
+        storageGB: B.money(projectStorageBytes(p.id) / GB),
+        saasManaged: !!(tenant && tenant.saasManaged),
+        status: trec ? trec.status : (tenant ? tenant.status : null)
+      };
+    }).sort((a, b) => b.id - a.id);
+    res.json(rows);
+  });
+
   app.get('/api/saas/admin/tenants/:companyId', auth, adminOnly, (req, res) => {
     const t = store.getTenant(Number(req.params.companyId));
     if (!t) return res.status(404).json({ error: 'غير موجود' });
@@ -504,7 +580,8 @@ module.exports = function initSaas(ctx) {
 
   app.get('/api/saas/admin/config', auth, adminOnly, (req, res) => {
     const c = store.loadConfig();
-    res.json({ currency: c.currency, vatRate: c.vatRate, priceInclusiveVat: c.priceInclusiveVat, tiers: c.tiers, graceDays: c.graceDays, trialDays: c.trialDays, brand: c.brand, tap: { mode: c.tap.mode, baseUrl: c.tap.baseUrl, publicKey: c.tap.publicKey, secretKeySet: !!c.tap.secretKey, webhookSecretSet: !!c.tap.webhookSecret } });
+    res.json({ currency: c.currency, vatRate: c.vatRate, priceInclusiveVat: c.priceInclusiveVat, tiers: c.tiers, graceDays: c.graceDays, trialDays: c.trialDays, brand: c.brand, tap: { mode: c.tap.mode, baseUrl: c.tap.baseUrl, publicKey: c.tap.publicKey, secretKeySet: !!c.tap.secretKey, webhookSecretSet: !!c.tap.webhookSecret },
+      erpWebhook: { enabled: c.erpWebhook.enabled, url: c.erpWebhook.url, apiKeySet: !!c.erpWebhook.apiKey, lastStatus: c.erpWebhook.lastStatus, lastAt: c.erpWebhook.lastAt } });
   });
   app.put('/api/saas/admin/config', auth, adminOnly, (req, res) => {
     const c = store.loadConfig(); const b = req.body || {};
@@ -522,6 +599,12 @@ module.exports = function initSaas(ctx) {
       if (typeof b.tap.secretKey === 'string' && b.tap.secretKey.length) c.tap.secretKey = b.tap.secretKey;
       if (typeof b.tap.webhookSecret === 'string' && b.tap.webhookSecret.length) c.tap.webhookSecret = b.tap.webhookSecret;
       if (b.tap.clearSecret) c.tap.secretKey = '';
+    }
+    if (b.erpWebhook && typeof b.erpWebhook === 'object') {
+      if (b.erpWebhook.enabled !== undefined) c.erpWebhook.enabled = !!b.erpWebhook.enabled;
+      if (b.erpWebhook.url !== undefined) c.erpWebhook.url = String(b.erpWebhook.url || '');
+      if (typeof b.erpWebhook.apiKey === 'string' && b.erpWebhook.apiKey.length) c.erpWebhook.apiKey = b.erpWebhook.apiKey;
+      if (b.erpWebhook.clearApiKey) c.erpWebhook.apiKey = '';
     }
     store.saveConfig(c);
     res.json({ ok: true });

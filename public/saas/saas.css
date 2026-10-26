@@ -1,4 +1,5 @@
-/* نظام بصير — طبقة البيع والاشتراكات: نظام تصميم مشترك (RTL) */
+/* نظام بصير — طبقة البيع والاشتراكات + المصاريف: نظام تصميم مشترك (RTL) */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700;800&display=swap');
 :root{
   --bg:#0b1220; --bg2:#0f1a2e; --surface:#121f38; --surface2:#17264380; --card:#152442;
   --line:#243a5e; --line2:#2d476e;
@@ -7,7 +8,8 @@
   --green:#22c55e; --greenbg:#0c3324; --amber:#f59e0b; --amberbg:#3a2a07; --red:#ef4444; --redbg:#3a1414;
   --gold:#e3b23c;
   --radius:16px; --radius-s:11px; --shadow:0 18px 50px rgba(0,0,0,.45);
-  --font:"Segoe UI",system-ui,-apple-system,"Tahoma",sans-serif;
+  /* نفس خط التطبيق الرئيسي (IBM Plex Sans Arabic) لاتساق بصري كامل بين النظام ولوحات الاشتراك/المصاريف */
+  --font:"IBM Plex Sans Arabic","Segoe UI",system-ui,-apple-system,"Tahoma",sans-serif;
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
@@ -110,3 +112,49 @@ tbody tr:hover{background:#16284880}
 @keyframes sp{to{transform:rotate(360deg)}}
 .progress{height:7px;background:#0c1830;border-radius:999px;overflow:hidden}
 .progress > i{display:block;height:100%;background:linear-gradient(90deg,var(--brand),var(--accent))}
+
+/* تعميد الحقل بتسمية (label[for]) — الحاوية فقط، الربط الفعلي عبر for/id في كل صفحة */
+.field label{cursor:pointer}
+
+/* اختيار الباقة (tier picker) — مكوّن واحد مشترك بدل تكراره في كل صفحة */
+.tierpick{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tierpick .opt{border:1px solid var(--line);border-radius:var(--radius-s);padding:14px;cursor:pointer;transition:.15s;background:#0c1830}
+.tierpick .opt:hover{border-color:var(--brand)}
+.tierpick .opt.sel{border-color:var(--brand);box-shadow:0 0 0 3px #2bb3c025;background:#0e2032}
+.tierpick .opt .p{font-weight:800;font-size:20px}
+.tierpick .opt .c{color:var(--text3);font-size:12px;margin-top:4px}
+@media(max-width:480px){.tierpick{grid-template-columns:1fr}}
+
+/* حالة تحميل أولية لصفحة كاملة (قبل ورود أول استجابة من الخادم) */
+.page-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:80px 20px;color:var(--text3)}
+.page-loading .spin{width:30px;height:30px;border-width:3px}
+
+/* حالة خطأ قابلة لإعادة المحاولة — تُستخدم عند فشل أول جلب بيانات حرج بدل ترك الصفحة فارغة بلا تفسير */
+.page-error{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:60px 20px;text-align:center}
+.page-error .msg{color:var(--text2);font-size:15px;max-width:420px}
+
+/* حالة فارغة عامة (قائمة/جدول بلا بيانات بعد) */
+.empty-state{text-align:center;padding:30px 16px;color:var(--text3)}
+.empty-state .icon{font-size:30px;margin-bottom:8px;opacity:.7}
+
+/* مفتاح تبديل (toggle) بديل عن select منطقي true/false */
+.toggle{position:relative;display:inline-block;width:46px;height:26px;vertical-align:middle}
+.toggle input{opacity:0;width:0;height:0;position:absolute}
+.toggle .slider{position:absolute;inset:0;background:#2a3b5c;border-radius:999px;cursor:pointer;transition:.15s}
+.toggle .slider::before{content:"";position:absolute;width:20px;height:20px;inset-inline-start:3px;top:3px;background:#fff;border-radius:50%;transition:.15s}
+.toggle input:checked + .slider{background:var(--brand)}
+.toggle input:checked + .slider::before{transform:translateX(-20px)}
+[dir="ltr"] .toggle input:checked + .slider::before, html:not([dir="rtl"]) .toggle input:checked + .slider::before{transform:translateX(20px)}
+.toggle-row{display:flex;align-items:center;gap:10px}
+
+/* استجابة الموبايل — شريط علوي/تبويبات/شبكات KPI */
+@media(max-width:640px){
+  .topbar .wrap{height:58px}
+  .logo{font-size:16px}
+  .logo .mark{width:30px;height:30px;font-size:16px}
+  .tabs{overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch}
+  .kpi{padding:14px 16px}
+  .kpi .k-val{font-size:24px}
+  table{font-size:12.5px}
+  th,td{padding:9px 7px}
+}

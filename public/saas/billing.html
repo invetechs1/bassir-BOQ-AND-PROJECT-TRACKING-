@@ -14,10 +14,11 @@
 </head>
 <body>
 <div class="topbar"><div class="wrap">
-  <div class="logo"><span class="mark">ب</span><span>الاشتراك والفواتير</span></div>
+  <div class="logo"><span class="mark">ب</span><span data-i18n="الاشتراك والفواتير">الاشتراك والفواتير</span></div>
   <div class="row">
-    <a class="btn btn-ghost btn-sm" href="/">→ النظام</a>
-    <button class="btn btn-ghost btn-sm" id="logout-b" onclick="logout()">خروج</button>
+    <button class="btn btn-ghost btn-sm" id="lang-switch" onclick="toggleLang()">🌐 English</button>
+    <a class="btn btn-ghost btn-sm" href="/" data-i18n="→ النظام">→ النظام</a>
+    <button class="btn btn-ghost btn-sm" id="logout-b" onclick="logout()" data-i18n="خروج">خروج</button>
   </div>
 </div></div>
 
@@ -25,12 +26,14 @@
 
   <!-- بوابة الدخول -->
   <div id="login-gate" class="card hide" style="max-width:420px;margin:40px auto">
-    <h2>دخول مالك الحساب</h2>
-    <div id="login-err" class="note note-err hide"></div>
-    <div class="field"><label>اسم المستخدم</label><input id="lg-user" autocomplete="username"></div>
-    <div class="field"><label>كلمة المرور</label><input id="lg-pass" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
-    <button class="btn btn-primary btn-block" onclick="doLogin()">دخول</button>
+    <h2 data-i18n="دخول مالك الحساب">دخول مالك الحساب</h2>
+    <div id="login-err" class="note note-err hide" role="alert"></div>
+    <div class="field"><label for="lg-user" data-i18n="اسم المستخدم">اسم المستخدم</label><input id="lg-user" autocomplete="username"></div>
+    <div class="field"><label for="lg-pass" data-i18n="كلمة المرور">كلمة المرور</label><input id="lg-pass" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')submitLogin()"></div>
+    <button class="btn btn-primary btn-block" onclick="submitLogin()" data-i18n="دخول">دخول</button>
   </div>
+
+  <div id="page-state"></div>
 
   <!-- المحتوى -->
   <div id="content" class="hide">
@@ -38,28 +41,28 @@
 
     <div class="spread" style="margin-bottom:18px">
       <div><h2 id="company-name" style="margin:0"></h2><div class="muted" id="status-line"></div></div>
-      <button class="btn btn-primary" id="add-proj-b" onclick="openAdd()">➕ إضافة مشروع</button>
+      <button class="btn btn-primary" id="add-proj-b" onclick="openAdd()" data-i18n="➕ إضافة مشروع">➕ إضافة مشروع</button>
     </div>
 
     <div class="grid g4" style="margin-bottom:22px">
-      <div class="kpi"><div class="k-label">💳 الاشتراك الشهري</div><div class="k-val" id="k-monthly">—</div><div class="k-sub" id="k-monthly-sub"></div></div>
-      <div class="kpi"><div class="k-label">📅 التجديد القادم</div><div class="k-val" id="k-renew" style="font-size:19px">—</div><div class="k-sub">تلقائي بالبطاقة المحفوظة</div></div>
-      <div class="kpi"><div class="k-label">🗂️ المشاريع الفعّالة</div><div class="k-val" id="k-projects">—</div></div>
-      <div class="kpi"><div class="k-label">🪪 البطاقة</div><div class="k-val" id="k-card" style="font-size:19px">—</div><div class="k-sub"><a href="#" onclick="updateCard();return false">تحديث البطاقة</a></div></div>
+      <div class="kpi"><div class="k-label" data-i18n="💳 الاشتراك الشهري">💳 الاشتراك الشهري</div><div class="k-val" id="k-monthly">—</div><div class="k-sub" id="k-monthly-sub"></div></div>
+      <div class="kpi"><div class="k-label" data-i18n="📅 التجديد القادم">📅 التجديد القادم</div><div class="k-val" id="k-renew" style="font-size:19px">—</div><div class="k-sub" data-i18n="تلقائي بالبطاقة المحفوظة">تلقائي بالبطاقة المحفوظة</div></div>
+      <div class="kpi"><div class="k-label" data-i18n="🗂️ المشاريع الفعّالة">🗂️ المشاريع الفعّالة</div><div class="k-val" id="k-projects">—</div></div>
+      <div class="kpi"><div class="k-label" data-i18n="🪪 البطاقة">🪪 البطاقة</div><div class="k-val" id="k-card" style="font-size:19px">—</div><div class="k-sub"><a href="#" onclick="updateCard();return false" data-i18n="تحديث البطاقة">تحديث البطاقة</a></div></div>
     </div>
 
     <div class="panel" style="margin-bottom:22px">
-      <div class="spread" style="margin-bottom:10px"><h3 style="margin:0">المشاريع في اشتراكك</h3></div>
+      <div class="spread" style="margin-bottom:10px"><h3 style="margin:0" data-i18n="المشاريع في اشتراكك">المشاريع في اشتراكك</h3></div>
       <div style="overflow:auto"><table>
-        <thead><tr><th>المشروع</th><th>الباقة</th><th class="proj-cap">السعة المستخدمة</th><th>السعر/شهر</th><th>الحالة</th></tr></thead>
+        <thead><tr><th data-i18n="المشروع">المشروع</th><th data-i18n="الباقة">الباقة</th><th class="proj-cap" data-i18n="السعة المستخدمة">السعة المستخدمة</th><th data-i18n="السعر/شهر">السعر/شهر</th><th data-i18n="الحالة">الحالة</th><th></th></tr></thead>
         <tbody id="projects-body"></tbody>
       </table></div>
     </div>
 
     <div class="panel">
-      <h3 style="margin:0 0 10px">الفواتير</h3>
+      <h3 style="margin:0 0 10px" data-i18n="الفواتير">الفواتير</h3>
       <div style="overflow:auto"><table>
-        <thead><tr><th>رقم</th><th>النوع</th><th class="hide-sm">التاريخ</th><th>الإجمالي</th><th>الحالة</th><th></th></tr></thead>
+        <thead><tr><th data-i18n="رقم">رقم</th><th data-i18n="النوع">النوع</th><th class="hide-sm" data-i18n="التاريخ">التاريخ</th><th data-i18n="الإجمالي">الإجمالي</th><th data-i18n="الحالة">الحالة</th><th></th></tr></thead>
         <tbody id="invoices-body"></tbody>
       </table></div>
     </div>
@@ -69,14 +72,14 @@
 <!-- إضافة مشروع -->
 <div class="overlay" id="add-ov"><div class="modal">
   <span class="modal-x" onclick="closeAdd()">✕</span>
-  <h2>إضافة مشروع جديد</h2>
-  <div id="add-err" class="note note-err hide"></div>
-  <div class="field"><label>اسم المشروع *</label><input id="ad-name" placeholder="مثال: مجمع الواحة"></div>
-  <label>الباقة</label>
-  <div class="tierpick" id="ad-tiers" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:4px 0 8px"></div>
+  <h2 data-i18n="إضافة مشروع جديد">إضافة مشروع جديد</h2>
+  <div id="add-err" class="note note-err hide" role="alert"></div>
+  <div class="field"><label for="ad-name" data-i18n="اسم المشروع *">اسم المشروع *</label><input id="ad-name" data-i18n-ph="مثال: مجمع الواحة" placeholder="مثال: مجمع الواحة"></div>
+  <label id="ad-tiers-label" data-i18n="الباقة">الباقة</label>
+  <div class="tierpick" id="ad-tiers" role="group" aria-labelledby="ad-tiers-label" style="margin:4px 0 8px"></div>
   <div class="note note-info" id="add-summary"></div>
-  <button class="btn btn-primary btn-block" id="add-go" onclick="submitAdd()">إضافة ودفع</button>
-  <p class="center muted" style="font-size:12px;margin-top:8px">يُحتسب مبلغ بقية الشهر الحالي الآن، ثم السعر الكامل مع التجديد.</p>
+  <button class="btn btn-primary btn-block" id="add-go" onclick="submitAdd()" data-i18n="إضافة ودفع">إضافة ودفع</button>
+  <p class="center muted" style="font-size:12px;margin-top:8px" data-i18n="يُحتسب مبلغ بقية الشهر الحالي الآن، ثم السعر الكامل مع التجديد.">يُحتسب مبلغ بقية الشهر الحالي الآن، ثم السعر الكامل مع التجديد.</p>
 </div></div>
 
 <!-- عرض فاتورة -->
@@ -84,42 +87,57 @@
 
 <div class="toast" id="toast"><span></span></div>
 
-<style>.tierpick .opt{border:1.5px solid var(--line);border-radius:12px;padding:12px;cursor:pointer;text-align:center}.tierpick .opt.sel{border-color:var(--brand);background:#0e2e3340}.tierpick .opt .p{font-size:20px;font-weight:800}.tierpick .opt .c{font-size:12px;color:var(--text3)}</style>
-
+<script src="/saas/shared.js"></script>
 <script>
-var TOKEN=localStorage.getItem('azoom_token')||'', ME=null, selTier='15';
-function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
-function money(n){return Number(n||0).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:2})}
-function toast(m){var t=document.getElementById('toast');t.querySelector('span').textContent=m;t.classList.add('show');setTimeout(function(){t.classList.remove('show')},2800)}
-function fmtDate(iso){ if(!iso) return '—'; try{var d=new Date(iso);return d.toLocaleDateString('ar-SA-u-nu-latn',{year:'numeric',month:'short',day:'numeric'})}catch(e){return iso.slice(0,10)} }
-function api(method,path,body){
-  return fetch(path,{method:method,headers:{'Content-Type':'application/json',Authorization:'Bearer '+TOKEN},body:body?JSON.stringify(body):undefined})
-    .then(function(r){return r.json().then(function(d){return{status:r.status,ok:r.ok,d:d}})});
-}
-function show(el,on){document.getElementById(el).classList[on?'remove':'add']('hide')}
+var ME=null, selTier='15';
+Object.assign(I18N_EN, {
+  'الاشتراك والفواتير':'Subscription & Invoices', '→ النظام':'→ System', 'خروج':'Log out',
+  'دخول مالك الحساب':'Account owner login', 'اسم المستخدم':'Username', 'كلمة المرور':'Password', 'دخول':'Log in',
+  '➕ إضافة مشروع':'➕ Add project', '💳 الاشتراك الشهري':'💳 Monthly subscription', '📅 التجديد القادم':'📅 Next renewal',
+  'تلقائي بالبطاقة المحفوظة':'Automatic, via saved card', '🗂️ المشاريع الفعّالة':'🗂️ Active projects', '🪪 البطاقة':'🪪 Card',
+  'تحديث البطاقة':'Update card', 'المشاريع في اشتراكك':'Projects in your subscription', 'المشروع':'Project', 'الباقة':'Package',
+  'السعة المستخدمة':'Storage used', 'السعر/شهر':'Price/month', 'الحالة':'Status', 'الفواتير':'Invoices', 'رقم':'No.',
+  'النوع':'Type', 'التاريخ':'Date', 'الإجمالي':'Total', 'إضافة مشروع جديد':'Add a new project', 'اسم المشروع *':'Project name *',
+  'مثال: مجمع الواحة':'e.g. Al-Waha Complex', 'يُحتسب مبلغ بقية الشهر الحالي الآن، ثم السعر الكامل مع التجديد.':'The prorated remainder of this month is charged now, then the full price applies on renewal.',
+  'إضافة ودفع':'Add & pay', 'تعذّر تحميل بيانات الاشتراك':'Could not load subscription data',
+  'لا يوجد اشتراك مُدار':'No managed subscription', 'هذا الحساب غير مُدار عبر نظام الاشتراكات. للاستفسار تواصل مع الإدارة.':'This account is not managed by the subscription system. Contact support for questions.',
+  '→ الدخول للنظام':'→ Go to the system', 'صفحة الاشتراك لمالك الحساب فقط':'The subscription page is for the account owner only',
+  'فعّال':'Active', 'بانتظار الدفع':'Awaiting payment', 'متأخر السداد':'Past due', 'موقوف':'Suspended', 'ملغى':'Cancelled',
+  'اشتراكك موقوف لعدم السداد — الكتابة معطّلة. جدّد الدفع لإعادة التفعيل فوراً.':'Your subscription is suspended for non-payment — writing is disabled. Renew payment to reactivate instantly.',
+  'سدّد الآن':'Pay now', 'تعذّر تجديد اشتراكك — سنعيد المحاولة، وإلا يُوقَف بعد انتهاء المهلة':'Could not renew your subscription — we will retry, otherwise it will be suspended after the grace period',
+  'لم يكتمل دفع اشتراكك الأول بعد.':'Your first subscription payment has not been completed yet.', 'أكمل الدفع':'Complete payment',
+  'ر.س':'SAR', 'شامل الضريبة':'VAT inclusive', 'شامل ضريبة ':'Plus ', 'لا توجد':'None', 'ج.ب':'GB', 'لا مشاريع':'No projects',
+  'اشتراك جديد':'New subscription', 'إضافة مشروع':'Add project', 'تجديد شهري':'Monthly renewal', 'اشتراك':'Subscription',
+  'تحديث بطاقة':'Card update', 'مدفوعة':'Paid', 'غير مدفوعة':'Unpaid', 'فشلت':'Failed', 'مستردة':'Refunded', 'ملغاة':'Void',
+  'عرض':'View', 'دفع':'Pay', 'لا فواتير':'No invoices', 'ر.س/شهر':'SAR/month', 'السعر الشهري:':'Monthly price:',
+  'اكتب اسم المشروع':'Enter the project name', 'يُخصم الآن مبلغ بقية الشهر الحالي فقط (تناسبياً).':'Only the prorated remainder of the current month is charged now.', 'جارٍ…':'Working…', 'تعذّر':'Failed', 'تمت إضافة المشروع ودفعه':'Project added and paid for',
+  'لا فواتير مستحقة':'No invoices due', 'جارٍ تجهيز الدفع…':'Preparing payment…', 'تعذّر بدء تحديث البطاقة':'Could not start card update',
+  'تعذّر فتح الفاتورة':'Could not open the invoice', 'فاتورة':'Invoice', 'البند':'Item', 'المبلغ':'Amount',
+  'المجموع الفرعي':'Subtotal', 'ضريبة القيمة المضافة':'VAT', 'دُفعت بـ':'Paid with', '🖨️ طباعة':'🖨️ Print'
+});
+applyDir(); translateStaticDOM();
+window.onLangChange = function(){ if(ME) render(); };
 
 function boot(){
-  if(!TOKEN){ show('login-gate',true); show('content',false); return; }
+  if(!TOKEN){ show('login-gate',true); show('content',false); clearState(); return; }
+  show('login-gate',false); show('content',false); clearState();
+  renderLoading(document.getElementById('page-state'));
   api('GET','/api/saas/me').then(function(r){
-    if(r.status===401){ localStorage.removeItem('azoom_token'); TOKEN=''; show('login-gate',true); return; }
-    if(!r.d.saasManaged){ show('content',false); document.querySelector('.wrap').insertAdjacentHTML('beforeend','<div class="card" style="max-width:520px;margin:40px auto"><h2>لا يوجد اشتراك مُدار</h2><p class="muted">هذا الحساب غير مُدار عبر نظام الاشتراكات. للاستفسار تواصل مع الإدارة.</p><a class="btn btn-primary" href="/">→ الدخول للنظام</a></div>'); return; }
+    if(r.networkError){ renderError(document.getElementById('page-state'), r.d.error, boot); return; }
+    if(r.status===401){ localStorage.removeItem('azoom_token'); TOKEN=''; clearState(); show('login-gate',true); return; }
+    if(!r.ok){ renderError(document.getElementById('page-state'), r.d.error||T('تعذّر تحميل بيانات الاشتراك'), boot); return; }
+    clearState();
+    if(!r.d.saasManaged){ show('content',false); document.querySelector('.wrap').insertAdjacentHTML('beforeend','<div class="card" style="max-width:520px;margin:40px auto"><h2>'+T('لا يوجد اشتراك مُدار')+'</h2><p class="muted">'+T('هذا الحساب غير مُدار عبر نظام الاشتراكات. للاستفسار تواصل مع الإدارة.')+'</p><a class="btn btn-primary" href="/">'+T('→ الدخول للنظام')+'</a></div>'); return; }
     ME=r.d; render();
   });
 }
-function doLogin(){
-  var u=document.getElementById('lg-user').value.trim(), p=document.getElementById('lg-pass').value;
-  fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})})
-    .then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d}})})
-    .then(function(res){
-      if(!res.ok){ var e=document.getElementById('login-err'); e.textContent=res.d.error||'فشل الدخول'; e.classList.remove('hide'); return; }
-      if(res.d.user.role!=='client'){ var e2=document.getElementById('login-err'); e2.textContent='صفحة الاشتراك لمالك الحساب فقط'; e2.classList.remove('hide'); return; }
-      TOKEN=res.d.token; localStorage.setItem('azoom_token',TOKEN); show('login-gate',false); boot();
-    });
+function clearState(){ var s=document.getElementById('page-state'); if(s) s.innerHTML=''; }
+function submitLogin(){
+  doLogin({ requireRole:'client', roleError:T('صفحة الاشتراك لمالك الحساب فقط'), onSuccess:function(){ show('login-gate',false); boot(); } });
 }
-function logout(){ localStorage.removeItem('azoom_token'); location.href='/'; }
 
 function statusBadge(s){
-  var map={active:['b-green','فعّال'],pending:['b-amber','بانتظار الدفع'],past_due:['b-amber','متأخر السداد'],suspended:['b-red','موقوف'],cancelled:['b-gray','ملغى']};
+  var map={active:['b-green',T('فعّال')],pending:['b-amber',T('بانتظار الدفع')],past_due:['b-amber',T('متأخر السداد')],suspended:['b-red',T('موقوف')],cancelled:['b-gray',T('ملغى')]};
   var m=map[s]||['b-gray',s]; return '<span class="badge '+m[0]+'">'+m[1]+'</span>';
 }
 function render(){
@@ -128,39 +146,40 @@ function render(){
   document.getElementById('status-line').innerHTML=statusBadge(ME.status);
   // بانر الحالة
   var b=document.getElementById('status-banner'); b.innerHTML='';
-  if(ME.status==='suspended') b.innerHTML='<div class="note note-err">اشتراكك موقوف لعدم السداد — الكتابة معطّلة. جدّد الدفع لإعادة التفعيل فوراً. <button class="btn btn-sm btn-primary" style="margin-inline-start:8px" onclick="payNow()">سدّد الآن</button></div>';
-  else if(ME.status==='past_due') b.innerHTML='<div class="note note-warn">تعذّر تجديد اشتراكك — سنعيد المحاولة، وإلا يُوقَف بعد انتهاء المهلة'+(ME.billing.graceUntil?(' ('+fmtDate(ME.billing.graceUntil)+')'):'')+'. <button class="btn btn-sm btn-primary" style="margin-inline-start:8px" onclick="payNow()">سدّد الآن</button></div>';
-  else if(ME.status==='pending') b.innerHTML='<div class="note note-warn">لم يكتمل دفع اشتراكك الأول بعد. <button class="btn btn-sm btn-primary" style="margin-inline-start:8px" onclick="payNow()">أكمل الدفع</button></div>';
+  if(ME.status==='suspended') b.innerHTML='<div class="note note-err">'+T('اشتراكك موقوف لعدم السداد — الكتابة معطّلة. جدّد الدفع لإعادة التفعيل فوراً.')+' <button class="btn btn-sm btn-primary" style="margin-inline-start:8px" onclick="payNow()">'+T('سدّد الآن')+'</button></div>';
+  else if(ME.status==='past_due') b.innerHTML='<div class="note note-warn">'+T('تعذّر تجديد اشتراكك — سنعيد المحاولة، وإلا يُوقَف بعد انتهاء المهلة')+(ME.billing.graceUntil?(' ('+fmtDate(ME.billing.graceUntil)+')'):'')+'. <button class="btn btn-sm btn-primary" style="margin-inline-start:8px" onclick="payNow()">'+T('سدّد الآن')+'</button></div>';
+  else if(ME.status==='pending') b.innerHTML='<div class="note note-warn">'+T('لم يكتمل دفع اشتراكك الأول بعد.')+' <button class="btn btn-sm btn-primary" style="margin-inline-start:8px" onclick="payNow()">'+T('أكمل الدفع')+'</button></div>';
 
   var net=ME.monthlyNet, total=ME.priceInclusiveVat?net:Math.round(net*(1+(ME.vatRate||0)/100)*100)/100;
-  document.getElementById('k-monthly').textContent=money(total)+' ر.س';
-  document.getElementById('k-monthly-sub').textContent=ME.priceInclusiveVat?'شامل الضريبة':('شامل ضريبة '+(ME.vatRate||0)+'%');
+  document.getElementById('k-monthly').textContent=money(total)+' '+T('ر.س');
+  document.getElementById('k-monthly-sub').textContent=ME.priceInclusiveVat?T('شامل الضريبة'):(T('شامل ضريبة ')+(ME.vatRate||0)+'%');
   document.getElementById('k-renew').textContent=fmtDate(ME.billing.nextRenewalAt);
   document.getElementById('k-projects').textContent=ME.projects.filter(function(p){return p.status==='active'}).length;
-  document.getElementById('k-card').textContent=ME.billing.card&&ME.billing.card.last4?((ME.billing.card.brand||'')+' ****'+ME.billing.card.last4):'لا توجد';
+  document.getElementById('k-card').textContent=ME.billing.card&&ME.billing.card.last4?((ME.billing.card.brand||'')+' ****'+ME.billing.card.last4):T('لا توجد');
   document.getElementById('add-proj-b').style.display = ME.canManage?'':'none';
 
   document.getElementById('projects-body').innerHTML = ME.projects.map(function(p){
     var usedGB=(p.usedBytes||0)/(1024*1024*1024); var pct=Math.min(100,usedGB/p.capacityGB*100);
     var net=p.price, tot=ME.priceInclusiveVat?net:Math.round(net*(1+(ME.vatRate||0)/100)*100)/100;
     return '<tr><td><strong>'+esc(p.name)+'</strong></td>'+
-      '<td><span class="badge b-blue">'+p.capacityGB+' ج.ب</span></td>'+
-      '<td class="proj-cap"><div class="muted" style="font-size:12px;margin-bottom:3px">'+usedGB.toFixed(2)+' / '+p.capacityGB+' ج.ب</div><div class="progress"><i style="width:'+pct.toFixed(0)+'%"></i></div></td>'+
+      '<td><span class="badge b-blue">'+p.capacityGB+' '+T('ج.ب')+'</span></td>'+
+      '<td class="proj-cap"><div class="muted" style="font-size:12px;margin-bottom:3px">'+usedGB.toFixed(2)+' / '+p.capacityGB+' '+T('ج.ب')+'</div><div class="progress"><i style="width:'+pct.toFixed(0)+'%"></i></div></td>'+
       '<td class="amount">'+money(tot)+'</td>'+
-      '<td>'+statusBadge(p.status)+'</td></tr>';
-  }).join('') || '<tr><td colspan="5" class="muted center">لا مشاريع</td></tr>';
+      '<td>'+statusBadge(p.status)+'</td>'+
+      '<td>'+(p.status==='pending'?'<button class="btn btn-primary btn-sm" onclick="payProject('+p.projectId+')">'+T('أكمل الدفع')+'</button>':'')+'</td></tr>';
+  }).join('') || '<tr><td colspan="6" class="muted center">'+T('لا مشاريع')+'</td></tr>';
 
   api('GET','/api/saas/invoices').then(function(r){
-    var kinds={signup:'اشتراك جديد',project_add:'إضافة مشروع',renewal:'تجديد شهري',subscription:'اشتراك',card_update:'تحديث بطاقة'};
-    var st={paid:['b-green','مدفوعة'],unpaid:['b-amber','غير مدفوعة'],failed:['b-red','فشلت'],refunded:['b-gray','مستردة'],void:['b-gray','ملغاة']};
+    var kinds={signup:T('اشتراك جديد'),project_add:T('إضافة مشروع'),renewal:T('تجديد شهري'),subscription:T('اشتراك'),card_update:T('تحديث بطاقة')};
+    var st={paid:['b-green',T('مدفوعة')],unpaid:['b-amber',T('غير مدفوعة')],failed:['b-red',T('فشلت')],refunded:['b-gray',T('مستردة')],void:['b-gray',T('ملغاة')]};
     document.getElementById('invoices-body').innerHTML=(r.d||[]).map(function(v){
       var s=st[v.status]||['b-gray',v.status];
       return '<tr><td>'+esc(v.no)+'</td><td>'+(kinds[v.kind]||v.kind)+'</td>'+
         '<td class="hide-sm">'+fmtDate(v.issuedAt)+'</td><td class="amount">'+money(v.total)+' '+esc(v.currency)+'</td>'+
         '<td><span class="badge '+s[0]+'">'+s[1]+'</span></td>'+
-        '<td><button class="btn btn-ghost btn-sm" onclick="viewInvoice(\''+v.id+'\')">عرض</button>'+
-        (v.status==='unpaid'||v.status==='failed'?' <button class="btn btn-primary btn-sm" onclick="payInvoice(\''+v.id+'\')">دفع</button>':'')+'</td></tr>';
-    }).join('') || '<tr><td colspan="6" class="muted center">لا فواتير</td></tr>';
+        '<td><button class="btn btn-ghost btn-sm" onclick="viewInvoice(\''+v.id+'\')">'+T('عرض')+'</button>'+
+        (v.status==='unpaid'||v.status==='failed'?' <button class="btn btn-primary btn-sm" onclick="payInvoice(\''+v.id+'\')">'+T('دفع')+'</button>':'')+'</td></tr>';
+    }).join('') || '<tr><td colspan="6" class="muted center">'+T('لا فواتير')+'</td></tr>';
   });
 }
 
@@ -169,48 +188,56 @@ function openAdd(){ selTier='15'; renderTiers(); document.getElementById('add-er
 function closeAdd(){ document.getElementById('add-ov').classList.remove('open'); }
 function renderTiers(){
   document.getElementById('ad-tiers').innerHTML=['15','20'].map(function(gb){
-    return '<div class="opt'+(gb===selTier?' sel':'')+'" onclick="selTier=\''+gb+'\';renderTiers()"><div class="p">'+money(ME.tiers[gb])+'</div><div class="c">ر.س/شهر · '+gb+' ج.ب</div></div>';
+    return '<div class="opt'+(gb===selTier?' sel':'')+'" onclick="selTier=\''+gb+'\';renderTiers()"><div class="p">'+money(ME.tiers[gb])+'</div><div class="c">'+T('ر.س/شهر')+' · '+gb+' '+T('ج.ب')+'</div></div>';
   }).join('');
   var net=ME.tiers[selTier], tot=ME.priceInclusiveVat?net:Math.round(net*(1+(ME.vatRate||0)/100)*100)/100;
-  document.getElementById('add-summary').innerHTML='السعر الشهري: <strong>'+money(tot)+' ر.س</strong> — يُخصم الآن مبلغ بقية الشهر الحالي فقط (تناسبياً).';
+  document.getElementById('add-summary').innerHTML=T('السعر الشهري:')+' <strong>'+money(tot)+' '+T('ر.س')+'</strong> — '+T('يُخصم الآن مبلغ بقية الشهر الحالي فقط (تناسبياً).');
 }
 function submitAdd(){
   var name=document.getElementById('ad-name').value.trim();
-  if(!name){ var e=document.getElementById('add-err'); e.textContent='اكتب اسم المشروع'; e.classList.remove('hide'); return; }
-  var btn=document.getElementById('add-go'); btn.disabled=true; btn.innerHTML='<span class="spin"></span> جارٍ…';
+  if(!name){ var e=document.getElementById('add-err'); e.textContent=T('اكتب اسم المشروع'); e.classList.remove('hide'); return; }
+  var btn=document.getElementById('add-go'); btn.disabled=true; btn.innerHTML='<span class="spin"></span> '+T('جارٍ…');
   api('POST','/api/saas/projects',{name:name,tier:selTier}).then(function(r){
-    btn.disabled=false; btn.textContent='إضافة ودفع';
-    if(!r.ok){ var e=document.getElementById('add-err'); e.textContent=r.d.error||'تعذّر'; e.classList.remove('hide'); return; }
+    btn.disabled=false; btn.textContent=T('إضافة ودفع');
+    if(!r.ok){ var e=document.getElementById('add-err'); e.textContent=r.d.error||T('تعذّر'); e.classList.remove('hide'); return; }
     if(r.d.redirectUrl){ window.location=r.d.redirectUrl; return; }
-    closeAdd(); toast('✅ تمت إضافة المشروع ودفعه'); boot();
+    closeAdd(); toast('✅ '+T('تمت إضافة المشروع ودفعه')); boot();
   });
 }
 function payNow(){ // ادفع أقدم فاتورة غير مدفوعة
   api('GET','/api/saas/invoices').then(function(r){
     var due=(r.d||[]).filter(function(v){return v.status==='unpaid'||v.status==='failed'}).sort(function(a,b){return (a.issuedAt||'').localeCompare(b.issuedAt||'')})[0];
-    if(due) payInvoice(due.id); else toast('لا فواتير مستحقة');
+    if(due) payInvoice(due.id); else toast(T('لا فواتير مستحقة'));
   });
 }
-function payInvoice(id){ toast('جارٍ تجهيز الدفع…'); window.location='/saas/return?inv='+id; }
+function payProject(projectId){ // ادفع فاتورة مشروع معيّن بانتظار الدفع
+  api('GET','/api/saas/invoices').then(function(r){
+    var due=(r.d||[]).filter(function(v){
+      return (v.status==='unpaid'||v.status==='failed') && (v.lines||[]).some(function(l){return l.projectId===projectId});
+    }).sort(function(a,b){return (a.issuedAt||'').localeCompare(b.issuedAt||'')})[0];
+    if(due) payInvoice(due.id); else payNow();
+  });
+}
+function payInvoice(id){ toast(T('جارٍ تجهيز الدفع…')); window.location='/saas/return?inv='+id; }
 function updateCard(){
   api('POST','/api/saas/card/update',{}).then(function(r){
-    if(r.ok&&r.d.redirectUrl) window.location=r.d.redirectUrl; else toast(r.d.error||'تعذّر بدء تحديث البطاقة');
+    if(r.ok&&r.d.redirectUrl) window.location=r.d.redirectUrl; else toast(r.d.error||T('تعذّر بدء تحديث البطاقة'));
   });
 }
 function viewInvoice(id){
   api('GET','/api/saas/invoices/'+id).then(function(r){
-    if(!r.ok) return toast('تعذّر فتح الفاتورة'); var v=r.d;
-    var kinds={signup:'اشتراك جديد',project_add:'إضافة مشروع',renewal:'تجديد شهري',subscription:'اشتراك',card_update:'تحديث بطاقة'};
+    if(!r.ok) return toast(T('تعذّر فتح الفاتورة')); var v=r.d;
+    var kinds={signup:T('اشتراك جديد'),project_add:T('إضافة مشروع'),renewal:T('تجديد شهري'),subscription:T('اشتراك'),card_update:T('تحديث بطاقة')};
     var rows=(v.lines||[]).map(function(l){return '<tr><td>'+esc(l.desc||l.name)+'</td><td class="amount">'+money(l.amount)+'</td></tr>'}).join('');
     document.getElementById('inv-modal').innerHTML='<span class="modal-x" onclick="document.getElementById(\'inv-ov\').classList.remove(\'open\')">✕</span>'+
-      '<h2>فاتورة '+esc(v.no)+'</h2><div class="muted" style="margin-bottom:10px">'+(kinds[v.kind]||v.kind)+' · '+fmtDate(v.issuedAt)+'</div>'+
-      '<table><thead><tr><th>البند</th><th>المبلغ</th></tr></thead><tbody>'+rows+'</tbody></table>'+
+      '<h2>'+T('فاتورة')+' '+esc(v.no)+'</h2><div class="muted" style="margin-bottom:10px">'+(kinds[v.kind]||v.kind)+' · '+fmtDate(v.issuedAt)+'</div>'+
+      '<table><thead><tr><th>'+T('البند')+'</th><th>'+T('المبلغ')+'</th></tr></thead><tbody>'+rows+'</tbody></table>'+
       '<div style="margin-top:12px;border-top:1px solid var(--line);padding-top:12px">'+
-      '<div class="spread"><span class="muted">المجموع الفرعي</span><span class="amount">'+money(v.subtotal)+' '+esc(v.currency)+'</span></div>'+
-      '<div class="spread"><span class="muted">ضريبة القيمة المضافة ('+v.vatRate+'%)</span><span class="amount">'+money(v.vat)+'</span></div>'+
-      '<div class="spread" style="font-size:18px;margin-top:6px"><strong>الإجمالي</strong><strong>'+money(v.total)+' '+esc(v.currency)+'</strong></div></div>'+
-      (v.cardLast4?'<div class="muted" style="margin-top:8px;font-size:12px">دُفعت بـ '+esc(v.cardBrand||'')+' ****'+esc(v.cardLast4)+'</div>':'')+
-      '<button class="btn btn-ghost btn-block" style="margin-top:14px" onclick="window.print()">🖨️ طباعة</button>';
+      '<div class="spread"><span class="muted">'+T('المجموع الفرعي')+'</span><span class="amount">'+money(v.subtotal)+' '+esc(v.currency)+'</span></div>'+
+      '<div class="spread"><span class="muted">'+T('ضريبة القيمة المضافة')+' ('+v.vatRate+'%)</span><span class="amount">'+money(v.vat)+'</span></div>'+
+      '<div class="spread" style="font-size:18px;margin-top:6px"><strong>'+T('الإجمالي')+'</strong><strong>'+money(v.total)+' '+esc(v.currency)+'</strong></div></div>'+
+      (v.cardLast4?'<div class="muted" style="margin-top:8px;font-size:12px">'+T('دُفعت بـ')+' '+esc(v.cardBrand||'')+' ****'+esc(v.cardLast4)+'</div>':'')+
+      '<button class="btn btn-ghost btn-block" style="margin-top:14px" onclick="window.print()">'+T('🖨️ طباعة')+'</button>';
     document.getElementById('inv-ov').classList.add('open');
   });
 }

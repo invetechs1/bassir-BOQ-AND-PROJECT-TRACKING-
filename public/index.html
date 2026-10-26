@@ -358,6 +358,7 @@
   <div class="nav-tab" data-tab="pricedb" onclick="switchTab('pricedb')"><span data-i18n="💲 قاعدة الأسعار">💲 قاعدة الأسعار</span> <span class="tab-count" id="tc-pricedb">0</span></div>
   <div class="nav-tab" data-tab="subs" onclick="switchTab('subs')"><span data-i18n="🧱 مقاولو الباطن">🧱 مقاولو الباطن</span> <span class="tab-count" id="tc-subs">0</span><span class="tab-count" id="tc-subs-alert" style="display:none;background:var(--red);color:#fff">0</span></div>
   <div class="nav-tab" data-tab="archive" onclick="switchTab('archive')"><span data-i18n="📁 الأرشيف والمستندات">📁 الأرشيف والمستندات</span> <span class="tab-count" id="tc-archive">0</span></div>
+  <div class="nav-tab" onclick="openExpensesModule()"><span data-i18n="💰 المصاريف">💰 المصاريف</span></div>
 </div>
 
 <div class="main">
@@ -1210,6 +1211,13 @@
           <div class="f-field"><label data-i18n="أعمال إضافية خارج العقد (معتمدة، ر.س)">أعمال إضافية خارج العقد (معتمدة، ر.س)</label><input type="number" id="sd-add-extra" min="0" step="0.01" value="0" oninput="renderSubMusTotals()"></div>
         </div>
         <div class="divider"></div>
+        <div class="card-title" style="font-size:13px" data-i18n="ما سبق صرفه فعلياً">ما سبق صرفه فعلياً</div>
+        <div class="alert info" style="font-size:11px" data-i18n="القيمة معبّأة تلقائياً من مجموع مستخلصاته السابقة كاقتراح — عدّلها يدوياً إن لم يُصرف للمقاول كامل مستحقاته السابقة.">القيمة معبّأة تلقائياً من مجموع مستخلصاته السابقة كاقتراح — عدّلها يدوياً إن لم يُصرف للمقاول كامل مستحقاته السابقة.</div>
+        <div class="f-grid" style="grid-template-columns:1fr 1fr">
+          <div class="f-field"><label data-i18n="سبق صرفه فعلياً (ر.س)">سبق صرفه فعلياً (ر.س)</label><input type="number" id="sd-prev-payments" min="0" step="0.01" value="0" oninput="renderSubMusTotals()"></div>
+          <div class="f-field"><label data-i18n="ملاحظات">ملاحظات</label><input type="text" id="sd-notes" placeholder=""></div>
+        </div>
+        <div class="divider"></div>
         <div class="card-title" style="font-size:13px" data-i18n="الخصومات (يضعها مدير المشروع أو يصفّرها)">الخصومات (يضعها مدير المشروع أو يصفّرها)</div>
         <div class="f-grid" style="grid-template-columns:1fr 1fr">
           <div class="f-field"><label data-i18n="حجز جودة أعمال %">حجز جودة أعمال %</label><input type="number" id="sd-ret" min="0" max="100" step="0.5" oninput="renderSubMusTotals()"></div>
@@ -1411,6 +1419,7 @@ Object.assign(I18N_EN, {
   '+ إضافة عرض':'+ Add offer',
   '🧱 مقاولو الباطن':'🧱 Subcontractors',
   '📁 الأرشيف والمستندات':'📁 Archive & Documents',
+  '💰 المصاريف':'💰 Expenses',
   '📷 ملفات التقارير اليومية':'📷 Daily report files',
   '🕵 مستندات اعتمادات الاستشاري':'🕵 Consultant approval documents',
   '💰 مرفقات المستخلصات':'💰 Claim attachments',
@@ -1508,6 +1517,9 @@ Object.assign(I18N_EN, {
   'إيجار معدات/عدد':'Equipment/tools rental', 'تكاليف نيابة عنه':'Back-charges / on-behalf costs',
   'تطبيق ضريبة القيمة المضافة':'Apply VAT', 'نسبة الضريبة %':'VAT rate %',
   '⛔ صدرت شهادة ختامية لهذا المقاول مسبقاً — لا يمكن فتح شهادة دورية جديدة بعد الإقفال.':'⛔ A final certificate has already been issued for this subcontractor — no new interim certificate can be opened after closeout.',
+  'ما سبق صرفه فعلياً':'Actually paid so far',
+  'القيمة معبّأة تلقائياً من مجموع مستخلصاته السابقة كاقتراح — عدّلها يدوياً إن لم يُصرف للمقاول كامل مستحقاته السابقة.':'This value is pre-filled from the sum of their past certificates as a suggestion — edit it manually if the subcontractor wasn\'t paid their previous certificates in full.',
+  'سبق صرفه فعلياً (ر.س)':'Actually paid so far (SAR)',
   'إضافات':'Additions', 'ضريبة القيمة المضافة':'VAT', 'إجمالي الفاتورة':'Invoice total',
   '(تراكمي)':'(cumulative)', 'أُفرج عن:':'Released:', 'استرداد دفعة مقدمة':'Advance recovery',
   'الفترة:':'Period:', 'رقم الفاتورة الضريبية:':'Tax invoice no.:', 'العملة:':'Currency:',
@@ -1883,6 +1895,9 @@ async function doLogin(){
 function logout(){
   if (!confirm(T('تسجيل الخروج؟'))) return;
   localStorage.removeItem('azoom_token');
+  // تفريغ الكاش غير المرتبط بالجلسة — يمنع تسريب بيانات هذا المستخدم (أو مستخدم سابق أقوى صلاحية) لجلسة قادمة على نفس المتصفح
+  localStorage.removeItem('azoom_cache');
+  localStorage.removeItem('azoom_proj');
   API.token = '';
   location.reload();
 }
@@ -1974,23 +1989,32 @@ let offlineMode = false;
 async function refreshState(){
   const d = await API.req('GET', '/api/state');
   d.projects.forEach(migrateProject);
-  const savedProj = Number(localStorage.getItem('azoom_proj') || 0);
-  state = { me: d.me, users: d.users, companies: d.companies || [], projects: d.projects, currentProjectId: savedProj };
+  // رابط مباشر لمشروع معيّن (مثال: /?project=123 من لوحة "كل المشاريع" لدى المالك) يتقدّم على آخر مشروع محفوظ
+  const urlProj = Number(new URLSearchParams(location.search).get('project') || 0);
+  const savedProj = urlProj || Number(localStorage.getItem('azoom_proj') || 0);
+  if (urlProj) { try { localStorage.setItem('azoom_proj', String(urlProj)); } catch(e) {} }
+  state = { me: d.me, users: d.users, companies: d.companies || [], projects: d.projects, currentProjectId: savedProj, saasManaged: false };
   if (!state.projects.find(p => p.id === state.currentProjectId)) {
     state.currentProjectId = state.projects.length ? state.projects[0].id : 0;
   }
   offlineMode = false;
   priceDBLoaded = false; // إعادة تحميل قاعدة الأسعار حسب سياق المستخدم
   $('offline-banner').style.display = 'none';
-  try { localStorage.setItem('azoom_cache', JSON.stringify({me:d.me, users:d.users, companies:d.companies||[], projects:d.projects})) } catch(e) {}
+  // الكاش مربوط برمز الجلسة الحالي تحديداً — حتى لا يُعرض كاش مستخدم آخر (أدمن مثلاً) لجلسة لاحقة على نفس المتصفح
+  try { localStorage.setItem('azoom_cache', JSON.stringify({token:API.token, me:d.me, users:d.users, companies:d.companies||[], projects:d.projects})) } catch(e) {}
   renderAll();
+  // حساب مُدار بالاشتراك (SaaS)؟ يُحدَّد لاحقاً وبصمت — يُستخدم فقط لتوجيه "+ إضافة مشروع" لصفحة الاشتراك بدل نموذج محلي سيُرفض عند الحفظ
+  if (state.me.role === 'client') {
+    API.req('GET', '/api/saas/me').then(r => { state.saasManaged = !!(r && r.saasManaged); }).catch(() => {});
+  }
 }
 
-// عند انقطاع الاتصال: عرض آخر بيانات محفوظة للقراءة فقط
+// عند انقطاع الاتصال: عرض آخر بيانات محفوظة للقراءة فقط — فقط إن كانت محفوظة لنفس رمز الجلسة الحالي
 function loadOfflineCache(){
   try {
     const c = JSON.parse(localStorage.getItem('azoom_cache'));
     if (!c || !c.projects) return false;
+    if (c.token !== API.token) return false; // كاش لمستخدم/جلسة مختلفة — لا يُعرض أبداً
     c.projects.forEach(migrateProject);
     state = { me:c.me, users:c.users, companies:c.companies||[], projects:c.projects, currentProjectId: Number(localStorage.getItem('azoom_proj')||0) };
     if (!state.projects.find(p => p.id === state.currentProjectId)) {
@@ -2363,6 +2387,13 @@ Object.assign(I18N_EN, {
 let editingProjectId = null;
 function openProjectModal(id){
   if (!isManagerial()) { alert(T('إضافة وتعديل المشاريع صلاحية أدمن النظام أو العميل')); return; }
+  // حساب مُدار بالاشتراك: إضافة مشروع جديد تمرّ عبر صفحة الاشتراك والدفع (تُحتسب تناسبياً وتُفعَّل فوراً) —
+  // لا داعٍ لتعبئة هذا النموذج كاملاً ليُرفض عند الحفظ بخطأ لا يفهمه العميل
+  if (!id && state.me.role === 'client' && state.saasManaged) {
+    alert(T('لإضافة مشروع جديد مع حساب مُدار بالاشتراك، أكمل الإضافة والدفع من صفحة "الاشتراك" — ستُفتح الآن في نافذة جديدة.'));
+    window.open('/billing', '_blank');
+    return;
+  }
   editingProjectId = id;
   const p = id ? state.projects.find(x => x.id === id) : null;
   $('project-modal-title').textContent = p ? T('تعديل مشروع:') + ' ' + p.info.name : T('إضافة مشروع جديد');
@@ -2396,7 +2427,8 @@ Object.assign(I18N_EN, {
   '⭐ أنت العميل (مالك الشركة) — تظهر لك مشاريع شركتك ولديك كامل الصلاحيات عليها.':'⭐ You are the client (company owner) — your company\'s projects are shown, with full permissions over them.',
   '👔 أنت مدير المشاريع — تظهر لك جميع مشاريع شركتك للعمل عليها.':'👔 You are the projects manager — all of your company\'s projects are shown for you to work on.',
   '👤 أنت مدير مشروع — تظهر لك مشاريعك المعينة لك فقط.':'👤 You are a project manager — only your assigned projects are shown.',
-  'إضافة وتعديل المشاريع صلاحية أدمن النظام أو العميل':'Adding and editing projects is restricted to the system admin or the client'
+  'إضافة وتعديل المشاريع صلاحية أدمن النظام أو العميل':'Adding and editing projects is restricted to the system admin or the client',
+  'لإضافة مشروع جديد مع حساب مُدار بالاشتراك، أكمل الإضافة والدفع من صفحة "الاشتراك" — ستُفتح الآن في نافذة جديدة.':'To add a new project on a subscription-managed account, complete it and pay from the "Subscription" page — opening it now in a new tab.'
 });
 
 function pmTypeChanged(){
@@ -2818,6 +2850,11 @@ function switchTab(id){
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === id));
   $('tab-' + id).classList.add('active');
   if (id === 'pricedb') onOpenPricedb();
+}
+
+function openExpensesModule(){
+  if (!state || !state.currentProjectId) return;
+  window.open('/expenses?project=' + state.currentProjectId, '_blank');
 }
 
 // ============================================================
@@ -6241,6 +6278,10 @@ function openSubDetail(id){
   $('sd-period-from').value = ''; $('sd-period-to').value = '';
   $('sd-invoice-no').value = ''; $('sd-invoice-date').value = '';
   $('sd-vat-on').checked = true; $('sd-vat-rate').value = proj().info.vatRate || 15;
+  // "سبق صرفه فعلياً": تُعبَّأ كاقتراح بمجموع صافي مستخلصاته السابقة، لكنها حقل يدوي قابل للتعديل بالكامل
+  // (أحياناً لا يُصرف للمقاول كامل مستحقات مستخلص سابق، فلا يصح افتراض أنه اكتمل تلقائياً)
+  $('sd-prev-payments').value = round2(subMusOf(id).filter(m=>m.status!=='rejected').reduce((a,m)=>a+(m.net||0),0));
+  $('sd-notes').value = '';
   $('sd-files-list').innerHTML = '';
   $('sd-adv-add-btn').style.display = (state.me.role === 'pm' || isAdmin()) ? '' : 'none';
   closeSdAdvForm();
@@ -6459,13 +6500,16 @@ function subMusComputeDraft(){
   const vat = vatApplicable ? round2((gross+additionsTotal)*vatRate/100) : 0;
   const invoiceTotal = round2(gross + additionsTotal + vat);
   const deductionsTotal = round2(retention + advanceRecovery + dedTotal);
-  const prevPaid = round2(subMusOf(sdSubId).filter(m=>m.status!=='rejected').reduce((a,m)=>a+(m.net||0),0));
+  // سبق صرفه فعلياً: حقل يدوي (مُعبَّأ مبدئياً باقتراح تلقائي عند فتح الصفحة) — ليس احتساباً آلياً من هنا،
+  // لأن الشركة أحياناً لا تصرف كامل مستخلص سابق فوراً، فلا يصح افتراض أن "صافي المستخلص المعتمد" = "ما صُرف فعلاً"
+  const prevPaid = round2(Number($('sd-prev-payments') ? $('sd-prev-payments').value : 0) || 0);
+  const notes = $('sd-notes') ? $('sd-notes').value.trim() : '';
   const net = round2(invoiceTotal - deductionsTotal);
   const cumulativeCertified = round2(subMusOf(sdSubId).filter(m=>m.status!=='rejected').reduce((a,m)=>a+(m.invoiceTotal!==undefined?m.invoiceTotal:(m.gross||0)),0) + invoiceTotal);
   return { lines, gross, type, periodFrom, periodTo, taxInvoiceNo, taxInvoiceDate, contract,
     retRate, retention, retentionCumulative, retentionCeiling, retentionPrevious, retentionReleased,
     additions, additionsTotal, ded, dedTotal, advanceRecovery, advanceRemaining,
-    vatApplicable, vatRate, vat, invoiceTotal, deductionsTotal, prevPaid, net, cumulativeCertified };
+    vatApplicable, vatRate, vat, invoiceTotal, deductionsTotal, prevPaid, notes, net, cumulativeCertified };
 }
 function renderSubMusTotals(){
   const c = subMusComputeDraft();
@@ -6525,7 +6569,7 @@ async function buildSubMus(){
     retRate:c.retRate, retention:c.retention, retentionCumulative:c.retentionCumulative, retentionReleased:c.retentionReleased,
     ded:c.ded, dedTotal:c.dedTotal, advanceRecovery:c.advanceRecovery, advanceRemaining:c.advanceRemaining,
     vatApplicable:c.vatApplicable, vatRate:c.vatRate, vat:c.vat, invoiceTotal:c.invoiceTotal,
-    prevPaid:c.prevPaid, net:c.net, cumulativeCertified:c.cumulativeCertified,
+    prevPaid:c.prevPaid, notes:c.notes, net:c.net, cumulativeCertified:c.cumulativeCertified,
     approvals:{ preparedBy: { name: currentUser().name, userId: state.me.id, at: new Date().toISOString() } },
     docs, payments:[], by: currentUser().name, createdAt: new Date().toISOString()
   });

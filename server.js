@@ -374,6 +374,14 @@ const SAAS = require('./saas')({
   fs, crypto
 });
 
+// ---------- وحدة مصاريف وتكاليف المشروع (طبقة تتبّع تكاليف تغذّي Bassir ERP ولا تحل محله) ----------
+const EXPENSES = require('./expenses')({
+  app, DATA_DIR, PUBLIC_DIR: path.join(__dirname, 'public'),
+  readJSON, writeJSON, fs,
+  auth, isAdmin, loadProject, canAccessProject,
+  companyIntegration, setIntegrationStatus
+});
+
 // ---------- المصادقة ----------
 app.post('/api/auth/login', (req, res) => {
   const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '?';
@@ -477,6 +485,9 @@ app.put('/api/projects/:id', auth, (req, res) => {
   // اشتراك موقوف لعدم السداد → منع الكتابة (القراءة تبقى متاحة)
   const gW = SAAS.guards.projectWrite(req.user);
   if (!gW.ok) return res.status(gW.code).json({ error: gW.error, billing: gW.billing });
+  // مشروع بانتظار تأكيد الدفع (أُضيف عبر صفحة الاشتراك ولم يُسدَّد بعد) → خامل حتى يُسدَّد
+  const gA = SAAS.guards.projectActive(req.user, stored);
+  if (!gA.ok) return res.status(gA.code).json({ error: gA.error, billing: gA.billing });
   const { baseVersion, data } = req.body || {};
   if (!data) return res.status(400).json({ error: 'data_incomplete' });
   if (Number(baseVersion) !== stored.version) return res.status(409).json({ error: 'conflict', version: stored.version });

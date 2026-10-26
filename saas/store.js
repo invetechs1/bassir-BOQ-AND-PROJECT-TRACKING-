@@ -30,6 +30,9 @@ module.exports = function createStore(ctx) {
       publicKey: '',           // عام — يُستخدم في الواجهة لترميز البطاقة
       webhookSecret: ''        // لتوقيع إشعارات tap (hashstring)
     },
+    // تكامل مستوى المنصّة مع Bassir ERP — لتغذية إيرادات الاشتراكات (SaaS) في حساباتكم الخاصة،
+    // منفصل تماماً عن تكامل كل شركة بحساباتها الخاصة (companyIntegration في server.js)
+    erpWebhook: { enabled: false, url: '', apiKey: '', lastStatus: '', lastAt: '' },
     updatedAt: null
   };
   function loadConfig() {
@@ -40,7 +43,8 @@ module.exports = function createStore(ctx) {
       ...DEFAULT_CONFIG, ...c,
       tiers: { ...DEFAULT_CONFIG.tiers, ...(c.tiers || {}) },
       brand: { ...DEFAULT_CONFIG.brand, ...(c.brand || {}) },
-      tap: { ...DEFAULT_CONFIG.tap, ...(c.tap || {}) }
+      tap: { ...DEFAULT_CONFIG.tap, ...(c.tap || {}) },
+      erpWebhook: { ...DEFAULT_CONFIG.erpWebhook, ...(c.erpWebhook || {}) }
     };
   }
   function saveConfig(c) { c.updatedAt = new Date().toISOString(); writeJSON(CONFIG_FILE, c); return c; }

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>الاشتراك والفواتير — نظام بصير</title>
+<title>الاشتراك والفواتير — نظام زمام</title>
 <link rel="stylesheet" href="/saas/saas.css">
 <style>
 .stat{display:flex;flex-direction:column;gap:3px}
@@ -14,10 +14,10 @@
 </head>
 <body>
 <div class="topbar"><div class="wrap">
-  <div class="logo"><span class="mark">ب</span><span data-i18n="الاشتراك والفواتير">الاشتراك والفواتير</span></div>
+  <div class="logo"><span class="mark">ز</span><span data-i18n="الاشتراك والفواتير">الاشتراك والفواتير</span></div>
   <div class="row">
     <button class="btn btn-ghost btn-sm" id="lang-switch" onclick="toggleLang()">🌐 English</button>
-    <a class="btn btn-ghost btn-sm" href="/" data-i18n="→ النظام">→ النظام</a>
+    <a class="btn btn-ghost btn-sm" href="/app" data-i18n="→ النظام">→ النظام</a>
     <button class="btn btn-ghost btn-sm" id="logout-b" onclick="logout()" data-i18n="خروج">خروج</button>
   </div>
 </div></div>
@@ -127,7 +127,7 @@ function boot(){
     if(r.status===401){ localStorage.removeItem('azoom_token'); TOKEN=''; clearState(); show('login-gate',true); return; }
     if(!r.ok){ renderError(document.getElementById('page-state'), r.d.error||T('تعذّر تحميل بيانات الاشتراك'), boot); return; }
     clearState();
-    if(!r.d.saasManaged){ show('content',false); document.querySelector('.wrap').insertAdjacentHTML('beforeend','<div class="card" style="max-width:520px;margin:40px auto"><h2>'+T('لا يوجد اشتراك مُدار')+'</h2><p class="muted">'+T('هذا الحساب غير مُدار عبر نظام الاشتراكات. للاستفسار تواصل مع الإدارة.')+'</p><a class="btn btn-primary" href="/">'+T('→ الدخول للنظام')+'</a></div>'); return; }
+    if(!r.d.saasManaged){ show('content',false); document.querySelector('.wrap').insertAdjacentHTML('beforeend','<div class="card" style="max-width:520px;margin:40px auto"><h2>'+T('لا يوجد اشتراك مُدار')+'</h2><p class="muted">'+T('هذا الحساب غير مُدار عبر نظام الاشتراكات. للاستفسار تواصل مع الإدارة.')+'</p><a class="btn btn-primary" href="/app">'+T('→ الدخول للنظام')+'</a></div>'); return; }
     ME=r.d; render();
   });
 }

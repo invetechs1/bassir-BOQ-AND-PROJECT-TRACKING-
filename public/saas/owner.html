@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>لوحة المالك — نظام بصير</title>
+<title>لوحة المالك — نظام زمام</title>
 <link rel="stylesheet" href="/saas/saas.css">
 <style>
 .tabs{display:flex;gap:6px;margin:18px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
@@ -16,10 +16,10 @@
 </head>
 <body>
 <div class="topbar"><div class="wrap">
-  <div class="logo"><span class="mark">ب</span><span data-i18n="لوحة المالك">لوحة المالك</span></div>
+  <div class="logo"><span class="mark">ز</span><span data-i18n="لوحة المالك">لوحة المالك</span></div>
   <div class="row"><span id="mode-chip" class="mode-chip mode-sim" style="align-self:center">—</span>
     <button class="btn btn-ghost btn-sm" id="lang-switch" onclick="toggleLang()">🌐 English</button>
-    <a class="btn btn-ghost btn-sm" href="/" data-i18n="→ النظام">→ النظام</a>
+    <a class="btn btn-ghost btn-sm" href="/app" data-i18n="→ النظام">→ النظام</a>
     <button class="btn btn-ghost btn-sm" onclick="logout()" data-i18n="خروج">خروج</button>
   </div>
 </div></div>
@@ -210,7 +210,7 @@ function boot(){
   api('GET','/api/saas/admin/overview').then(function(r){
     if(r.networkError){ renderError(document.getElementById('page-state'), r.d.error, boot); return; }
     if(r.status===401){ localStorage.removeItem('azoom_token'); TOKEN=''; clearState(); show('login-gate',true); show('content',false); return; }
-    if(r.status===403){ clearState(); show('login-gate',false); document.getElementById('content').classList.add('hide'); document.querySelector('.wrap').insertAdjacentHTML('beforeend','<div class="card" style="max-width:480px;margin:40px auto"><h2>'+T('صلاحية المالك فقط')+'</h2><p class="muted">'+T('هذه اللوحة لمالك المنصّة (admin).')+'</p><a class="btn btn-primary" href="/">'+T('→ النظام')+'</a></div>'); return; }
+    if(r.status===403){ clearState(); show('login-gate',false); document.getElementById('content').classList.add('hide'); document.querySelector('.wrap').insertAdjacentHTML('beforeend','<div class="card" style="max-width:480px;margin:40px auto"><h2>'+T('صلاحية المالك فقط')+'</h2><p class="muted">'+T('هذه اللوحة لمالك المنصّة (admin).')+'</p><a class="btn btn-primary" href="/app">'+T('→ النظام')+'</a></div>'); return; }
     if(!r.ok){ renderError(document.getElementById('page-state'), r.d.error||T('تعذّر تحميل لوحة التحكم'), boot); return; }
     clearState(); show('login-gate',false); show('content',true); LAST_DASH=r.d; renderDash(r.d);
     document.getElementById('landing-link').textContent=location.origin+'/landing';

@@ -1,6 +1,6 @@
 // خدمة الكاش للتطبيق (PWA) — تسمح بفتح التطبيق حتى مع ضعف الشبكة
-const CACHE = 'azoom-shell-v1';
-const SHELL = ['/', '/manifest.json', '/icon-192.png', '/icon-512.png'];
+const CACHE = 'azoom-shell-v2';
+const SHELL = ['/app', '/manifest.json', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -28,7 +28,7 @@ self.addEventListener('fetch', e => {
     }).catch(() =>
       caches.match(e.request).then(m => m || (url.pathname.startsWith('/uploads/')
         ? new Response('', { status: 404 })
-        : caches.match('/')))
+        : caches.match('/app')))
     )
   );
 });

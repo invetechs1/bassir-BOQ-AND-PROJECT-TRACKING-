@@ -937,6 +937,19 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="billing-required-modal">
+  <div class="modal">
+    <div class="modal-title"><span data-i18n="💳 إضافة مشروع جديد">💳 إضافة مشروع جديد</span><span class="modal-close" onclick="closeModal('billing-required-modal')">✕</span></div>
+    <div class="alert info" style="font-size:13px">
+      <span data-i18n="هذا الحساب مُدار بالاشتراك — إضافة مشروع جديد تتم من صفحة الاشتراك والخطط، حيث يُحتسب سعره تناسبياً عن بقية الشهر الحالي ويُفعَّل فوراً بعد الدفع.">هذا الحساب مُدار بالاشتراك — إضافة مشروع جديد تتم من صفحة الاشتراك والخطط، حيث يُحتسب سعره تناسبياً عن بقية الشهر الحالي ويُفعَّل فوراً بعد الدفع.</span>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="goToBillingForNewProject()" data-i18n="💳 الاشتراك والخطط">💳 الاشتراك والخطط</button>
+      <button class="btn btn-ghost" onclick="closeModal('billing-required-modal')" data-i18n="إغلاق">إغلاق</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="users-modal">
   <div class="modal">
     <div class="modal-title"><span data-i18n="👥 إدارة المستخدمين ومدراء المشاريع">👥 إدارة المستخدمين ومدراء المشاريع</span><span class="modal-close" onclick="closeModal('users-modal')">✕</span></div>
@@ -1078,7 +1091,7 @@
       يرسل النظام تلقائياً رسالة واتساب لكل <strong>مدير مشروع</strong> (حسب رقمه في شاشة المستخدمين) في الوقت المحدد يومياً:
       <div style="margin-top:6px;padding:8px;background:var(--bg2);border-radius:6px;white-space:pre-line">هل قمت برفع وتحديث الإنتاجية اليومية لمشروعك؟
 
-مع تحيات الإدارة التقنية لشركة بصير — ذراع شركة عزوم التقني</div>
+مع تحيات الإدارة التقنية لشركة زمام — ذراع شركة عزوم التقني</div>
     </div>
     <label class="switch-row" style="display:flex;align-items:center;gap:8px;margin:6px 0 12px;cursor:pointer">
       <input type="checkbox" id="wa-enabled" style="width:18px;height:18px">
@@ -2390,8 +2403,7 @@ function openProjectModal(id){
   // حساب مُدار بالاشتراك: إضافة مشروع جديد تمرّ عبر صفحة الاشتراك والدفع (تُحتسب تناسبياً وتُفعَّل فوراً) —
   // لا داعٍ لتعبئة هذا النموذج كاملاً ليُرفض عند الحفظ بخطأ لا يفهمه العميل
   if (!id && state.me.role === 'client' && state.saasManaged) {
-    alert(T('لإضافة مشروع جديد مع حساب مُدار بالاشتراك، أكمل الإضافة والدفع من صفحة "الاشتراك" — ستُفتح الآن في نافذة جديدة.'));
-    window.open('/billing', '_blank');
+    $('billing-required-modal').classList.add('open');
     return;
   }
   editingProjectId = id;
@@ -2423,12 +2435,15 @@ function openProjectModal(id){
   }
   $('project-modal').classList.add('open');
 }
+function goToBillingForNewProject(){ closeModal('billing-required-modal'); window.open('/billing', '_blank'); }
 Object.assign(I18N_EN, {
   '⭐ أنت العميل (مالك الشركة) — تظهر لك مشاريع شركتك ولديك كامل الصلاحيات عليها.':'⭐ You are the client (company owner) — your company\'s projects are shown, with full permissions over them.',
   '👔 أنت مدير المشاريع — تظهر لك جميع مشاريع شركتك للعمل عليها.':'👔 You are the projects manager — all of your company\'s projects are shown for you to work on.',
   '👤 أنت مدير مشروع — تظهر لك مشاريعك المعينة لك فقط.':'👤 You are a project manager — only your assigned projects are shown.',
   'إضافة وتعديل المشاريع صلاحية أدمن النظام أو العميل':'Adding and editing projects is restricted to the system admin or the client',
-  'لإضافة مشروع جديد مع حساب مُدار بالاشتراك، أكمل الإضافة والدفع من صفحة "الاشتراك" — ستُفتح الآن في نافذة جديدة.':'To add a new project on a subscription-managed account, complete it and pay from the "Subscription" page — opening it now in a new tab.'
+  '💳 إضافة مشروع جديد':'💳 Add a new project',
+  'هذا الحساب مُدار بالاشتراك — إضافة مشروع جديد تتم من صفحة الاشتراك والخطط، حيث يُحتسب سعره تناسبياً عن بقية الشهر الحالي ويُفعَّل فوراً بعد الدفع.':'This account is subscription-managed — adding a new project is done from the Billing & Plans page, where it\'s priced proportionally for the rest of the current month and activated immediately after payment.',
+  '💳 الاشتراك والخطط':'💳 Billing & Plans'
 });
 
 function pmTypeChanged(){

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>مصاريف المشروع — نظام بصير</title>
+<title>مصاريف المشروع — نظام زمام</title>
 <link rel="stylesheet" href="/saas/saas.css">
 <style>
 .exp-filters{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px}
@@ -20,10 +20,10 @@
 </head>
 <body>
 <div class="topbar"><div class="wrap">
-  <div class="logo"><span class="mark">ب</span><span data-i18n="مصاريف المشروع">مصاريف المشروع</span></div>
+  <div class="logo"><span class="mark">ز</span><span data-i18n="مصاريف المشروع">مصاريف المشروع</span></div>
   <div class="row">
     <button class="btn btn-ghost btn-sm" id="lang-switch" onclick="toggleLang()">🌐 English</button>
-    <a class="btn btn-ghost btn-sm" href="/" data-i18n="→ النظام">→ النظام</a>
+    <a class="btn btn-ghost btn-sm" href="/app" data-i18n="→ النظام">→ النظام</a>
     <button class="btn btn-ghost btn-sm" onclick="logout()" data-i18n="خروج">خروج</button>
   </div>
 </div></div>
@@ -188,7 +188,7 @@ function boot(){
     clearState();
     PROJECTS=r.d.projects||[];
     if(!PROJECTS.length){
-      document.querySelector('.wrap').insertAdjacentHTML('beforeend','<div class="card" style="max-width:480px;margin:40px auto"><h2>'+T('لا توجد مشاريع')+'</h2><p class="muted">'+T('لا تملك صلاحية الوصول لأي مشروع بعد.')+'</p><a class="btn btn-primary" href="/">'+T('→ النظام')+'</a></div>');
+      document.querySelector('.wrap').insertAdjacentHTML('beforeend','<div class="card" style="max-width:480px;margin:40px auto"><h2>'+T('لا توجد مشاريع')+'</h2><p class="muted">'+T('لا تملك صلاحية الوصول لأي مشروع بعد.')+'</p><a class="btn btn-primary" href="/app">'+T('→ النظام')+'</a></div>');
       return;
     }
     show('content',true);

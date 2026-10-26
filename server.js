@@ -106,7 +106,7 @@ function normalizePhone(p) {
   return d;
 }
 function reminderBody(projectName) {
-  return 'تذكير 📋\nهل قمت برفع وتحديث الإنتاجية اليومية لمشروعك' + (projectName ? '؛ ' + projectName : '') + '؟\n\nمع تحيات الإدارة التقنية لشركة بصير — ذراع شركة عزوم التقني';
+  return 'تذكير 📋\nهل قمت برفع وتحديث الإنتاجية اليومية لمشروعك' + (projectName ? '؛ ' + projectName : '') + '؟\n\nمع تحيات الإدارة التقنية لشركة زمام — ذراع شركة عزوم التقني';
 }
 async function sendWhatsappMessage(cfg, to, body) {
   const num = normalizePhone(to);
@@ -1279,7 +1279,7 @@ app.post('/api/whatsapp/test', auth, async (req, res) => {
   const cfg = loadWhatsapp();
   if (!cfg.instanceId || !cfg.token) return res.status(400).json({ error: 'أكمل إعداد UltraMsg (المعرف والتوكن)' });
   const to = (req.body && req.body.to) || cfg.senderNumber;
-  const r = await sendWhatsappMessage(cfg, to, 'رسالة تجريبية من نظام بصير ✅\n\n' + reminderBody('(تجربة)'));
+  const r = await sendWhatsappMessage(cfg, to, 'رسالة تجريبية من نظام زمام ✅\n\n' + reminderBody('(تجربة)'));
   const fresh = loadWhatsapp();
   fresh.lastStatus = 'اختبار: ' + (r.ok ? 'نجح' : 'فشل — ' + (r.error || ('HTTP ' + r.status))) + ' @ ' + new Date().toISOString();
   saveWhatsapp(fresh);

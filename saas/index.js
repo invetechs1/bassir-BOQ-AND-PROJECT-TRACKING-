@@ -615,6 +615,14 @@ module.exports = function initSaas(ctx) {
   app.get('/landing', page('landing.html'));
   app.get('/billing', page('billing.html'));
   app.get('/owner', page('owner.html'));
+  // الصفحة الرئيسية للموقع أصبحت صفحة التسويق/الاشتراك بدلاً من التطبيق مباشرة؛
+  // التطبيق نفسه متاح الآن على /app (رابط "دخول العملاء" يوجّه إليه)، مع الحفاظ على
+  // رابط الفتح المباشر /?project=<id> (مستخدم من لوحة "كل المشاريع") ليستمر بفتح التطبيق
+  app.get('/', (req, res) => {
+    if (req.query && req.query.project) return res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
+    res.sendFile(path.join(PUBLIC_DIR, 'saas', 'landing.html'));
+  });
+  app.get('/app', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'index.html')));
 
   // المجدوِل: مرور فوترة كل 5 دقائق (تفعيل/تجديد/إيقاف تلقائي)
   setInterval(() => { runBillingPass('مجدول').catch(() => {}); }, 5 * 60 * 1000);

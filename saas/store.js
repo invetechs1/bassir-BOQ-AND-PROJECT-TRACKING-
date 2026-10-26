@@ -22,7 +22,7 @@ module.exports = function createStore(ctx) {
     tiers: { '15': 750, '20': 900 }, // سعة (جيجابايت) → السعر الشهري للمشروع
     graceDays: 3,              // مهلة بعد فشل الدفع قبل الإيقاف
     trialDays: 0,              // أيام تجربة مجانية (0 = لا تجربة، الدفع يفعّل مباشرة)
-    brand: { name: 'نظام بصير لإدارة المشاريع والمستخلصات', supportPhone: '0558338548', supportEmail: '' },
+    brand: { name: 'نظام زمام لإدارة المشاريع والمستخلصات', supportPhone: '0558338548', supportEmail: '' },
     tap: {
       mode: 'sim',             // 'sim' (محاكاة للتجربة) | 'test' | 'live'
       baseUrl: 'https://api.tap.company',

@@ -2,7 +2,7 @@
   "name": "نظام إدارة المستخلصات والإنتاجية",
   "short_name": "المستخلصات",
   "description": "إدارة جداول الكميات والمستخلصات وإنتاجية المواقع",
-  "start_url": "/",
+  "start_url": "/app",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",

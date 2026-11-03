@@ -12,6 +12,18 @@
 .type-material{background:#0e2b55;color:#9dc0ff}
 .type-salary{background:#0c3324;color:#7ff0bb}
 .type-other{background:#1a2740;color:var(--text3)}
+.status-chip{font-size:11.5px;padding:3px 9px;border-radius:999px;font-weight:700;white-space:nowrap}
+.status-pending{background:#1a2740;color:var(--text3)}
+.status-approved{background:#0c3324;color:#7ff0bb}
+.status-partially_approved{background:#3a2a07;color:#ffd27a}
+.status-rejected{background:#3a1414;color:#ff9d9d}
+.approve-choice{display:flex;align-items:center;gap:12px;padding:13px 14px;border:1.5px solid var(--line);border-radius:12px;cursor:pointer;margin-bottom:10px;transition:.15s}
+.approve-choice:hover{border-color:var(--line2)}
+.approve-choice.sel{border-color:var(--brand);background:rgba(0,198,167,.1)}
+.approve-choice input[type="radio"]{width:18px;height:18px;min-width:18px;flex:none;accent-color:var(--brand);cursor:pointer;background:none;border:none;padding:0;border-radius:50%}
+.approve-choice-body{flex:1}
+.approve-choice-title{font-weight:700;font-size:14.5px}
+.approve-choice-sub{font-size:12.5px;color:var(--text3);margin-top:2px}
 .doc-pill{display:inline-flex;align-items:center;gap:5px;background:#0c1830;border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:11.5px;margin-inline-end:5px;margin-bottom:5px}
 .doc-pill .x{cursor:pointer;color:var(--text3)}
 .doc-pill .x:hover{color:#ff9d9d}
@@ -20,7 +32,7 @@
 </head>
 <body>
 <div class="topbar"><div class="wrap">
-  <div class="logo"><span class="mark">ز</span><span data-i18n="مصاريف المشروع">مصاريف المشروع</span></div>
+  <div class="logo"><svg class="mark" viewBox="0 0 100 100" width="36" height="36" aria-hidden="true" focusable="false"><path d="M22 28 H72 L34 72 H66" fill="none" stroke="#00C6A7" stroke-width="11" stroke-linecap="square" stroke-linejoin="miter"/><rect x="60" y="58" width="7" height="18" fill="#3ED6E3"/><rect x="71" y="46" width="7" height="30" fill="#00C6A7"/><rect x="82" y="34" width="7" height="42" fill="#00C6A7"/></svg><span data-i18n="مصاريف المشروع">مصاريف المشروع</span></div>
   <div class="row">
     <button class="btn btn-ghost btn-sm" id="lang-switch" onclick="toggleLang()">🌐 English</button>
     <a class="btn btn-ghost btn-sm" href="/app" data-i18n="→ النظام">→ النظام</a>
@@ -69,7 +81,7 @@
         <div class="field" style="flex:1;min-width:200px"><label for="f-search" data-i18n="بحث">بحث</label><input id="f-search" data-i18n-ph="الوصف أو المورّد…" placeholder="الوصف أو المورّد…" oninput="renderList()"></div>
       </div>
       <div style="overflow:auto"><table>
-        <thead><tr><th data-i18n="التاريخ">التاريخ</th><th data-i18n="النوع">النوع</th><th data-i18n="الوصف">الوصف</th><th class="hs" data-i18n="المورّد">المورّد</th><th data-i18n="المبلغ">المبلغ</th><th class="hs" data-i18n="الضريبة">الضريبة</th><th data-i18n="الإجمالي">الإجمالي</th><th class="hs">ERP</th><th></th></tr></thead>
+        <thead><tr><th data-i18n="التاريخ">التاريخ</th><th data-i18n="النوع">النوع</th><th data-i18n="الوصف">الوصف</th><th class="hs" data-i18n="المورّد">المورّد</th><th data-i18n="المبلغ">المبلغ</th><th class="hs" data-i18n="الضريبة">الضريبة</th><th data-i18n="الإجمالي">الإجمالي</th><th class="hs">ERP</th><th data-i18n="المستندات">المستندات</th><th data-i18n="الحالة">الحالة</th><th></th></tr></thead>
         <tbody id="exp-body"></tbody>
       </table></div>
     </div>
@@ -131,6 +143,39 @@
   </div>
 </div></div>
 
+<!-- عرض مستندات مصروف (عند تعدّد المرفقات) -->
+<div class="overlay" id="docs-view-ov"><div class="modal" style="max-width:460px">
+  <span class="modal-x" onclick="document.getElementById('docs-view-ov').classList.remove('open')">✕</span>
+  <h2 data-i18n="مستندات المصروف">مستندات المصروف</h2>
+  <div id="docs-view-list" style="margin-top:12px"></div>
+</div></div>
+
+<!-- اعتماد مصروف: كامل أو جزئي -->
+<div class="overlay" id="approve-ov"><div class="modal" style="max-width:420px">
+  <span class="modal-x" onclick="document.getElementById('approve-ov').classList.remove('open')">✕</span>
+  <h2 data-i18n="اعتماد المصروف">اعتماد المصروف</h2>
+  <div class="approve-choice sel" id="approve-card-full" onclick="selectApproveMode('full')">
+    <input type="radio" name="approve-mode" id="approve-mode-full" checked onchange="syncApproveCards()">
+    <div class="approve-choice-body">
+      <div class="approve-choice-title" data-i18n="اعتماد كامل المبلغ">اعتماد كامل المبلغ</div>
+      <div class="approve-choice-sub" id="approve-full-amount-label"></div>
+    </div>
+  </div>
+  <div class="approve-choice" id="approve-card-partial" onclick="selectApproveMode('partial')">
+    <input type="radio" name="approve-mode" id="approve-mode-partial" onchange="syncApproveCards()">
+    <div class="approve-choice-body">
+      <div class="approve-choice-title" data-i18n="اعتماد جزئي">اعتماد جزئي</div>
+      <div class="approve-choice-sub" data-i18n="أدخل مبلغاً أقل من قيمة المصروف">أدخل مبلغاً أقل من قيمة المصروف</div>
+    </div>
+  </div>
+  <div class="field" id="approve-partial-field" style="display:none">
+    <label for="approve-amount" data-i18n="المبلغ المعتمد (ر.س)">المبلغ المعتمد (ر.س)</label>
+    <input type="number" id="approve-amount" min="0" step="0.01" oninput="approveAmountChanged()">
+    <div class="help" id="approve-amount-err" style="color:#ff9d9d"></div>
+  </div>
+  <button class="btn btn-primary btn-block" id="approve-go" onclick="confirmApprove()" data-i18n="تأكيد الاعتماد">تأكيد الاعتماد</button>
+</div></div>
+
 <div class="toast" id="toast"><span></span></div>
 
 <script src="/saas/shared.js"></script>
@@ -138,6 +183,7 @@
 var PROJECTS=[], CUR=null, EXP=null, DOCS=[];
 Object.assign(I18N_EN, {
   'مصاريف المشروع':'Project Expenses', '→ النظام':'→ System', 'خروج':'Log out', 'تسجيل الدخول':'Log in',
+  'مصاريف المشروع — نظام زمام':'Project Expenses — ZIMAM',
   'اسم المستخدم':'Username', 'كلمة المرور':'Password', 'دخول':'Log in', 'المشروع':'Project',
   '➕ مصروف جديد':'➕ New expense', '💰 الإيراد المعتمد':'💰 Certified revenue', '💸 إجمالي التكلفة':'💸 Total cost',
   '📈 الربح':'📈 Margin', '🧾 المحصّل فعلياً':'🧾 Actually collected', 'من مستخلصات العميل':'From client claims',
@@ -161,7 +207,17 @@ Object.assign(I18N_EN, {
   'إرفاق فاتورة المورد إلزامي لمصاريف المواد':'Attaching a supplier invoice is mandatory for material expenses',
   'جارٍ…':'Working…', 'حفظ المصروف':'Save expense', 'تعذّر الحفظ':'Could not save', 'تم الحفظ':'Saved', 'تعديل مصروف':'Edit expense',
   'حذف هذا المصروف؟':'Delete this expense?', 'تم الحذف':'Deleted', 'تعذّر':'Failed', 'تمت المزامنة':'Synced', 'فشلت المزامنة':'Sync failed',
-  'مزامنة':'Sync', 'تعديل':'Edit', 'حذف':'Delete', 'لا مصاريف مسجّلة بعد':'No expenses recorded yet', 'بند #':'Item #'
+  'مزامنة':'Sync', 'تعديل':'Edit', 'حذف':'Delete', 'لا مصاريف مسجّلة بعد':'No expenses recorded yet', 'بند #':'Item #',
+  'المستندات':'Documents', 'مستندات المصروف':'Expense documents', 'فتح':'Open',
+  'الحالة':'Status', 'اعتماد':'Approve', 'رفض':'Reject',
+  'اعتماد المصروف':'Approve expense', 'اعتماد كامل المبلغ':'Approve full amount', 'اعتماد جزئي':'Partial approval',
+  'أدخل مبلغاً أقل من قيمة المصروف':'Enter an amount less than the expense value',
+  'المبلغ المعتمد (ر.س)':'Approved amount (SAR)', 'تأكيد الاعتماد':'Confirm approval',
+  'معتمد':'Approved', 'معتمد جزئياً':'Partially approved', 'مرفوض':'Rejected', 'بانتظار الاعتماد':'Awaiting approval',
+  'المعتمد:':'Approved:', 'مبلغ المصروف:':'Expense amount:',
+  'لا يمكن أن يتجاوز المبلغ المعتمد مبلغ المصروف (':'Approved amount cannot exceed the expense amount (',
+  'أدخل مبلغاً أكبر من صفر':'Enter an amount greater than zero',
+  'تم الاعتماد':'Approved', 'سبب الرفض (اختياري):':'Rejection reason (optional):', 'تم الرفض':'Rejected'
 });
 applyDir(); translateStaticDOM();
 window.onLangChange = function(){ if(CUR){ renderBoqPicker(); if(EXP){ renderKpis(); renderList(); } } };
@@ -253,14 +309,98 @@ function renderList(){
   document.getElementById('exp-body').innerHTML = items.map(function(x){
     return '<tr><td>'+fmtDate(x.date)+'</td>'+
       '<td><span class="type-chip type-'+x.type+'">'+typeLabel(x.type)+'</span></td>'+
-      '<td>'+esc(x.description)+(x.docs&&x.docs.length?' <span class="muted" style="font-size:11px">📎'+x.docs.length+'</span>':'')+'</td>'+
+      '<td>'+esc(x.description)+'</td>'+
       '<td class="hs">'+esc(x.supplier||'—')+'</td>'+
       '<td class="amount">'+money(x.amount)+'</td>'+
       '<td class="hs amount">'+money(x.vat)+'</td>'+
       '<td class="amount">'+money(x.total)+'</td>'+
       '<td class="hs">'+(x.erpStatus?'<span class="muted" style="font-size:11px">'+esc(x.erpStatus)+'</span>':(EXP.integrationEnabled&&EXP.canManage?'<button class="btn btn-ghost btn-sm" onclick="syncExpense(\''+x.id+'\')">'+T('مزامنة')+'</button>':'—'))+'</td>'+
-      '<td>'+(EXP.canManage?('<button class="btn btn-ghost btn-sm" onclick="openExpModal(\''+x.id+'\')">'+T('تعديل')+'</button> <button class="btn btn-danger btn-sm" onclick="deleteExpense(\''+x.id+'\')">'+T('حذف')+'</button>'):'')+'</td></tr>';
-  }).join('') || '<tr><td colspan="9"><div class="empty-state"><div class="icon">🧾</div>'+T('لا مصاريف مسجّلة بعد')+'</div></td></tr>';
+      '<td>'+docsCell(x)+'</td>'+
+      '<td>'+statusChip(x)+'</td>'+
+      '<td style="white-space:nowrap">'+
+        (EXP.canApprove?('<button class="btn btn-ghost btn-sm" onclick="openApproveModal(\''+x.id+'\')" title="'+T('اعتماد')+'">✅</button> <button class="btn btn-ghost btn-sm" onclick="rejectExpense(\''+x.id+'\')" title="'+T('رفض')+'">❌</button> '):'')+
+        (EXP.canManage?('<button class="btn btn-ghost btn-sm" onclick="openExpModal(\''+x.id+'\')">'+T('تعديل')+'</button> '):'')+
+        (EXP.canDelete?'<button class="btn btn-danger btn-sm" onclick="deleteExpense(\''+x.id+'\')">'+T('حذف')+'</button>':'')+'</td></tr>';
+  }).join('') || '<tr><td colspan="11"><div class="empty-state"><div class="icon">🧾</div>'+T('لا مصاريف مسجّلة بعد')+'</div></td></tr>';
+}
+function statusChip(x){
+  var st=x.status||'pending';
+  if(st==='approved') return '<span class="status-chip status-approved">✅ '+T('معتمد')+'</span>';
+  if(st==='partially_approved') return '<span class="status-chip status-partially_approved" title="'+T('المعتمد:')+' '+money(x.approvedAmount)+' / '+money(x.amount)+' '+T('ر.س')+'">🟡 '+T('معتمد جزئياً')+' ('+money(x.approvedAmount)+'/'+money(x.amount)+')</span>';
+  if(st==='rejected') return '<span class="status-chip status-rejected"'+(x.rejectReason?' title="'+esc(x.rejectReason)+'"':'')+'>❌ '+T('مرفوض')+'</span>';
+  return '<span class="status-chip status-pending">⏳ '+T('بانتظار الاعتماد')+'</span>';
+}
+function isImageUrl(url){ return /\.(png|jpe?g|webp|gif)$/i.test(String(url||'')); }
+function docsCell(x){
+  var docs=x.docs||[];
+  if(!docs.length) return '<span class="muted" style="font-size:11px">—</span>';
+  if(docs.length===1) return '<button class="btn btn-ghost btn-sm" onclick="window.open(\''+esc(docs[0].url)+'\',\'_blank\')">👁 '+T('عرض')+'</button>';
+  return '<button class="btn btn-ghost btn-sm" onclick="viewDocs(\''+x.id+'\')">👁 '+T('عرض')+' ('+docs.length+')</button>';
+}
+function viewDocs(id){
+  var x=(EXP.items||[]).find(function(i){return i.id===id}); if(!x) return;
+  var docs=x.docs||[];
+  document.getElementById('docs-view-list').innerHTML = docs.map(function(d){
+    return '<div class="doc-pill" style="display:flex;justify-content:space-between;align-items:center;width:100%;box-sizing:border-box">'+
+      '<span>'+(isImageUrl(d.url)?'🖼':'📄')+' '+esc(d.name||T('ملف'))+'</span>'+
+      '<a class="btn btn-ghost btn-sm" href="'+esc(d.url)+'" target="_blank" rel="noopener">'+T('فتح')+'</a>'+
+    '</div>';
+  }).join('') || '<span class="muted" style="font-size:12.5px">'+T('لا مرفقات بعد')+'</span>';
+  document.getElementById('docs-view-ov').classList.add('open');
+}
+
+// ---------- اعتماد/رفض المصروف (كامل أو جزئي) ----------
+var APPROVE_EXP_ID=null;
+function openApproveModal(id){
+  var x=(EXP.items||[]).find(function(i){return i.id===id}); if(!x) return;
+  APPROVE_EXP_ID=id;
+  document.getElementById('approve-full-amount-label').textContent = money(x.amount)+' '+T('ر.س');
+  document.getElementById('approve-mode-full').checked=true;
+  document.getElementById('approve-amount').value=x.amount;
+  document.getElementById('approve-amount').max=x.amount;
+  document.getElementById('approve-amount-err').textContent='';
+  syncApproveCards();
+  document.getElementById('approve-ov').classList.add('open');
+}
+function selectApproveMode(mode){
+  document.getElementById('approve-mode-'+mode).checked=true;
+  syncApproveCards();
+}
+function syncApproveCards(){
+  var partial=document.getElementById('approve-mode-partial').checked;
+  document.getElementById('approve-card-full').classList.toggle('sel', !partial);
+  document.getElementById('approve-card-partial').classList.toggle('sel', partial);
+  document.getElementById('approve-partial-field').style.display = partial?'':'none';
+  document.getElementById('approve-amount-err').textContent='';
+  if(partial) document.getElementById('approve-amount').focus();
+}
+function approveAmountChanged(){
+  var x=(EXP.items||[]).find(function(i){return i.id===APPROVE_EXP_ID}); if(!x) return;
+  var v=Number(document.getElementById('approve-amount').value);
+  var err=document.getElementById('approve-amount-err');
+  err.textContent = (v>x.amount) ? (T('لا يمكن أن يتجاوز المبلغ المعتمد مبلغ المصروف (')+money(x.amount)+')') : (v<=0 ? T('أدخل مبلغاً أكبر من صفر') : '');
+}
+function confirmApprove(){
+  var x=(EXP.items||[]).find(function(i){return i.id===APPROVE_EXP_ID}); if(!x) return;
+  var partial=document.getElementById('approve-mode-partial').checked;
+  var amount = partial ? Number(document.getElementById('approve-amount').value) : x.amount;
+  if(!(amount>0)){ document.getElementById('approve-amount-err').textContent=T('أدخل مبلغاً أكبر من صفر'); return; }
+  if(amount>x.amount+0.01){ document.getElementById('approve-amount-err').textContent=T('لا يمكن أن يتجاوز المبلغ المعتمد مبلغ المصروف (')+money(x.amount)+')'; return; }
+  var btn=document.getElementById('approve-go'); btn.disabled=true;
+  api('POST','/api/projects/'+CUR.id+'/expenses/'+x.id+'/approve',{amount:amount}).then(function(r){
+    btn.disabled=false;
+    if(!r.ok){ toast((r.d&&r.d.error)||T('تعذّر')); return; }
+    document.getElementById('approve-ov').classList.remove('open');
+    toast('✅ '+T('تم الاعتماد')); loadExpenses();
+  });
+}
+function rejectExpense(id){
+  var reason=prompt(T('سبب الرفض (اختياري):'));
+  if(reason===null) return;
+  api('POST','/api/projects/'+CUR.id+'/expenses/'+id+'/reject',{reason:reason}).then(function(r){
+    if(!r.ok){ toast((r.d&&r.d.error)||T('تعذّر')); return; }
+    toast(T('تم الرفض')); loadExpenses();
+  });
 }
 
 function openExpModal(id){

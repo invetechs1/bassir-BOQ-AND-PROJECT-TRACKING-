@@ -3,16 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#161b22">
+<meta name="theme-color" content="#071F33">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/icon-192.png">
 <link rel="apple-touch-icon" href="/icon-192.png">
-<title>نظام إدارة المستخلصات والإنتاجية</title>
+<title>ZIMAM — نظام إدارة المستخلصات والإنتاجية</title>
 <!-- تحميل الخطوط بدون حجب تنفيذ الصفحة (يعمل النظام حتى بدون إنترنت خارجي) -->
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" media="print" onload="this.media='all'">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" media="print" onload="this.media='all'">
 <style>
 
   :root {
@@ -26,7 +26,7 @@
     --purple: #bc8cff; --purple-dim: #2d1e4a;
     --orange: #f0883e; --orange-dim: #3d2010;
     --teal: #39d0d8; --teal-dim: #0e2e30;
-    --font: 'IBM Plex Sans Arabic', sans-serif;
+    --font: 'Cairo', sans-serif;
     --mono: 'JetBrains Mono', monospace;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -34,7 +34,8 @@
 
   .top-header { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 10px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; flex-wrap: wrap; gap: 8px; }
   .logo-area { display: flex; align-items: center; gap: 12px; }
-  .logo-icon { width: 36px; height: 36px; background: linear-gradient(135deg, var(--amber), var(--orange)); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; color: #000; }
+  .logo-icon { width: 36px; height: 36px; background: #071F33; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+  .logo-icon svg { display: block; }
   .logo-text h1 { font-size: 15px; font-weight: 600; }
   .logo-text p { font-size: 11px; color: var(--text2); margin-top: 1px; }
   .header-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
@@ -222,7 +223,7 @@
   /* LOGIN */
   #login-overlay { display: none; position: fixed; inset: 0; background: var(--bg); z-index: 5000; align-items: center; justify-content: center; padding: 20px; }
   .login-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 32px; width: 100%; max-width: 380px; }
-  .login-logo { width: 56px; height: 56px; margin: 0 auto 14px; background: linear-gradient(135deg, var(--amber), var(--orange)); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 700; color: #000; }
+  .login-logo { width: 56px; height: 56px; margin: 0 auto 14px; background: #071F33; border-radius: 14px; display: flex; align-items: center; justify-content: center; }
   .login-err { color: var(--red); font-size: 12px; min-height: 18px; margin-top: 8px; text-align: center; }
   #app-loading { position: fixed; inset: 0; background: var(--bg); z-index: 4000; display: flex; align-items: center; justify-content: center; color: var(--text2); font-size: 14px; }
   #offline-banner { display: none; background: var(--amber-dim); border-bottom: 1px solid var(--amber); color: var(--amber); padding: 8px 20px; font-size: 12px; text-align: center; }
@@ -310,8 +311,8 @@
 <div id="app-loading" data-i18n="⏳ جاري تحميل النظام...">⏳ جاري تحميل النظام...</div>
 <div id="login-overlay">
   <div class="login-box">
-    <div class="login-logo">ع</div>
-    <div style="text-align:center;font-size:16px;font-weight:700;margin-bottom:4px" data-i18n="نظام إدارة المستخلصات والإنتاجية">نظام إدارة المستخلصات والإنتاجية</div>
+    <div class="login-logo"><svg width="30" height="30" viewBox="0 0 100 100" aria-hidden="true" focusable="false"><path d="M22 28 H72 L34 72 H66" fill="none" stroke="#00C6A7" stroke-width="12" stroke-linecap="square" stroke-linejoin="miter"/><rect x="60" y="58" width="8" height="18" fill="#3ED6E3"/><rect x="71" y="46" width="8" height="30" fill="#00C6A7"/><rect x="82" y="34" width="8" height="42" fill="#00C6A7"/></svg></div>
+    <div style="text-align:center;font-size:16px;font-weight:700;margin-bottom:4px" data-i18n="ZIMAM — نظام إدارة المستخلصات والإنتاجية">ZIMAM — نظام إدارة المستخلصات والإنتاجية</div>
     <div style="text-align:center;font-size:12px;color:var(--text2);margin-bottom:20px" data-i18n="سجّل دخولك للمتابعة">سجّل دخولك للمتابعة</div>
     <div class="f-field" style="margin-bottom:12px"><label data-i18n="اسم المستخدم">اسم المستخدم</label><input type="text" id="login-user" autocomplete="username" onkeydown="if(event.key==='Enter')document.getElementById('login-pass').focus()"></div>
     <div class="f-field" style="margin-bottom:12px"><label data-i18n="كلمة المرور">كلمة المرور</label><input type="password" id="login-pass" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
@@ -325,9 +326,9 @@
 <!-- ===================== HEADER ===================== -->
 <div class="top-header">
   <div class="logo-area">
-    <div class="logo-icon">ع</div>
+    <div class="logo-icon"><svg width="22" height="22" viewBox="0 0 100 100" aria-hidden="true" focusable="false"><path d="M22 28 H72 L34 72 H66" fill="none" stroke="#00C6A7" stroke-width="12" stroke-linecap="square" stroke-linejoin="miter"/><rect x="60" y="58" width="8" height="18" fill="#3ED6E3"/><rect x="71" y="46" width="8" height="30" fill="#00C6A7"/><rect x="82" y="34" width="8" height="42" fill="#00C6A7"/></svg></div>
     <div class="logo-text">
-      <h1 id="hd-title" data-i18n="نظام إدارة المستخلصات والإنتاجية">نظام إدارة المستخلصات والإنتاجية</h1>
+      <h1 id="hd-title" data-i18n="ZIMAM — نظام إدارة المستخلصات والإنتاجية">ZIMAM — نظام إدارة المستخلصات والإنتاجية</h1>
       <p id="hd-sub"></p>
     </div>
   </div>
@@ -598,7 +599,17 @@
         <div class="section-header">
           <div id="edit-requests-box"></div>
           <div class="section-title"><span class="dot" style="background:var(--blue)"></span> <span data-i18n="سجل اليوميات">سجل اليوميات</span></div>
-          <button class="mini-btn" onclick="exportLogsCSV()">⬇ Excel</button>
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+            <select id="wl-filter-period" onchange="wlFilterPeriodChanged()" style="padding:5px 8px;border-radius:6px;background:var(--bg3);border:1px solid var(--border);color:var(--text);font-size:12px">
+              <option value="all" data-i18n="كل الفترات">كل الفترات</option>
+              <option value="week" data-i18n="أسبوعي">أسبوعي</option>
+              <option value="month" data-i18n="شهري">شهري</option>
+            </select>
+            <input type="date" id="wl-filter-week" style="display:none" onchange="renderProd()" data-tip="اختر أي يوم ضمن الأسبوع المطلوب" data-i18n-tip="اختر أي يوم ضمن الأسبوع المطلوب">
+            <input type="month" id="wl-filter-month" style="display:none" onchange="renderProd()">
+            <button class="mini-btn" onclick="printProdReport()">🖨 <span data-i18n="طباعة">طباعة</span></button>
+            <button class="mini-btn" onclick="exportLogsCSV()">⬇ Excel</button>
+          </div>
         </div>
         <div class="table-wrap">
           <table>
@@ -686,7 +697,7 @@
       <div id="submus-kpis" class="kpi-grid" style="margin-bottom:14px"></div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th data-i18n="المستخلص">المستخلص</th><th data-i18n="مقاول الباطن">مقاول الباطن</th><th data-i18n="التاريخ">التاريخ</th><th data-i18n="بنود">بنود</th><th data-i18n="الإجمالي">الإجمالي</th><th data-i18n="محتجز+خصومات">محتجز+خصومات</th><th data-i18n="الصافي">الصافي</th><th data-i18n="المدفوع">المدفوع</th><th data-i18n="الحالة">الحالة</th><th data-i18n="إجراء">إجراء</th></tr></thead>
+          <thead><tr><th data-i18n="المستخلص">المستخلص</th><th data-i18n="مقاول الباطن">مقاول الباطن</th><th data-i18n="التاريخ">التاريخ</th><th data-i18n="بنود">بنود</th><th data-i18n="الإجمالي">الإجمالي</th><th data-i18n="محتجز+خصومات">محتجز+خصومات</th><th data-i18n="الصافي">الصافي</th><th data-i18n="سبق صرفه">سبق صرفه</th><th data-i18n="المدفوع">المدفوع</th><th data-i18n="الحالة">الحالة</th><th data-i18n="إجراء">إجراء</th></tr></thead>
           <tbody id="submus-tbody"></tbody>
         </table>
       </div>
@@ -1091,7 +1102,7 @@
       يرسل النظام تلقائياً رسالة واتساب لكل <strong>مدير مشروع</strong> (حسب رقمه في شاشة المستخدمين) في الوقت المحدد يومياً:
       <div style="margin-top:6px;padding:8px;background:var(--bg2);border-radius:6px;white-space:pre-line">هل قمت برفع وتحديث الإنتاجية اليومية لمشروعك؟
 
-مع تحيات الإدارة التقنية لشركة زمام — ذراع شركة عزوم التقني</div>
+مع تحيات فريق نظام زمام — مُقدَّم من شركة بصير التقنية</div>
     </div>
     <label class="switch-row" style="display:flex;align-items:center;gap:8px;margin:6px 0 12px;cursor:pointer">
       <input type="checkbox" id="wa-enabled" style="width:18px;height:18px">
@@ -1799,7 +1810,7 @@ const DUMMY_PROJECT = {id:0, managerUserId:null, seq:1000,
   info:{name:'لا يوجد مشروع', client:'', consultant:'', contractor:'', totalVillas:0, vatRate:15, retentionRate:0, advanceRate:0, projectType:'other', unitLabel:'وحدة', unitsTitle:'الوحدات'},
   boqItems:[], villas:[], villaProgress:{}, mustakhlasat:[], workLogs:[], blockerLog:[]};
 Object.assign(I18N_EN, {
-  'نظام إدارة المستخلصات والإنتاجية':'Claims & Productivity Management System',
+  'ZIMAM — نظام إدارة المستخلصات والإنتاجية':'ZIMAM — Claims & Productivity Management System',
   '⏳ جاري تحميل النظام...':'⏳ Loading system...',
   'سجّل دخولك للمتابعة':'Sign in to continue',
   'اسم المستخدم':'Username',
@@ -4966,14 +4977,15 @@ function exportItemsCSV(){
 }
 
 function exportLogsCSV(){
+  const { logs, range } = wlFilteredLogs();
   const rows = [['التاريخ','الفرقة','مقاول الباطن','البند','الوصف','الوحدة/الموقع','الكمية','الوحدة','عدد العمال','الإنتاجية/عامل','سجلها','ملاحظات'].map(T)];
-  [...proj().workLogs].sort((a,b) => a.date.localeCompare(b.date)).forEach(l => {
+  [...logs].sort((a,b) => a.date.localeCompare(b.date)).forEach(l => {
     const it = getItem(l.itemId);
     const sub = l.subId && getSub(l.subId) ? getSub(l.subId).name : '';
     rows.push([l.date, l.crew || '', sub, l.itemId, it ? it.desc : '', l.villaNo || '', l.qty, it ? it.unit : '',
       l.workers || '', l.workers > 0 ? (l.qty/l.workers).toFixed(1) : '', l.by || '', l.note || '']);
   });
-  dlCSV('WorkLogs-' + todayStr() + '.csv', rows);
+  dlCSV('WorkLogs-' + (range ? range.start + '_' + range.end : todayStr()) + '.csv', rows);
 }
 
 function exportDocCSV(){
@@ -5248,6 +5260,85 @@ function crewLabel(l){
   return esc(l.crew || '—');
 }
 
+// ---- فلترة سجل اليوميات: أسبوعي/شهري + طباعة التقرير ----
+// أسبوع = السبت..الخميس يدوياً عبر أي تاريخ داخله (لا نعتمد <input type="week"> لضعف دعمه في بعض المتصفحات)
+function weekRangeFromDate(dateStr){
+  const d = new Date(dateStr + 'T00:00:00');
+  const dow = (d.getDay() + 6) % 7; // الاثنين=0 .. الأحد=6
+  const start = new Date(d); start.setDate(d.getDate() - dow);
+  const end = new Date(start); end.setDate(start.getDate() + 6);
+  const toStr = x => x.toISOString().slice(0,10);
+  return { start: toStr(start), end: toStr(end) };
+}
+function monthRangeFromValue(value){
+  const [y,m] = value.split('-').map(Number);
+  const start = y + '-' + String(m).padStart(2,'0') + '-01';
+  const last = new Date(y, m, 0);
+  const end = last.getFullYear() + '-' + String(last.getMonth()+1).padStart(2,'0') + '-' + String(last.getDate()).padStart(2,'0');
+  return { start, end };
+}
+function wlFilterPeriodChanged(){
+  const v = $('wl-filter-period').value;
+  $('wl-filter-week').style.display = v === 'week' ? '' : 'none';
+  $('wl-filter-month').style.display = v === 'month' ? '' : 'none';
+  if (v === 'week' && !$('wl-filter-week').value) $('wl-filter-week').value = todayStr();
+  if (v === 'month' && !$('wl-filter-month').value) $('wl-filter-month').value = todayStr().slice(0,7);
+  renderProd();
+}
+// يُرجع {logs, range, label} — range=null يعني بلا فلترة (كل الفترات)
+function wlFilteredLogs(){
+  const period = $('wl-filter-period') ? $('wl-filter-period').value : 'all';
+  const all = [...proj().workLogs].sort((a,b) => b.date.localeCompare(a.date) || b.id - a.id);
+  if (period === 'week' && $('wl-filter-week').value) {
+    const r = weekRangeFromDate($('wl-filter-week').value);
+    return { logs: all.filter(l => l.date >= r.start && l.date <= r.end), range: r, label: T('الأسبوع') + ' ' + r.start + ' → ' + r.end };
+  }
+  if (period === 'month' && $('wl-filter-month').value) {
+    const r = monthRangeFromValue($('wl-filter-month').value);
+    return { logs: all.filter(l => l.date >= r.start && l.date <= r.end), range: r, label: T('الشهر') + ' ' + $('wl-filter-month').value };
+  }
+  return { logs: all, range: null, label: T('كل الفترات') };
+}
+function printProdReport(){
+  const { logs, label } = wlFilteredLogs();
+  const totQty = round2(logs.reduce((s,l) => s + (Number(l.qty)||0), 0));
+  const crews = new Set(logs.map(l => l.crew).filter(Boolean));
+  const rows = logs.slice().sort((a,b) => a.date.localeCompare(b.date) || a.id - b.id).map(l => {
+    const it = getItem(l.itemId);
+    const perWorker = l.workers > 0 ? l.qty / l.workers : 0;
+    return '<tr><td style="padding:5px;border:1px solid var(--border);font-family:var(--mono);font-size:11px">' + esc(l.date) + '</td>' +
+      '<td style="padding:5px;border:1px solid var(--border);font-size:11px">' + esc(crewLabel(l)) + '</td>' +
+      '<td style="padding:5px;border:1px solid var(--border);font-size:11px"><span class="item-no">' + esc(l.itemId) + '</span> ' + esc(it?it.desc.substring(0,30):'') + '</td>' +
+      '<td style="padding:5px;border:1px solid var(--border);font-size:11px">' + (l.villaNo?'#'+esc(l.villaNo):'—') + '</td>' +
+      '<td style="padding:5px;border:1px solid var(--border);font-size:11px">' + (l.subId && getSub(l.subId) ? esc(getSub(l.subId).name) : T('تنفيذ ذاتي')) + '</td>' +
+      '<td style="padding:5px;border:1px solid var(--border);text-align:center;font-family:var(--mono)">' + fmtQ(l.qty) + ' ' + esc(it?it.unit:'') + '</td>' +
+      '<td style="padding:5px;border:1px solid var(--border);text-align:center;font-family:var(--mono)">' + (l.workers||'—') + '</td>' +
+      '<td style="padding:5px;border:1px solid var(--border);text-align:center;font-family:var(--mono)">' + fmtQ(perWorker) + '</td></tr>';
+  }).join('') || '<tr><td colspan="8" style="padding:12px;text-align:center;color:var(--text3)">' + T('لا توجد يوميات في هذه الفترة') + '</td></tr>';
+  const html = '<div style="font-family:var(--font)">' +
+    '<div style="text-align:center;padding:14px 0;border-bottom:2px solid var(--blue);margin-bottom:14px">' +
+      '<div style="font-size:11px;color:var(--text2);letter-spacing:2px">' + esc(proj().info.contractor||'') + '</div>' +
+      '<div style="font-size:18px;font-weight:700;color:var(--blue);margin:4px 0">' + T('تقرير الإنتاجية') + '</div>' +
+      '<div style="font-size:13px;color:var(--text2)">' + esc(proj().info.name||'') + ' — ' + esc(label) + '</div></div>' +
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;font-size:12px">' +
+      '<div><span style="color:var(--text2)">' + T('عدد اليوميات:') + '</span> <strong>' + logs.length + '</strong></div>' +
+      '<div><span style="color:var(--text2)">' + T('إجمالي الكمية المنفذة:') + '</span> <strong>' + fmtQ(totQty) + '</strong></div>' +
+      '<div><span style="color:var(--text2)">' + T('عدد الفرق:') + '</span> <strong>' + crews.size + '</strong></div></div>' +
+    '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px">' +
+    '<thead><tr style="background:var(--bg3)">' + [T('التاريخ'),T('الفرقة'),T('البند'),T('الوحدة'),T('مقاول الباطن'),T('الكمية'),T('عمال'),T('الإنتاجية/عامل')]
+      .map(h=>'<th style="padding:6px;border:1px solid var(--border);color:var(--blue);text-align:center">' + h + '</th>').join('') +
+    '</tr></thead><tbody>' + rows + '</tbody></table></div></div>';
+  showPrintable(T('تقرير الإنتاجية') + ' — ' + label, html);
+}
+Object.assign(I18N_EN, {
+  'كل الفترات':'All periods', 'أسبوعي':'Weekly', 'شهري':'Monthly', 'طباعة':'Print',
+  'اختر أي يوم ضمن الأسبوع المطلوب':'Pick any day within the week you want',
+  'الأسبوع':'Week', 'الشهر':'Month',
+  'تقرير الإنتاجية':'Productivity report',
+  'عدد اليوميات:':'Number of logs:', 'إجمالي الكمية المنفذة:':'Total quantity executed:', 'عدد الفرق:':'Number of crews:',
+  'لا توجد يوميات في هذه الفترة':'No logs in this period'
+});
+
 function renderProd(){
   renderEditRequests();
   if (!$('wl-date').value) $('wl-date').value = todayStr();
@@ -5264,8 +5355,9 @@ function renderProd(){
   $('le-sub').innerHTML = subOptsHtml;
   if (leSubCur) $('le-sub').value = leSubCur;
 
-  const logs = [...proj().workLogs].sort((a,b) => b.date.localeCompare(a.date) || b.id - a.id);
-  $('wl-tbody').innerHTML = logs.slice(0, 60).map(l => {
+  const wlFiltered = wlFilteredLogs();
+  const logs = wlFiltered.logs;
+  $('wl-tbody').innerHTML = (wlFiltered.range ? logs : logs.slice(0, 60)).map(l => {
     const it = getItem(l.itemId);
     const perWorker = l.workers > 0 ? l.qty / l.workers : 0;
     const splitKids = it ? childrenOf(it.id).filter(k => k.splitAt) : [];
@@ -6159,11 +6251,12 @@ function renderSubMusTable(){
       '<td class="amount">' + fmtN(m.gross) + '</td>' +
       '<td class="amount muted">' + fmtN(round2((m.retention||0)+(m.dedTotal||0))) + '</td>' +
       '<td class="amount claimable">' + fmtN(m.net) + '</td>' +
+      '<td class="amount muted">' + (m.prevPaid?fmtN(m.prevPaid):'—') + '</td>' +
       '<td class="amount" style="color:' + (paid>=m.net-1?'var(--green-bright)':paid>0?'var(--amber)':'var(--text3)') + '">' + (paid>0?fmtN(paid):'—') + '</td>' +
       '<td><span class="pill ' + st.color + '"' + (m.status==='rejected'&&m.rejectReason?' data-tip="'+esc(m.rejectReason)+'"':'') + '>' + T(st.label) + '</span></td>' +
       '<td style="white-space:nowrap">' + btns + (canDel?'<button class="mini-btn red" onclick="deleteSubMus(' + m.id + ')">🗑</button>':'') + '</td>' +
       '</tr>';
-  }).join('') || '<tr><td colspan="10"><div class="empty-state"><p>' + T('لا توجد مستخلصات مقاولي باطن بعد') + '</p></div></td></tr>';
+  }).join('') || '<tr><td colspan="11"><div class="empty-state"><p>' + T('لا توجد مستخلصات مقاولي باطن بعد') + '</p></div></td></tr>';
 }
 
 // ---- إضافة/تعديل مقاول باطن ----
@@ -6543,7 +6636,8 @@ function renderSubMusTotals(){
     (c.ded.backCharges?'<div class="sc-item"><span class="sc-item-name">− ' + T('تكاليف نيابة عنه') + '</span><span class="sc-item-val" style="color:var(--red)">' + money(c.ded.backCharges) + '</span></div>':'') +
     (c.ded.other?'<div class="sc-item"><span class="sc-item-name">− ' + T('خصومات أخرى') + '</span><span class="sc-item-val" style="color:var(--red)">' + money(c.ded.other) + '</span></div>':'') +
     (c.prevPaid?'<div class="sc-item"><span class="sc-item-name" style="font-size:11px;color:var(--text3)">(' + T('سبق صرفه لهذا المقاول تراكمياً:') + ' ' + money(c.prevPaid) + ')</span><span></span></div>':'') +
-    '<div class="sc-item"><span class="sc-item-name" style="font-weight:700">' + T('صافي مستحق هذا المستخلص') + '</span><span class="sc-item-val" style="color:var(--green-bright);font-size:15px;font-weight:700">' + money(c.net) + '</span></div>';
+    '<div class="sc-item"><span class="sc-item-name" style="font-weight:700">' + T('صافي مستحق هذا المستخلص') + '</span><span class="sc-item-val" style="color:var(--green-bright);font-size:15px;font-weight:700">' + money(c.net) + '</span></div>' +
+    (c.prevPaid?'<div class="sc-item"><span class="sc-item-name" style="font-weight:700">' + T('مستحق الآن (بعد خصم ما سبق صرفه)') + '</span><span class="sc-item-val" style="color:' + (round2(c.net-c.prevPaid)<0?'var(--red)':'var(--green-bright)') + ';font-size:15px;font-weight:700">' + money(round2(c.net-c.prevPaid)) + '</span></div>':'');
 }
 async function sdFilesPicked(input){
   const files = [...(input.files||[])].slice(0, 15 - sdPendingFiles.length);
@@ -6683,7 +6777,7 @@ function subMusDocHtml(m){
       '<table style="width:100%;border-collapse:collapse;font-size:12px">' +
       sumRow(T('معتمد تراكمياً (شامل الضريبة)'), m.cumulativeCertified, 'var(--text)') +
       sumRow(T('سبق صرفه'), m.prevPaid||0, 'var(--text)') +
-      sumRow(T('مستحق الآن'), m.net, 'var(--green-bright)') +
+      sumRow(T('مستحق الآن (بعد خصم ما سبق صرفه)'), round2(m.net - (m.prevPaid||0)), (round2(m.net - (m.prevPaid||0)) < 0 ? 'var(--red)' : 'var(--green-bright)')) +
       sumRow(T('محتجز الضمان الممسوك'), m.retentionCumulative||0, 'var(--text)') +
       sumRow(T('رصيد الدفعة المقدمة المتبقي'), m.advanceRemaining||0, 'var(--text)') +
       '</table>' : '') +
@@ -6767,6 +6861,8 @@ Object.assign(I18N_EN, {
   'المقاول:':'Subcontractor:',
   'أعدّه:':'Prepared by:',
   'سبق صرفه تراكمياً':'Previously disbursed (cumulative)',
+  'سبق صرفه':'Previously paid',
+  'مستحق الآن (بعد خصم ما سبق صرفه)':'Due now (after deducting previous payments)',
   'اعتماد مستخلصات مقاولي الباطن صلاحية العميل ومدير المشاريع':'Approving subcontractor claims is restricted to the client and projects manager',
   'اعتماد مستخلص ':'Approve claim ',
   ' بصافي ':' with net ',

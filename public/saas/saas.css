@@ -1,15 +1,17 @@
-/* نظام زمام — طبقة البيع والاشتراكات + المصاريف: نظام تصميم مشترك (RTL) */
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700;800&display=swap');
+/* ZIMAM — طبقة البيع والاشتراكات + المصاريف: نظام تصميم مشترك (RTL)، حسب دليل الهوية البصرية الرسمي v2.0 */
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap');
 :root{
-  --bg:#0b1220; --bg2:#0f1a2e; --surface:#121f38; --surface2:#17264380; --card:#152442;
-  --line:#243a5e; --line2:#2d476e;
-  --text:#eaf1ff; --text2:#b4c4e0; --text3:#7f93b5;
-  --brand:#2bb3c0; --brand2:#1d8f9c; --accent:#5b8cff; --accent2:#3b6fe0;
+  /* لوحة الألوان الرسمية: Deep Navy / Zimam Teal / Accent Cyan / Mist / Slate */
+  --bg:#071F33; --bg2:#0A2A45; --surface:#0F3350; --surface2:#15405f80; --card:#123247;
+  --line:#1D4A6B; --line2:#235676;
+  --text:#F3F7FA; --text2:#C3D3E0; --text3:#52687A;
+  --brand:#00C6A7; --brand2:#00A68C; --accent:#3ED6E3; --accent2:#2BBAC7;
+  --mist:#F3F7FA; --slate:#52687A;
   --green:#22c55e; --greenbg:#0c3324; --amber:#f59e0b; --amberbg:#3a2a07; --red:#ef4444; --redbg:#3a1414;
   --gold:#e3b23c;
   --radius:16px; --radius-s:11px; --shadow:0 18px 50px rgba(0,0,0,.45);
-  /* نفس خط التطبيق الرئيسي (IBM Plex Sans Arabic) لاتساق بصري كامل بين النظام ولوحات الاشتراك/المصاريف */
-  --font:"IBM Plex Sans Arabic","Segoe UI",system-ui,-apple-system,"Tahoma",sans-serif;
+  /* خط الهوية الرسمي للعربية (دليل العلامة: Cairo) */
+  --font:"Cairo","Segoe UI",system-ui,-apple-system,"Tahoma",sans-serif;
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
@@ -30,7 +32,10 @@ h1,h2,h3{line-height:1.25;margin:0 0 10px}
 .topbar{position:sticky;top:0;z-index:30;background:#0b1220cc;backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
 .topbar .wrap{display:flex;align-items:center;justify-content:space-between;height:66px}
 .logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:19px}
-.logo .mark{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--brand),var(--accent));display:grid;place-items:center;font-size:19px}
+.logo .mark{width:36px;height:36px;border-radius:10px;background:#071F33;display:grid;place-items:center;flex-shrink:0}
+.logo .mark svg{display:block}
+.logo .lockup{display:flex;flex-direction:column;line-height:1.25}
+.logo .lockup .tag{font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--text3);text-transform:uppercase}
 
 /* أزرار */
 .btn{display:inline-flex;align-items:center;gap:8px;justify-content:center;border:0;cursor:pointer;font-family:var(--font);

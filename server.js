@@ -106,7 +106,7 @@ function normalizePhone(p) {
   return d;
 }
 function reminderBody(projectName) {
-  return 'تذكير 📋\nهل قمت برفع وتحديث الإنتاجية اليومية لمشروعك' + (projectName ? '؛ ' + projectName : '') + '؟\n\nمع تحيات الإدارة التقنية لشركة زمام — ذراع شركة عزوم التقني';
+  return 'تذكير 📋\nهل قمت برفع وتحديث الإنتاجية اليومية لمشروعك' + (projectName ? '؛ ' + projectName : '') + '؟\n\nمع تحيات فريق نظام زمام — مُقدَّم من شركة بصير التقنية';
 }
 async function sendWhatsappMessage(cfg, to, body) {
   const num = normalizePhone(to);
@@ -1327,6 +1327,6 @@ app.get('*', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log('نظام إدارة المستخلصات يعمل على المنفذ ' + PORT);
+  console.log('ZIMAM — نظام إدارة المستخلصات يعمل على المنفذ ' + PORT);
   console.log('مجلد البيانات: ' + DATA_DIR + ' (خذ منه نسخاً احتياطية دورية)');
 });

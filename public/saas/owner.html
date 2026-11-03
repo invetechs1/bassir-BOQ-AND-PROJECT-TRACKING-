@@ -16,7 +16,7 @@
 </head>
 <body>
 <div class="topbar"><div class="wrap">
-  <div class="logo"><span class="mark">ز</span><span data-i18n="لوحة المالك">لوحة المالك</span></div>
+  <div class="logo"><svg class="mark" viewBox="0 0 100 100" width="36" height="36" aria-hidden="true" focusable="false"><path d="M22 28 H72 L34 72 H66" fill="none" stroke="#00C6A7" stroke-width="11" stroke-linecap="square" stroke-linejoin="miter"/><rect x="60" y="58" width="7" height="18" fill="#3ED6E3"/><rect x="71" y="46" width="7" height="30" fill="#00C6A7"/><rect x="82" y="34" width="7" height="42" fill="#00C6A7"/></svg><span data-i18n="لوحة المالك">لوحة المالك</span></div>
   <div class="row"><span id="mode-chip" class="mode-chip mode-sim" style="align-self:center">—</span>
     <button class="btn btn-ghost btn-sm" id="lang-switch" onclick="toggleLang()">🌐 English</button>
     <a class="btn btn-ghost btn-sm" href="/app" data-i18n="→ النظام">→ النظام</a>
@@ -152,6 +152,7 @@
 var CFG=null, ALL_PROJECTS=[], LAST_DASH=null;
 Object.assign(I18N_EN, {
   'لوحة المالك':'Owner Dashboard', '→ النظام':'→ System', 'خروج':'Log out', 'دخول مالك المنصّة':'Platform owner login',
+  'لوحة المالك — نظام زمام':'Owner Dashboard — ZIMAM',
   'اسم المستخدم':'Username', 'كلمة المرور':'Password', 'دخول':'Log in',
   '📊 اللوحة':'📊 Dashboard', '🏢 المستأجرون':'🏢 Tenants', '📁 كل المشاريع':'📁 All Projects', '⚙️ الإعدادات':'⚙️ Settings',
   '💰 الإيراد الشهري المتكرر (MRR)':'💰 Monthly Recurring Revenue (MRR)', '📆 إيراد هذا الشهر':'📆 Revenue this month',

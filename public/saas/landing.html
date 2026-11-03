@@ -8,8 +8,9 @@
 <link rel="stylesheet" href="/saas/saas.css">
 <style>
 .hero{padding:70px 0 40px;text-align:center}
-.hero h1{font-size:44px;font-weight:800;letter-spacing:-1px;background:linear-gradient(120deg,#eaf1ff,#9dc0ff 60%,#2bb3c0);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero h1{font-size:44px;font-weight:800;letter-spacing:-1px;background:linear-gradient(120deg,#F3F7FA,#8fe0d8 60%,#00C6A7);-webkit-background-clip:text;background-clip:text;color:transparent}
 .hero p.sub{font-size:19px;color:var(--text2);max-width:680px;margin:14px auto 26px}
+.position-tag{color:var(--brand);font-weight:700;font-size:13px;letter-spacing:.04em;margin-bottom:10px}
 .hero .cta{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
 .pill{display:inline-flex;gap:8px;align-items:center;background:#0e2b4e55;border:1px solid #245089;color:#bcd6ff;padding:6px 14px;border-radius:999px;font-size:13px;margin-bottom:22px}
 .feat-grid{margin:30px 0}
@@ -55,7 +56,13 @@ footer{border-top:1px solid var(--line);padding:26px 0;color:var(--text3);font-s
 </head>
 <body>
 <div class="topbar"><div class="wrap">
-  <div class="logo"><span class="mark">ز</span><span data-i18n="نظام زمام">نظام زمام</span></div>
+  <div class="logo">
+    <svg class="mark" viewBox="0 0 100 100" width="36" height="36" aria-hidden="true" focusable="false"><path d="M22 28 H72 L34 72 H66" fill="none" stroke="#00C6A7" stroke-width="11" stroke-linecap="square" stroke-linejoin="miter"/><rect x="60" y="58" width="7" height="18" fill="#3ED6E3"/><rect x="71" y="46" width="7" height="30" fill="#00C6A7"/><rect x="82" y="34" width="7" height="42" fill="#00C6A7"/></svg>
+    <div class="lockup">
+      <span style="font-weight:800;font-size:19px">ZIMAM</span>
+      <span class="tag" data-i18n="إدارة المشاريع والمستخلصات">إدارة المشاريع والمستخلصات</span>
+    </div>
+  </div>
   <div class="row">
     <button class="btn btn-ghost btn-sm" id="lang-switch" onclick="toggleLang()">🌐 English</button>
     <a class="btn btn-ghost btn-sm hide" id="admin-btn" href="/owner" data-i18n="🛡️ دخول الإدارة">🛡️ دخول الإدارة</a>
@@ -69,6 +76,7 @@ footer{border-top:1px solid var(--line);padding:26px 0;color:var(--text3);font-s
 <div class="wrap">
   <div class="hero">
     <span class="pill" data-i18n="☁️ نظام سحابي — بدون تثبيت · يعمل على الجوال والحاسب">☁️ نظام سحابي — بدون تثبيت · يعمل على الجوال والحاسب</span>
+    <div class="position-tag" data-i18n="وضوح للكميات. تحكّم كامل في مشاريعك.">وضوح للكميات. تحكّم كامل في مشاريعك.</div>
     <h1><span data-i18n="أدر مشاريعك ومستخلصاتك">أدر مشاريعك ومستخلصاتك</span><br><span data-i18n="من مكان واحد">من مكان واحد</span></h1>
     <p class="sub" data-i18n="جداول الكميات، الإنتاجية اليومية، اعتمادات الاستشاري، مستخلصات الشركة ومقاولي الباطن، والأرشيف الكامل — في نظام واحد آمن. اشترك أونلاين وابدأ خلال دقائق.">جداول الكميات، الإنتاجية اليومية، اعتمادات الاستشاري، مستخلصات الشركة ومقاولي الباطن، والأرشيف الكامل — في نظام واحد آمن. اشترك أونلاين وابدأ خلال دقائق.</p>
     <div class="cta">
@@ -176,7 +184,7 @@ footer{border-top:1px solid var(--line);padding:26px 0;color:var(--text3);font-s
   </section>
 </div>
 
-<footer><div class="wrap" id="footer-brand" data-i18n="نظام زمام — الإدارة التقنية لشركة زمام · ذراع شركة عزوم التقني">نظام زمام — الإدارة التقنية لشركة زمام · ذراع شركة عزوم التقني</div></footer>
+<footer><div class="wrap" id="footer-brand">ZIMAM — إدارة المشاريع والمستخلصات · مُقدَّم من شركة بصير التقنية</div></footer>
 
 <!-- نافذة التسجيل -->
 <div class="overlay" id="signup-ov">
@@ -211,7 +219,9 @@ footer{border-top:1px solid var(--line);padding:26px 0;color:var(--text3);font-s
 <script>
 var CFG = null, selTier = '15';
 Object.assign(I18N_EN, {
-  'نظام زمام':'Zimam System', 'دخول العملاء':'Client login', 'ابدأ الآن':'Start now',
+  'نظام زمام':'ZIMAM', 'دخول العملاء':'Client login', 'ابدأ الآن':'Start now',
+  'إدارة المشاريع والمستخلصات':'Projects & Claims Management',
+  'وضوح للكميات. تحكّم كامل في مشاريعك.':'Clarity for quantities. Control for projects.',
   '☁️ نظام سحابي — بدون تثبيت · يعمل على الجوال والحاسب':'☁️ Cloud system — no install · works on mobile and desktop',
   'أدر مشاريعك ومستخلصاتك':'Manage your projects and claims', 'من مكان واحد':'from one place',
   'جداول الكميات، الإنتاجية اليومية، اعتمادات الاستشاري، مستخلصات الشركة ومقاولي الباطن، والأرشيف الكامل — في نظام واحد آمن. اشترك أونلاين وابدأ خلال دقائق.':'Bills of quantities, daily productivity, consultant approvals, company and subcontractor claims, and the full archive — in one secure system. Subscribe online and start in minutes.',
@@ -223,7 +233,7 @@ Object.assign(I18N_EN, {
   'الأرشيف والمستندات':'Archive & documents', 'كل ملف مرفق محفوظ ومنظّم في مجلدات يومية يسهل الرجوع إليها.':'Every attached file is saved and organized in daily folders, easy to find again.',
   '📁 الأرشيف':'📁 Archive',
   'صلاحيات وأمان':'Permissions & security', 'أدوار دقيقة (مالك/مدير مشاريع/مهندس موقع) وعزل كامل لبيانات كل عميل.':'Fine-grained roles (owner/projects manager/site engineer) and complete data isolation per client.',
-  'لماذا تشتري نظام زمام؟':'Why buy Zimam System?', 'صُمّم خصيصاً للمقاول الصغير والمتوسط — ينظّم مشروعك ويُسرّع تحصيل مستخلصاتك دون تعقيد أو تكاليف ضخمة.':'Built specifically for small and mid-size contractors — organizes your project and speeds up claim collection without complexity or heavy costs.',
+  'لماذا تشتري نظام زمام؟':'Why buy ZIMAM?', 'صُمّم خصيصاً للمقاول الصغير والمتوسط — ينظّم مشروعك ويُسرّع تحصيل مستخلصاتك دون تعقيد أو تكاليف ضخمة.':'Built specifically for small and mid-size contractors — organizes your project and speeds up claim collection without complexity or heavy costs.',
   'حصّل مستخلصاتك أسرع':'Collect your claims faster', 'كل كمية مربوطة باعتماد موقّع من الاستشاري، فيُعتمد مستخلصك بلا جدال ويصل تحصيلك أسرع ونزاعات أقل.':'Every quantity is tied to a signed consultant approval, so your claim is approved without dispute and you collect faster with fewer conflicts.',
   'وداعاً لإكسل المبعثر':'Goodbye scattered Excel', 'جدول الكميات والمستخلصات والإنتاجية في نظام واحد — لا ملفات ضائعة ولا نسخ متضاربة بين الموقع والمكتب.':'BOQ, claims and productivity in one system — no lost files, no conflicting copies between site and office.',
   'احمِ أموالك من التلاعب':'Protect your money from manipulation', 'ضوابط آلية تمنع تضخيم كميات مقاول الباطن أو تكرارها أو صرف أكثر مما اعتمده الاستشاري.':'Automatic controls prevent inflating or duplicating subcontractor quantities, or paying more than the consultant approved.',
@@ -233,10 +243,10 @@ Object.assign(I18N_EN, {
   'تكلفة على مقاسك':'Cost that fits you', 'ادفع فقط عن المشاريع الفعّالة؛ أضِف مشروعاً عند ترسيته وأوقفه عند تسليمه — بلا التزامات طويلة.':'Pay only for active projects; add one when you win it and stop it when you hand it over — no long commitments.',
   'جاهز خلال دقائق':'Ready in minutes', 'سجّل، ادفع، وابدأ العمل اليوم — واجهة عربية سهلة بلا تركيب ولا تدريب طويل.':'Sign up, pay, and start working today — an easy interface with no installation or long training.',
   'انضباط فريق الموقع':'Site team discipline', 'أدوار واضحة (مالك / مدير مشاريع / مهندس موقع) وتذكير يومي تلقائي لرفع الإنتاجية.':'Clear roles (owner / projects manager / site engineer) and an automatic daily reminder to log productivity.',
-  '❌ قبل نظام زمام':'❌ Before Zimam System', 'جداول إكسل متفرقة وملفات تضيع بين الموقع والمكتب':'Scattered Excel sheets and files lost between site and office',
+  '❌ قبل نظام زمام':'❌ Before ZIMAM', 'جداول إكسل متفرقة وملفات تضيع بين الموقع والمكتب':'Scattered Excel sheets and files lost between site and office',
   'مستخلصات تتأخر وتُرفض لنقص المستندات':'Claims delayed and rejected for missing documents', 'كميات مقاولي الباطن بلا رقابة وعرضة للتلاعب':'Subcontractor quantities unsupervised and open to manipulation',
   'صور إنجاز بلا تاريخ ولا موقع موثّق':'Progress photos with no documented date or location', 'المالك لا يعرف وضع مشاريعه إلا بزيارة الموقع':'The owner only learns project status by visiting the site',
-  '✅ بعد نظام زمام':'✅ After Zimam System', 'نظام واحد سحابي يجمع كل بيانات المشروع':'One cloud system holding all project data',
+  '✅ بعد نظام زمام':'✅ After ZIMAM', 'نظام واحد سحابي يجمع كل بيانات المشروع':'One cloud system holding all project data',
   'مستخلص معتمد بمستندات واستلامات موقّعة':'Claims approved with documents and signed handovers', 'رقابة آلية تمنع تجاوز الكميات المعتمدة':'Automatic controls prevent exceeding approved quantities',
   'توثيق مختوم بالتاريخ والموقع لكل صورة':'Every photo stamped with date and location', 'متابعة لحظية من الجوال لكل المشاريع والمبالغ':'Live tracking from your phone for every project and amount',
   'تسعير بسيط — لكل مشروع':'Simple pricing — per project', 'تدفع فقط عن المشاريع التي تحتاجها. أضِف أو أوقِف في أي وقت.':'Pay only for the projects you need. Add or stop any time.',
@@ -271,7 +281,7 @@ Object.assign(I18N_EN, {
   'المستخدمون والصلاحيات وإضافة المشاريع':'Users, permissions & adding projects',
   'أضف مدير مشاريع ومهندسي موقع بأدوار محددة لكل منهم. ولكل مشروع جديد، أضفه وادفع اشتراكه من صفحة «الاشتراك» فيُفعّل مباشرة.':'Add a projects manager and site engineers with defined roles for each. For every new project, add and pay for it from the "Subscription" page and it activates immediately.',
   'جرّب كل هذا الآن — ابدأ اشتراكك':'Try all this now — start your subscription', 'ابدأ اشتراكك الآن':'Start your subscription now',
-  'نظام زمام — الإدارة التقنية لشركة زمام · ذراع شركة عزوم التقني':'Zimam System — technical management for Zimam Co · an arm of Azoom Tech',
+  'مُقدَّم من شركة بصير التقنية':'Powered by Bassir Technology',
   'إنشاء حساب جديد':'Create a new account', 'أكمل البيانات ثم تابع للدفع الآمن.':'Fill in the details then proceed to secure payment.',
   'اسم الشركة *':'Company name *', 'مثال: شركة البناء الحديثة':'e.g. Modern Construction Co', 'اسم المالك *':'Owner name *', 'الاسم الكامل':'Full name',
   'الجوال':'Mobile', 'اسم المستخدم للدخول *':'Login username *', 'بالإنجليزية':'In English', 'البريد الإلكتروني':'Email', 'للإيصالات':'For receipts',
@@ -288,12 +298,12 @@ Object.assign(I18N_EN, {
   'عن أول شهر، ثم يتجدد تلقائياً شهرياً.':'for the first month, then it renews automatically every month.',
   'أكمل الحقول المطلوبة (*)':'Complete the required fields (*)', 'كلمة المرور 6 أحرف على الأقل':'Password must be at least 6 characters',
   'جارٍ التحويل للدفع…':'Redirecting to payment…', 'تعذّر التسجيل':'Could not sign up', 'تعذّر الاتصال بالخادم':'Could not connect to the server',
-  'نظام زمام —':'Zimam System —', 'إدارة المشاريع':'Project Management',
+  'نظام زمام —':'ZIMAM —', 'إدارة المشاريع':'Project Management',
   '🛡️ دخول الإدارة':'🛡️ Admin login', '🛡️ لوحة المالك':'🛡️ Owner dashboard',
   '→ النظام':'→ System', 'خروج':'Logout'
 });
 applyDir(); translateStaticDOM();
-window.onLangChange = function(){ if(CFG){ renderPricing(); renderTierPicker(); updateVatNote(); } renderAdminBtn(); };
+window.onLangChange = function(){ if(CFG){ renderPricing(); renderTierPicker(); updateVatNote(); renderFooterBrand(); renderTitle(); } renderAdminBtn(); };
 
 // ---------- حالة الدخول في الترويسة ----------
 // زائر مجهول: "دخول العملاء" فقط. مسجَّل دخوله (أي دور): "→ النظام" + "خروج" بدل "دخول العملاء".
@@ -336,10 +346,18 @@ function updateVatNote(){
 function load(){
   fetch('/api/saas/public/config').then(function(r){return r.json()}).then(function(c){
     CFG=c;
-    document.title=T('نظام زمام —')+' '+(c.brand&&c.brand.name||T('إدارة المشاريع'));
-    if(c.brand&&c.brand.name) document.getElementById('footer-brand').textContent=c.brand.name;
+    renderTitle();
+    renderFooterBrand();
     renderPricing(); renderTierPicker(); updateVatNote();
   }).catch(function(){ toast(T('تعذّر تحميل الأسعار')); });
+}
+function renderTitle(){
+  document.title=T('نظام زمام —')+' '+((CFG&&CFG.brand&&CFG.brand.name)||T('إدارة المشاريع'));
+}
+function renderFooterBrand(){
+  var el=document.getElementById('footer-brand'); if(!el) return;
+  var name=(CFG&&CFG.brand&&CFG.brand.name)||T('إدارة المشاريع والمستخلصات');
+  el.textContent='ZIMAM — '+name+' · '+T('مُقدَّم من شركة بصير التقنية');
 }
 function tierCard(gb,feat){
   var net=CFG.tiers[gb]; var total=priceWithVat(net);

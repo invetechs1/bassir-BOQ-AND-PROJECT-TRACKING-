@@ -31,8 +31,20 @@ module.exports = function initExpenses(ctx) {
   const now = () => new Date().toISOString();
   const TYPES = ['material', 'salary', 'other'];
 
-  // من يدير (إضافة/تعديل/حذف/مزامنة)؟ admin/client/pmo — مدير المشروع (pm) قراءة فقط
-  const canManage = user => isAdmin(user) || ['client', 'pmo'].includes(user.role);
+  // من يدير (إضافة/تعديل/مزامنة)؟ admin/client/pmo/pm — كل الأدوار التشغيلية على المشروع.
+  // الحذف مستثنى عمداً من هذا الفحص (انظر أسفل) — أي مستخدم يملك صلاحية الوصول لهذا المشروع يمكنه الحذف،
+  // بصرف النظر عن دوره، لأن هذه وحدة تتبّع تكاليف وليست دفتر محاسبة (انظر التعليق أعلى الملف).
+  const canManage = user => isAdmin(user) || ['client', 'pmo', 'pm'].includes(user.role);
+  // من يعتمد/يرفض المصروف؟ أدمن النظام والعميل (مالك الشركة) فقط — وليس مدير المشاريع (pmo) أو مدير المشروع (pm).
+  const canApprove = user => isAdmin(user) || user.role === 'client';
+  // المساهمة الفعلية للمصروف في إجمالي التكلفة/الربحية بعد الاعتماد:
+  // مرفوض = صفر، معتمد جزئياً = المبلغ المعتمد فقط، معتمد كامل أو لم يُراجَع بعد = كامل المبلغ
+  // (عدم تغيير سلوك المصاريف القديمة التي لا تحمل حالة اعتماد أصلاً — توافق خلفي).
+  function approvedCost(i) {
+    if (i.status === 'rejected') return 0;
+    if (i.status === 'partially_approved') return round2(Number(i.approvedAmount) || 0);
+    return round2(Number(i.amount) || 0);
+  }
 
   function loadProjectOr404(req, res) {
     const id = Number(req.params.id);
@@ -51,9 +63,9 @@ module.exports = function initExpenses(ctx) {
 
     const subMus = project.subMustakhlasat || [];
     const costSubcontractors = round2(subMus.filter(m => m.status !== 'rejected').reduce((s, m) => s + (Number(m.gross) || 0), 0));
-    const costMaterials = round2(items.filter(i => i.type === 'material').reduce((s, i) => s + (Number(i.amount) || 0), 0));
-    const costSalaries = round2(items.filter(i => i.type === 'salary').reduce((s, i) => s + (Number(i.amount) || 0), 0));
-    const costOther = round2(items.filter(i => i.type === 'other').reduce((s, i) => s + (Number(i.amount) || 0), 0));
+    const costMaterials = round2(items.filter(i => i.type === 'material').reduce((s, i) => s + approvedCost(i), 0));
+    const costSalaries = round2(items.filter(i => i.type === 'salary').reduce((s, i) => s + approvedCost(i), 0));
+    const costOther = round2(items.filter(i => i.type === 'other').reduce((s, i) => s + approvedCost(i), 0));
     const costTotal = round2(costSubcontractors + costMaterials + costSalaries + costOther);
 
     const margin = round2(revenueCertified - costTotal);
@@ -136,6 +148,8 @@ module.exports = function initExpenses(ctx) {
       items: store.items || [],
       profitability: profitability(project, store.items || []),
       canManage: canManage(req.user),
+      canDelete: true, // أي دور يملك صلاحية الوصول لهذا المشروع يمكنه الحذف (انظر تعليق DELETE أدناه)
+      canApprove: canApprove(req.user),
       integrationEnabled: !!companyIntegration(project.companyId).enabled
     });
   });
@@ -147,7 +161,10 @@ module.exports = function initExpenses(ctx) {
     const err = validateExpense(req.body || {}, project);
     if (err) return res.status(400).json({ error: err });
     const store = loadExpenses(project.id);
-    const exp = { id: genId(), ...buildExpenseFields(req.body || {}), by: req.user.name, createdAt: now(), updatedAt: now(), erpSyncedAt: null, erpStatus: '' };
+    const exp = {
+      id: genId(), ...buildExpenseFields(req.body || {}), by: req.user.name, createdAt: now(), updatedAt: now(), erpSyncedAt: null, erpStatus: '',
+      status: 'pending', approvedAmount: 0, approvedBy: null, approvedAt: null, rejectReason: ''
+    };
     store.items = store.items || []; store.items.push(exp); store.version = (store.version || 0) + 1;
     saveExpenses(project.id, store);
     if ((req.body || {}).syncErp) {
@@ -168,15 +185,18 @@ module.exports = function initExpenses(ctx) {
     const err = validateExpense(req.body || {}, project);
     if (err) return res.status(400).json({ error: err });
     Object.assign(exp, buildExpenseFields(req.body || {}), { updatedAt: now() });
+    // توافق مع الاعتماد القائم: إن قلّ المبلغ المعدَّل عن اعتماد سابق (كامل أو جزئي)، نقصّ المعتمد ليطابق
+    // الواقع الجديد، ونُنزل الاعتماد الكامل إلى جزئي تلقائياً بدل ترك حالة غير متسقة (معتمد > المبلغ الفعلي).
+    if ((exp.approvedAmount || 0) > exp.amount) exp.approvedAmount = exp.amount;
+    if (exp.status === 'approved' && (exp.approvedAmount || 0) < exp.amount - 0.01) exp.status = 'partially_approved';
     store.version = (store.version || 0) + 1;
     saveExpenses(project.id, store);
     res.json({ ok: true, item: exp });
   });
 
-  // ---------- DELETE: حذف مصروف ----------
+  // ---------- DELETE: حذف مصروف — متاح لأي مستخدم يملك صلاحية الوصول للمشروع (كل الأدوار) ----------
   app.delete('/api/projects/:id/expenses/:expId', auth, (req, res) => {
     const project = loadProjectOr404(req, res); if (!project) return;
-    if (!canManage(req.user)) return res.status(403).json({ error: 'حذف المصاريف ليس من صلاحيتك' });
     const store = loadExpenses(project.id);
     const before = (store.items || []).length;
     store.items = (store.items || []).filter(x => x.id !== req.params.expId);
@@ -184,6 +204,38 @@ module.exports = function initExpenses(ctx) {
     store.version = (store.version || 0) + 1;
     saveExpenses(project.id, store);
     res.json({ ok: true });
+  });
+
+  // ---------- POST: اعتماد مصروف — كاملاً أو جزئياً (مبلغ الاعتماد <= مبلغ المصروف قبل الضريبة) ----------
+  app.post('/api/projects/:id/expenses/:expId/approve', auth, (req, res) => {
+    const project = loadProjectOr404(req, res); if (!project) return;
+    if (!canApprove(req.user)) return res.status(403).json({ error: 'اعتماد المصاريف صلاحية العميل أو مدير المشاريع أو أدمن النظام' });
+    const store = loadExpenses(project.id);
+    const exp = (store.items || []).find(x => x.id === req.params.expId);
+    if (!exp) return res.status(404).json({ error: 'المصروف غير موجود' });
+    const amount = round2(Number((req.body || {}).amount));
+    if (!(amount > 0) || amount > exp.amount + 0.01) return res.status(400).json({ error: 'مبلغ الاعتماد يجب أن يكون أكبر من صفر ولا يتجاوز مبلغ المصروف' });
+    exp.approvedAmount = Math.min(amount, exp.amount);
+    exp.status = exp.approvedAmount >= exp.amount - 0.01 ? 'approved' : 'partially_approved';
+    exp.approvedBy = req.user.name; exp.approvedAt = now(); exp.rejectReason = '';
+    store.version = (store.version || 0) + 1;
+    saveExpenses(project.id, store);
+    res.json({ ok: true, item: exp });
+  });
+
+  // ---------- POST: رفض مصروف ----------
+  app.post('/api/projects/:id/expenses/:expId/reject', auth, (req, res) => {
+    const project = loadProjectOr404(req, res); if (!project) return;
+    if (!canApprove(req.user)) return res.status(403).json({ error: 'رفض المصاريف صلاحية العميل أو مدير المشاريع أو أدمن النظام' });
+    const store = loadExpenses(project.id);
+    const exp = (store.items || []).find(x => x.id === req.params.expId);
+    if (!exp) return res.status(404).json({ error: 'المصروف غير موجود' });
+    exp.status = 'rejected'; exp.approvedAmount = 0;
+    exp.rejectReason = String((req.body || {}).reason || '').trim();
+    exp.approvedBy = req.user.name; exp.approvedAt = now();
+    store.version = (store.version || 0) + 1;
+    saveExpenses(project.id, store);
+    res.json({ ok: true, item: exp });
   });
 
   // ---------- POST: دفع مصروف واحد يدوياً لـ Bassir ERP ----------

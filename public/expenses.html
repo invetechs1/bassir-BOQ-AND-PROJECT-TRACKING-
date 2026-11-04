@@ -70,7 +70,7 @@
         <span class="hint" id="count-lbl"></span>
       </div>
       <div style="overflow:auto"><table>
-        <thead><tr><th>النوع</th><th>التاريخ</th><th>البيان</th><th>المورّد/الشهر</th><th>المبلغ</th><th>الضريبة</th><th>الإجمالي</th><th>مرفق</th><th></th></tr></thead>
+        <thead><tr><th>النوع</th><th>التاريخ</th><th>البيان</th><th>المورّد/الشهر</th><th>التحميل</th><th>المبلغ</th><th>الضريبة</th><th>الإجمالي</th><th>مرفق</th><th></th></tr></thead>
         <tbody id="exp-body"></tbody>
       </table></div>
       <p class="hint" style="margin-top:10px">🧱 مستخلصات مقاولي الباطن تُحتسب تلقائياً في التكاليف من تبويب المقاولين — لا تُدخَل هنا.</p>
@@ -98,6 +98,16 @@
     <div class="field" style="flex:1" id="e-vat-f"><label>الضريبة %</label><input type="number" id="e-vatrate" min="0" step="0.5" value="15" oninput="recalc()"></div>
   </div>
   <div class="note note-info" id="e-total" style="font-size:12.5px"></div>
+  <div class="field"><label>التحميل على *</label>
+    <select id="e-bearer" onchange="bearerChanged()">
+      <option value="own">🏢 ذاتي — على الشركة (تكلفة المشروع)</option>
+      <option value="sub">🧱 مقاول باطن — تُخصم من مستخلصه</option>
+    </select>
+  </div>
+  <div class="field" id="e-subid-f" style="display:none"><label>أي مقاول باطن؟</label>
+    <select id="e-subid"></select>
+    <div class="hint">يُسترد هذا المبلغ من المقاول — يظهر «عليه كذا» ويُخصم تلقائياً عند بناء مستخلصه، ولا يُحمّل على ربحية المشروع.</div>
+  </div>
   <div id="e-material-fields">
     <div class="row"><div class="field" style="flex:1"><label>المورّد</label><input id="e-supplier"></div>
       <div class="field" style="flex:1"><label>رقم الفاتورة الضريبية</label><input id="e-invno"></div></div>
@@ -193,9 +203,13 @@ function renderList(){
     var who=e.type==='salary'?(e.month||'—')+(e.headcount?(' · '+e.headcount+' عامل'):''):(e.supplier||'—');
     var doc=(e.docs||[]).length?('<a href="'+esc(e.docs[0].url)+'" target="_blank" style="color:var(--accent)">'+(String(e.docs[0].url).endsWith('.pdf')?'📄':'🖼')+(e.docs.length>1?(' ×'+e.docs.length):'')+'</a>'):'<span class="hint">—</span>';
     var manage=DATA.canManage?('<button class="btn btn-ghost btn-sm" onclick="openEdit(\''+e.id+'\')">✎</button> <button class="btn btn-ghost btn-sm" onclick="delExp(\''+e.id+'\')">🗑</button>'+(DATA.integrationEnabled?(' <button class="btn btn-ghost btn-sm" onclick="syncExp(\''+e.id+'\')" title="مزامنة ERP">'+(e.erpSyncedAt?'✅':'⇅')+'</button>'):'')):'';
-    return '<tr><td><span class="typechip '+tl[1]+'">'+tl[0]+'</span></td><td>'+esc(e.date)+'</td><td>'+esc(e.description||'—')+(e.category?(' <span class="hint">· '+esc(e.category)+'</span>'):'')+'</td><td>'+esc(who)+(e.taxInvoiceNo?(' <span class="hint">· '+esc(e.taxInvoiceNo)+'</span>'):'')+'</td><td class="amount">'+money(e.amount)+'</td><td class="amount" style="color:var(--text3)">'+money(e.vat)+'</td><td class="amount">'+money(e.total)+'</td><td>'+doc+'</td><td>'+manage+'</td></tr>';
-  }).join('')||'<tr><td colspan="9" class="muted center">لا مصاريف</td></tr>';
+    var bearer=e.bearer==='sub'?('<span class="typechip t-sub" title="محمّلة على مقاول الباطن — تُخصم من مستخلصه'+(e.settledMusNo?' (خُصمت في '+esc(e.settledMusNo)+')':'')+'">🧱 '+esc(subName(e.subId))+(e.settledMusNo?' ✓':'')+'</span>'):'<span class="hint">ذاتي</span>';
+    return '<tr><td><span class="typechip '+tl[1]+'">'+tl[0]+'</span></td><td>'+esc(e.date)+'</td><td>'+esc(e.description||'—')+(e.category?(' <span class="hint">· '+esc(e.category)+'</span>'):'')+'</td><td>'+esc(who)+(e.taxInvoiceNo?(' <span class="hint">· '+esc(e.taxInvoiceNo)+'</span>'):'')+'</td><td>'+bearer+'</td><td class="amount">'+money(e.amount)+'</td><td class="amount" style="color:var(--text3)">'+money(e.vat)+'</td><td class="amount">'+money(e.total)+'</td><td>'+doc+'</td><td>'+manage+'</td></tr>';
+  }).join('')||'<tr><td colspan="10" class="muted center">لا مصاريف</td></tr>';
 }
+function subName(id){var s=(DATA&&DATA.subs||[]).find(function(x){return x.id===id});return s?s.name:('#'+id)}
+function fillSubs(){var sel=document.getElementById('e-subid');sel.innerHTML=(DATA&&DATA.subs||[]).map(function(s){return '<option value="'+s.id+'">'+esc(s.name)+'</option>'}).join('')||'<option value="">لا مقاولون مسجّلون</option>';}
+function bearerChanged(){document.getElementById('e-subid-f').style.display=document.getElementById('e-bearer').value==='sub'?'':'none';}
 
 // ---- add/edit ----
 function openAdd(){ EDIT=null; pending=[]; document.getElementById('exp-title').textContent='إضافة مصروف'; resetForm(); document.getElementById('exp-ov').classList.add('open'); }
@@ -205,11 +219,13 @@ function openEdit(id){ EDIT=id; var e=(DATA.items||[]).find(function(x){return x
   document.getElementById('e-desc').value=e.description||''; document.getElementById('e-amount').value=e.amount; document.getElementById('e-vatrate').value=e.vatRate;
   document.getElementById('e-supplier').value=e.supplier||''; document.getElementById('e-invno').value=e.taxInvoiceNo||''; document.getElementById('e-invdate').value=e.taxInvoiceDate||'';
   document.getElementById('e-headcount').value=e.headcount||''; document.getElementById('e-category').value=e.category||'';
+  document.getElementById('e-bearer').value=e.bearer||'own'; fillSubs(); if(e.subId)document.getElementById('e-subid').value=String(e.subId); bearerChanged();
   typeChanged(); recalc(); renderFiles(); document.getElementById('exp-ov').classList.add('open');
 }
 function closeAdd(){ document.getElementById('exp-ov').classList.remove('open'); }
 function resetForm(){ ['e-desc','e-amount','e-supplier','e-invno','e-invdate','e-headcount','e-category','e-month'].forEach(function(id){document.getElementById(id).value=''});
   document.getElementById('e-type').value='material'; document.getElementById('e-vatrate').value='15'; document.getElementById('e-date').value=new Date().toISOString().slice(0,10);
+  document.getElementById('e-bearer').value='own'; fillSubs(); bearerChanged();
   document.getElementById('e-sync').checked=false; document.getElementById('exp-err').classList.add('hide'); if(!EDIT) pending=[]; typeChanged(); recalc(); renderFiles(); }
 function typeChanged(){
   var t=document.getElementById('e-type').value;
@@ -244,6 +260,8 @@ async function saveExp(){
   var amount=Number(document.getElementById('e-amount').value)||0;
   if(amount<=0){ err.textContent='أدخل مبلغاً صحيحاً'; err.classList.remove('hide'); return; }
   if(type==='material' && !pending.length){ err.textContent='فاتورة المورّد الضريبية إلزامية للمواد'; err.classList.remove('hide'); return; }
+  var bearer=document.getElementById('e-bearer').value, subId=Number(document.getElementById('e-subid').value)||null;
+  if(bearer==='sub' && !subId){ err.textContent='اختر مقاول الباطن المحمّل عليه المصروف'; err.classList.remove('hide'); return; }
   var btn=document.getElementById('e-save'); btn.disabled=true; btn.innerHTML='<span class="spin"></span> جارٍ…';
   // ارفع المرفقات الجديدة (التي تحمل dataUrl) عبر نقطة رفع الصور الحالية
   var docs=[];
@@ -258,7 +276,7 @@ async function saveExp(){
     amount:amount, vatRate:Number(document.getElementById('e-vatrate').value)||0,
     supplier:document.getElementById('e-supplier').value, taxInvoiceNo:document.getElementById('e-invno').value, taxInvoiceDate:document.getElementById('e-invdate').value,
     month:document.getElementById('e-month').value, headcount:Number(document.getElementById('e-headcount').value)||0,
-    category:document.getElementById('e-category').value, docs:docs, syncErp:document.getElementById('e-sync').checked };
+    category:document.getElementById('e-category').value, bearer:bearer, subId:subId, docs:docs, syncErp:document.getElementById('e-sync').checked };
   var res=await (EDIT?api('PUT','/api/projects/'+PID+'/expenses/'+EDIT,body):api('POST','/api/projects/'+PID+'/expenses',body));
   btn.disabled=false; btn.textContent='💾 حفظ';
   if(!res.ok){ err.textContent=res.d.error||'تعذّر الحفظ'; err.classList.remove('hide'); return; }

@@ -1187,6 +1187,7 @@
     <div class="two-col">
       <div>
         <div class="card-title" style="font-size:13px" data-i18n="الخصومات (يضعها مدير المشروع أو يصفّرها)">الخصومات (يضعها مدير المشروع أو يصفّرها)</div>
+        <div id="sd-subcharge-note" style="display:none;background:#fff5e6;border:1px solid #f0c674;border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:12px;color:#8a5a00"></div>
         <div class="f-grid" style="grid-template-columns:1fr 1fr">
           <div class="f-field"><label data-i18n="حجز جودة أعمال %">حجز جودة أعمال %</label><input type="number" id="sd-ret" min="0" max="100" step="0.5" oninput="renderSubMusTotals()"></div>
           <div class="f-field"><label data-i18n="خصم مواد (ر.س)">خصم مواد (ر.س)</label><input type="number" id="sd-materials" min="0" step="0.01" value="0" oninput="renderSubMusTotals()"></div>
@@ -6059,7 +6060,7 @@ function subItemPick(id){ const it = getItem(id); if (!it) return; $('sub-item-i
 function subItemBlur(){ setTimeout(()=>{ $('sub-item-list').style.display = 'none'; }, 160); }
 
 // ---- صفحة مقاول الباطن: تعميد الكميات وبناء المستخلص ----
-let sdSubId = null, sdSel = {}, sdPendingFiles = [];
+let sdSubId = null, sdSel = {}, sdPendingFiles = [], sdSubCharge = null;
 function openSubDetail(id){
   const s = getSub(id); if (!s) return;
   sdSubId = id; sdSel = {}; sdPendingFiles = [];
@@ -6072,7 +6073,36 @@ function openSubDetail(id){
   closeSdAdvForm();
   renderSubDetail();
   renderSdAdvances();
+  loadSdSubCharges(id);
   $('sub-detail-modal').classList.add('open');
+}
+// مصاريف محمّلة على هذا المقاول الباطن (مواد/رواتب/أخرى) غير مُسوّاة بعد — تُخصم تلقائياً من مستخلصه
+async function loadSdSubCharges(id){
+  const note = $('sd-subcharge-note');
+  if (note){ note.style.display = 'none'; note.innerHTML = ''; }
+  sdSubCharge = null;
+  try {
+    const r = await API.req('GET', '/api/projects/' + proj().id + '/sub-charges');
+    const bySub = (r && r.bySub) || {};
+    const c = bySub[String(id)] || bySub[id];
+    if (!c || !(c.total > 0)) return;
+    sdSubCharge = c;
+    const mat = Number(c.byType && c.byType.material || 0);
+    const sal = Number(c.byType && c.byType.salary || 0);
+    const oth = Number(c.byType && c.byType.other || 0);
+    // مواد → خصم مواد ، رواتب+أخرى → خصومات أخرى
+    if (mat > 0) $('sd-materials').value = round2(mat);
+    if (sal + oth > 0) $('sd-other').value = round2((Number($('sd-other').value)||0) + sal + oth);
+    const parts = [];
+    if (mat > 0) parts.push('مواد ' + money(mat));
+    if (sal > 0) parts.push('رواتب ' + money(sal));
+    if (oth > 0) parts.push('أخرى ' + money(oth));
+    if (note){
+      note.innerHTML = '🧱 <strong>على هذا المقاول ' + money(c.total) + '</strong> مصاريف محمّلة عليه (' + parts.join(' · ') + ') — تمّ إدراجها في الخصومات تلقائياً وستُسوّى عند بناء المستخلص.';
+      note.style.display = '';
+    }
+    renderSubMusTotals();
+  } catch(e){ /* تجاهل — المصاريف اختيارية */ }
 }
 // الحد الأقصى الفعلي لحقل "تعميد الآن": عادةً المتاح (المعتمد من الاستشاري ناقص سبق تعميده)،
 // لكن إن لم يُعتمد البند بعد (eligible=0) وهناك تنفيذ فعلي حقيقي من هذا المقاول — يُسمح لأدمن النظام
@@ -6298,6 +6328,12 @@ async function buildSubMus(){
     lines:c.lines, gross:c.gross, retRate:c.retRate, retention:c.retention, ded:c.ded, dedTotal:c.dedTotal,
     prevPaid:c.prevPaid, net:c.net, docs, payments:[], by: currentUser().name, createdAt: new Date().toISOString()
   });
+  // تسوية المصاريف المحمّلة على هذا المقاول (تُعلَّم مُسوّاة حتى لا تُخصم مرة أخرى) — مستقلة عن حفظ المشروع
+  if (sdSubCharge && sdSubCharge.total > 0) {
+    try { await API.req('POST', '/api/projects/' + proj().id + '/sub-charges/settle', { subId: sdSubId, musNo: no }); }
+    catch(e){ /* الخصم أُدرج في المستخلص؛ التسوية ستُعاد المحاولة عند الحاجة */ }
+  }
+  sdSubCharge = null;
   closeModal('sub-detail-modal'); save(); renderAll(); switchSubView('mus');
   setTimeout(()=>alert(T('✅ تم رفع مستخلص مقاول الباطن للاعتماد.')), 200);
 }

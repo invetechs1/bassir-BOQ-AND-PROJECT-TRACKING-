@@ -52,8 +52,29 @@ module.exports = function initExpenses(ctx) {
       boqItemId: body.boqItemId || null,
       month: type === 'salary' ? String(body.month || '').slice(0, 7) : '',
       headcount: type === 'salary' ? (Number(body.headcount) || 0) : 0,
+      // التحميل: 'own' = ذاتي (على الشركة، تكلفة مشروع) | 'sub' = على مقاول باطن (تُسترد بالخصم من مستخلصه)
+      bearer: body.bearer === 'sub' ? 'sub' : 'own',
+      subId: body.bearer === 'sub' ? (Number(body.subId) || null) : null,
+      settledMusNo: body.settledMusNo || null,   // رقم مستخلص الباطن الذي خُصمت فيه (null = لم تُخصم بعد)
+      settledAt: body.settledAt || null,
       docs: Array.isArray(body.docs) ? body.docs.filter(d => d && d.url).map(d => ({ url: String(d.url), name: String(d.name || 'ملف') })).slice(0, 15) : []
     };
+  }
+
+  // المصاريف المحمّلة على مقاولي الباطن وغير المخصومة بعد (لكل مقاول)
+  function outstandingSubCharges(items) {
+    const bySub = {};
+    (items || []).forEach(e => {
+      if (e.bearer === 'sub' && e.subId && !e.settledMusNo) {
+        const k = e.subId;
+        if (!bySub[k]) bySub[k] = { subId: e.subId, total: 0, byType: { material: 0, salary: 0, other: 0 }, count: 0, items: [] };
+        bySub[k].total = round2(bySub[k].total + (Number(e.amount) || 0));
+        bySub[k].byType[e.type] = round2((bySub[k].byType[e.type] || 0) + (Number(e.amount) || 0));
+        bySub[k].count++;
+        bySub[k].items.push({ id: e.id, type: e.type, amount: e.amount, description: e.description, date: e.date });
+      }
+    });
+    return bySub;
   }
 
   // ------- حساب ربحية المشروع -------
@@ -74,8 +95,13 @@ module.exports = function initExpenses(ctx) {
     // التكاليف
     const subCost = round2(subs.filter(m => m.status !== 'rejected').reduce((s, m) => s + (Number(m.gross) || 0), 0));
     const subPaid = round2(subs.reduce((s, m) => s + (m.payments || []).reduce((a, p) => a + (Number(p.amount) || 0), 0), 0));
+    // التكاليف الذاتية فقط (bearer='own'). المصاريف المحمّلة على مقاول باطن تُسترد منه فلا تُحمّل على المشروع.
     const byType = { material: 0, salary: 0, other: 0 };
-    items.forEach(e => { byType[e.type] = round2((byType[e.type] || 0) + (Number(e.amount) || 0)); });
+    let chargedToSubs = 0;
+    items.forEach(e => {
+      if (e.bearer === 'sub') { chargedToSubs = round2(chargedToSubs + (Number(e.amount) || 0)); return; }
+      byType[e.type] = round2((byType[e.type] || 0) + (Number(e.amount) || 0));
+    });
     const totalCost = round2(subCost + byType.material + byType.salary + byType.other);
     // الحكم: الإنتاجية المعتمدة مقابل المصاريف
     const income = approvedWork;
@@ -85,6 +111,7 @@ module.exports = function initExpenses(ctx) {
       productivity: { approved: approvedWork, executed: executedWork },
       revenue: { certified: revenueCertified, submitted: revenueSubmitted, collected },
       costs: { subcontractors: subCost, subPaid, materials: byType.material, salaries: byType.salary, other: byType.other, total: totalCost },
+      chargedToSubs,
       income, margin, marginPct, isProfit: margin >= 0,
       note: 'قيم قبل الضريبة. الإنتاجية = قيمة الأعمال المعتمدة من الاستشاري (الكمية المعتمدة × السعر). تكلفة الباطن = مستخلصاته المعتمدة.'
     };
@@ -124,16 +151,44 @@ module.exports = function initExpenses(ctx) {
     return p;
   }
 
-  // قائمة المصاريف + ملخص الربحية
+  // التحقق من مقاول الباطن عند التحميل عليه
+  function validBearer(p, exp) {
+    if (exp.bearer !== 'sub') return true;
+    return exp.subId && (p.subcontractors || []).some(s => s.id === exp.subId);
+  }
+
+  // قائمة المصاريف + ملخص الربحية + مقاولو الباطن + المصاريف المحمّلة عليهم
   app.get('/api/projects/:id/expenses', auth, (req, res) => {
     const p = getProjectOr(req, res); if (!p) return;
     const db = loadExpenses(p.id);
     res.json({
       version: db.version, items: db.items,
       profitability: profitability(p, db.items),
+      subs: (p.subcontractors || []).map(s => ({ id: s.id, name: s.name })),
+      subCharges: outstandingSubCharges(db.items),
       canManage: canWrite(req.user, p),
       integrationEnabled: !!(companyIntegration && (companyIntegration(p.companyId) || {}).enabled)
     });
+  });
+
+  // المصاريف غير المخصومة المحمّلة على كل مقاول باطن (يستدعيها بنّاء مستخلص الباطن)
+  app.get('/api/projects/:id/sub-charges', auth, (req, res) => {
+    const p = getProjectOr(req, res); if (!p) return;
+    res.json({ bySub: outstandingSubCharges(loadExpenses(p.id).items) });
+  });
+
+  // تسوية المصاريف المحمّلة على مقاول بعد خصمها في مستخلصه (تمنع الخصم المزدوج)
+  app.post('/api/projects/:id/sub-charges/settle', auth, (req, res) => {
+    const p = getProjectOr(req, res); if (!p) return;
+    if (!canWrite(req.user, p)) return res.status(403).json({ error: 'غير مصرّح' });
+    const subId = Number((req.body || {}).subId); const musNo = String((req.body || {}).musNo || '').trim();
+    if (!subId || !musNo) return res.status(400).json({ error: 'subId و musNo مطلوبان' });
+    const db = loadExpenses(p.id); let settled = 0, n = 0;
+    db.items.forEach(e => {
+      if (e.bearer === 'sub' && e.subId === subId && !e.settledMusNo) { e.settledMusNo = musNo; e.settledAt = now(); settled = round2(settled + (Number(e.amount) || 0)); n++; }
+    });
+    if (n) saveExpenses(p.id, db);
+    res.json({ ok: true, settled, count: n });
   });
 
   app.post('/api/projects/:id/expenses', auth, async (req, res) => {
@@ -143,6 +198,7 @@ module.exports = function initExpenses(ctx) {
     const exp = normalizeExpense(b, req.user);
     if (!(exp.amount >= 0) || exp.amount === 0) return res.status(400).json({ error: 'أدخل مبلغاً صحيحاً أكبر من صفر' });
     if (exp.type === 'material' && !exp.docs.length) return res.status(400).json({ error: 'فاتورة المورّد الضريبية إلزامية للمواد — أرفقها' });
+    if (!validBearer(p, exp)) return res.status(400).json({ error: 'اختر مقاول باطن صحيحاً للتحميل عليه' });
     exp.id = nextExpId(); exp.by = req.user.name; exp.createdAt = now(); exp.updatedAt = now(); exp.erpSyncedAt = null; exp.erpStatus = '';
     const db = loadExpenses(p.id); db.items.push(exp); saveExpenses(p.id, db);
     // دفع اختياري للـ ERP إن طُلب والتكامل مُفعّل
@@ -157,6 +213,7 @@ module.exports = function initExpenses(ctx) {
     if (i < 0) return res.status(404).json({ error: 'المصروف غير موجود' });
     const exp = normalizeExpense({ ...db.items[i], ...req.body }, req.user);
     if (exp.type === 'material' && !exp.docs.length) return res.status(400).json({ error: 'فاتورة المورّد إلزامية للمواد' });
+    if (!validBearer(p, exp)) return res.status(400).json({ error: 'اختر مقاول باطن صحيحاً للتحميل عليه' });
     exp.id = db.items[i].id; exp.by = db.items[i].by; exp.createdAt = db.items[i].createdAt; exp.updatedAt = now();
     exp.erpSyncedAt = db.items[i].erpSyncedAt || null; exp.erpStatus = db.items[i].erpStatus || '';
     db.items[i] = exp; saveExpenses(p.id, db);

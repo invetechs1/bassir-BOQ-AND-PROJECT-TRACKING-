@@ -63,10 +63,13 @@ module.exports = function initExpenses(ctx) {
 
     const subMus = project.subMustakhlasat || [];
     const costSubcontractors = round2(subMus.filter(m => m.status !== 'rejected').reduce((s, m) => s + (Number(m.gross) || 0), 0));
-    const costMaterials = round2(items.filter(i => i.type === 'material').reduce((s, i) => s + approvedCost(i), 0));
-    const costSalaries = round2(items.filter(i => i.type === 'salary').reduce((s, i) => s + approvedCost(i), 0));
-    const costOther = round2(items.filter(i => i.type === 'other').reduce((s, i) => s + approvedCost(i), 0));
+    // مصاريف ذاتية فقط (bearer='own') تُحتسب على تكلفة المشروع — المحمّلة على مقاول باطن تُسترد منه فلا تُحمَّل على المشروع
+    const ownItems = items.filter(i => i.bearer !== 'sub');
+    const costMaterials = round2(ownItems.filter(i => i.type === 'material').reduce((s, i) => s + approvedCost(i), 0));
+    const costSalaries = round2(ownItems.filter(i => i.type === 'salary').reduce((s, i) => s + approvedCost(i), 0));
+    const costOther = round2(ownItems.filter(i => i.type === 'other').reduce((s, i) => s + approvedCost(i), 0));
     const costTotal = round2(costSubcontractors + costMaterials + costSalaries + costOther);
+    const chargedToSubs = round2(items.filter(i => i.bearer === 'sub').reduce((s, i) => s + approvedCost(i), 0));
 
     const margin = round2(revenueCertified - costTotal);
     const marginPct = revenueCertified > 0 ? round2(margin / revenueCertified * 100) : 0;
@@ -74,6 +77,7 @@ module.exports = function initExpenses(ctx) {
     return {
       revenue: { certified: revenueCertified, submitted: revenueSubmitted, collected: revenueCollected },
       costs: { subcontractors: costSubcontractors, materials: costMaterials, salaries: costSalaries, other: costOther, total: costTotal },
+      chargedToSubs,
       margin, marginPct
     };
   }
@@ -124,6 +128,11 @@ module.exports = function initExpenses(ctx) {
     }
     const vatRate = Number(body.vatRate) || 0;
     if (vatRate < 0 || vatRate > 100) return 'نسبة الضريبة غير صحيحة';
+    // التحميل على مقاول باطن: لا بد من مقاول صحيح مسجَّل في هذا المشروع
+    if (body.bearer === 'sub') {
+      const subId = Number(body.subId);
+      if (!subId || !(project.subcontractors || []).some(s => s.id === subId)) return 'اختر مقاول باطن صحيحاً للتحميل عليه';
+    }
     return null;
   }
   function buildExpenseFields(body) {
@@ -136,8 +145,26 @@ module.exports = function initExpenses(ctx) {
       taxInvoiceNo: String(body.taxInvoiceNo || '').trim(), taxInvoiceDate: body.taxInvoiceDate || '',
       category: String(body.category || '').trim(), boqItemId: body.boqItemId || null,
       month: String(body.month || '').trim(), headcount: body.headcount != null ? Number(body.headcount) || 0 : null,
+      // التحميل: 'own' = ذاتي (تكلفة مشروع كالمعتاد) | 'sub' = على مقاول باطن (يُستبعد من تكلفة المشروع ويُخصم من مستخلصه)
+      bearer: body.bearer === 'sub' ? 'sub' : 'own',
+      subId: body.bearer === 'sub' ? (Number(body.subId) || null) : null,
       docs: Array.isArray(body.docs) ? body.docs.filter(d => d && d.url).map(d => ({ url: d.url, name: d.name || '' })) : []
     };
+  }
+  // المصاريف المحمّلة على مقاولي الباطن وغير المخصومة بعد (لكل مقاول) — يستدعيها بنّاء مستخلص الباطن
+  function outstandingSubCharges(items) {
+    const bySub = {};
+    (items || []).forEach(e => {
+      if (e.bearer === 'sub' && e.subId && !e.settledMusNo && e.status !== 'rejected') {
+        const k = e.subId;
+        if (!bySub[k]) bySub[k] = { subId: e.subId, total: 0, byType: { material: 0, salary: 0, other: 0 }, count: 0, items: [] };
+        bySub[k].total = round2(bySub[k].total + approvedCost(e));
+        bySub[k].byType[e.type] = round2((bySub[k].byType[e.type] || 0) + approvedCost(e));
+        bySub[k].count++;
+        bySub[k].items.push({ id: e.id, type: e.type, amount: e.amount, description: e.description, date: e.date });
+      }
+    });
+    return bySub;
   }
 
   // ---------- GET: البنود + ملخص الربحية + الصلاحيات ----------
@@ -147,11 +174,38 @@ module.exports = function initExpenses(ctx) {
     res.json({
       items: store.items || [],
       profitability: profitability(project, store.items || []),
+      subs: (project.subcontractors || []).map(s => ({ id: s.id, name: s.name })),
+      subCharges: outstandingSubCharges(store.items || []),
       canManage: canManage(req.user),
       canDelete: true, // أي دور يملك صلاحية الوصول لهذا المشروع يمكنه الحذف (انظر تعليق DELETE أدناه)
       canApprove: canApprove(req.user),
       integrationEnabled: !!companyIntegration(project.companyId).enabled
     });
+  });
+
+  // ---------- GET: المصاريف المحمّلة على كل مقاول باطن وغير المسوَّاة بعد (يستدعيها بنّاء مستخلص الباطن) ----------
+  app.get('/api/projects/:id/sub-charges', auth, (req, res) => {
+    const project = loadProjectOr404(req, res); if (!project) return;
+    res.json({ bySub: outstandingSubCharges(loadExpenses(project.id).items || []) });
+  });
+
+  // ---------- POST: تسوية المصاريف المحمّلة على مقاول بعد خصمها في مستخلصه (تمنع الخصم المزدوج) ----------
+  app.post('/api/projects/:id/sub-charges/settle', auth, (req, res) => {
+    const project = loadProjectOr404(req, res); if (!project) return;
+    if (!canManage(req.user)) return res.status(403).json({ error: 'غير مصرّح' });
+    const subId = Number((req.body || {}).subId);
+    const musNo = String((req.body || {}).musNo || '').trim();
+    if (!subId || !musNo) return res.status(400).json({ error: 'subId و musNo مطلوبان' });
+    const store = loadExpenses(project.id);
+    let settled = 0, count = 0;
+    (store.items || []).forEach(e => {
+      if (e.bearer === 'sub' && e.subId === subId && !e.settledMusNo && e.status !== 'rejected') {
+        e.settledMusNo = musNo; e.settledAt = now();
+        settled = round2(settled + approvedCost(e)); count++;
+      }
+    });
+    if (count) { store.version = (store.version || 0) + 1; saveExpenses(project.id, store); }
+    res.json({ ok: true, settled, count });
   });
 
   // ---------- POST: إضافة مصروف ----------
@@ -163,7 +217,8 @@ module.exports = function initExpenses(ctx) {
     const store = loadExpenses(project.id);
     const exp = {
       id: genId(), ...buildExpenseFields(req.body || {}), by: req.user.name, createdAt: now(), updatedAt: now(), erpSyncedAt: null, erpStatus: '',
-      status: 'pending', approvedAmount: 0, approvedBy: null, approvedAt: null, rejectReason: ''
+      status: 'pending', approvedAmount: 0, approvedBy: null, approvedAt: null, rejectReason: '',
+      settledMusNo: null, settledAt: null // تُخصَّص فقط عبر /sub-charges/settle بعد بناء مستخلص الباطن
     };
     store.items = store.items || []; store.items.push(exp); store.version = (store.version || 0) + 1;
     saveExpenses(project.id, store);
@@ -184,6 +239,14 @@ module.exports = function initExpenses(ctx) {
     if (!exp) return res.status(404).json({ error: 'المصروف غير موجود' });
     const err = validateExpense(req.body || {}, project);
     if (err) return res.status(400).json({ error: err });
+    // مُسوّاة بالفعل ضمن مستخلص مقاول باطن مرفوع — لا يجوز تغيير التحميل بعد ذلك حتى لا يختل مستخلصه
+    if (exp.settledMusNo) {
+      const bodyBearer = (req.body || {}).bearer === 'sub' ? 'sub' : 'own';
+      const bodySubId = bodyBearer === 'sub' ? (Number((req.body || {}).subId) || null) : null;
+      if (bodyBearer !== exp.bearer || bodySubId !== exp.subId) {
+        return res.status(400).json({ error: 'هذا المصروف سُوّي ضمن مستخلص مقاول الباطن ' + exp.settledMusNo + ' — لا يمكن تغيير التحميل بعد التسوية' });
+      }
+    }
     Object.assign(exp, buildExpenseFields(req.body || {}), { updatedAt: now() });
     // توافق مع الاعتماد القائم: إن قلّ المبلغ المعدَّل عن اعتماد سابق (كامل أو جزئي)، نقصّ المعتمد ليطابق
     // الواقع الجديد، ونُنزل الاعتماد الكامل إلى جزئي تلقائياً بدل ترك حالة غير متسقة (معتمد > المبلغ الفعلي).
@@ -198,6 +261,11 @@ module.exports = function initExpenses(ctx) {
   app.delete('/api/projects/:id/expenses/:expId', auth, (req, res) => {
     const project = loadProjectOr404(req, res); if (!project) return;
     const store = loadExpenses(project.id);
+    const existing = (store.items || []).find(x => x.id === req.params.expId);
+    // مُسوّاة بالفعل ضمن مستخلص مقاول باطن مرفوع — حذفها يفقد الأثر المحاسبي لذلك المستخلص
+    if (existing && existing.settledMusNo) {
+      return res.status(400).json({ error: 'هذا المصروف سُوّي ضمن مستخلص مقاول الباطن ' + existing.settledMusNo + ' — لا يمكن حذفه' });
+    }
     const before = (store.items || []).length;
     store.items = (store.items || []).filter(x => x.id !== req.params.expId);
     if (store.items.length === before) return res.status(404).json({ error: 'المصروف غير موجود' });

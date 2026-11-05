@@ -81,7 +81,7 @@
         <div class="field" style="flex:1;min-width:200px"><label for="f-search" data-i18n="بحث">بحث</label><input id="f-search" data-i18n-ph="الوصف أو المورّد…" placeholder="الوصف أو المورّد…" oninput="renderList()"></div>
       </div>
       <div style="overflow:auto"><table>
-        <thead><tr><th data-i18n="التاريخ">التاريخ</th><th data-i18n="النوع">النوع</th><th data-i18n="الوصف">الوصف</th><th class="hs" data-i18n="المورّد">المورّد</th><th data-i18n="المبلغ">المبلغ</th><th class="hs" data-i18n="الضريبة">الضريبة</th><th data-i18n="الإجمالي">الإجمالي</th><th class="hs">ERP</th><th data-i18n="المستندات">المستندات</th><th data-i18n="الحالة">الحالة</th><th></th></tr></thead>
+        <thead><tr><th data-i18n="التاريخ">التاريخ</th><th data-i18n="النوع">النوع</th><th data-i18n="الوصف">الوصف</th><th class="hs" data-i18n="المورّد">المورّد</th><th data-i18n="المبلغ">المبلغ</th><th class="hs" data-i18n="الضريبة">الضريبة</th><th data-i18n="الإجمالي">الإجمالي</th><th class="hs" data-i18n="التحميل على">التحميل على</th><th class="hs">ERP</th><th data-i18n="المستندات">المستندات</th><th data-i18n="الحالة">الحالة</th><th></th></tr></thead>
         <tbody id="exp-body"></tbody>
       </table></div>
     </div>
@@ -110,6 +110,18 @@
     <div class="field" style="flex:1"><label for="e-vat" data-i18n="نسبة الضريبة %">نسبة الضريبة %</label><input id="e-vat" type="number" min="0" max="100" step="0.01" value="15" oninput="updateTotalPreview()"></div>
   </div>
   <div class="note note-info" id="e-total-preview" style="font-size:13px"></div>
+  <div class="field"><label for="e-bearer" data-i18n="التحميل على *">التحميل على *</label>
+    <select id="e-bearer" onchange="onBearerChange()">
+      <option value="own" data-i18n="🏢 ذاتي — تكلفة على المشروع">🏢 ذاتي — تكلفة على المشروع</option>
+      <option value="sub" data-i18n="🧱 مقاول باطن — يُخصم من مستخلصه">🧱 مقاول باطن — يُخصم من مستخلصه</option>
+    </select>
+  </div>
+  <div class="field" id="e-subid-field" style="display:none">
+    <label for="e-subid" data-i18n="أي مقاول باطن؟">أي مقاول باطن؟</label>
+    <select id="e-subid"></select>
+    <div class="help" data-i18n="يُسترد هذا المبلغ من المقاول ويُخصم تلقائياً عند بناء مستخلصه — لا يُحتسب على تكلفة المشروع.">يُسترد هذا المبلغ من المقاول ويُخصم تلقائياً عند بناء مستخلصه — لا يُحتسب على تكلفة المشروع.</div>
+  </div>
+  <div class="note note-warn hide" id="e-settled-note" style="font-size:12px"></div>
   <div class="row" id="e-sal-row" style="display:none">
     <div class="field" style="flex:1"><label for="e-month" data-i18n="الشهر">الشهر</label><input id="e-month" type="month"></div>
     <div class="field" style="flex:1"><label for="e-headcount" data-i18n="عدد العمال">عدد العمال</label><input id="e-headcount" type="number" min="0"></div>
@@ -212,6 +224,16 @@ Object.assign(I18N_EN, {
   'الحالة':'Status', 'اعتماد':'Approve', 'رفض':'Reject',
   'اعتماد المصروف':'Approve expense', 'اعتماد كامل المبلغ':'Approve full amount', 'اعتماد جزئي':'Partial approval',
   'أدخل مبلغاً أقل من قيمة المصروف':'Enter an amount less than the expense value',
+  'التحميل على *':'Charge to *', '🏢 ذاتي — تكلفة على المشروع':'🏢 Own — project cost', '🧱 مقاول باطن — يُخصم من مستخلصه':'🧱 Subcontractor — deducted from their certificate',
+  'أي مقاول باطن؟':'Which subcontractor?',
+  'يُسترد هذا المبلغ من المقاول ويُخصم تلقائياً عند بناء مستخلصه — لا يُحتسب على تكلفة المشروع.':'This amount is recovered from the subcontractor and auto-deducted when their certificate is built — it is not counted in the project cost.',
+  'لا مقاولو باطن مسجّلون':'No subcontractors registered',
+  'سُوّي هذا المصروف ضمن مستخلص مقاول الباطن':'This expense was settled under subcontractor certificate',
+  'لا يمكن تغيير التحميل على مقاول باطن بعد التسوية.':'The charge-to cannot be changed after settlement.',
+  'اختر مقاول باطن صحيحاً للتحميل عليه':'Select a valid subcontractor to charge this to',
+  'ذاتي':'Own', 'سُوّي ضمن مستخلص:':'Settled under certificate:', 'التحميل على':'Charge to',
+  'محمّل على مقاولي الباطن (مُستبعد من التكلفة)':'Charged to subcontractors (excluded from cost)',
+  'مصاريف محمّلة على مقاولي الباطن — مُستبعدة من تكلفة المشروع وتُخصم تلقائياً من مستخلصاتهم':'Expenses charged to subcontractors — excluded from project cost and auto-deducted from their certificates',
   'المبلغ المعتمد (ر.س)':'Approved amount (SAR)', 'تأكيد الاعتماد':'Confirm approval',
   'معتمد':'Approved', 'معتمد جزئياً':'Partially approved', 'مرفوض':'Rejected', 'بانتظار الاعتماد':'Awaiting approval',
   'المعتمد:':'Approved:', 'مبلغ المصروف:':'Expense amount:',
@@ -295,7 +317,7 @@ function renderKpis(){
   var rows=[[T('مقاولو الباطن'),p.costs.subcontractors],[T('مواد'),p.costs.materials],[T('رواتب'),p.costs.salaries],[T('نثريات'),p.costs.other]];
   document.getElementById('cost-breakdown').innerHTML = rows.map(function(r){
     return '<div class="panel" style="padding:12px;text-align:center"><div class="muted" style="font-size:12px">'+r[0]+'</div><div class="k-val" style="font-size:19px">'+money(r[1])+'</div></div>';
-  }).join('');
+  }).join('') + (p.chargedToSubs ? '<div class="panel" style="padding:12px;text-align:center;grid-column:1/-1" title="'+T('مصاريف محمّلة على مقاولي الباطن — مُستبعدة من تكلفة المشروع وتُخصم تلقائياً من مستخلصاتهم')+'"><div class="muted" style="font-size:12px">🧱 '+T('محمّل على مقاولي الباطن (مُستبعد من التكلفة)')+'</div><div class="k-val" style="font-size:19px;color:var(--text3)">'+money(p.chargedToSubs)+'</div></div>' : '');
 }
 function typeLabel(t){ return {material:T('مواد'),salary:T('رواتب'),other:T('نثريات')}[t]||t; }
 function renderList(){
@@ -314,6 +336,7 @@ function renderList(){
       '<td class="amount">'+money(x.amount)+'</td>'+
       '<td class="hs amount">'+money(x.vat)+'</td>'+
       '<td class="amount">'+money(x.total)+'</td>'+
+      '<td class="hs">'+bearerChip(x)+'</td>'+
       '<td class="hs">'+(x.erpStatus?'<span class="muted" style="font-size:11px">'+esc(x.erpStatus)+'</span>':(EXP.integrationEnabled&&EXP.canManage?'<button class="btn btn-ghost btn-sm" onclick="syncExpense(\''+x.id+'\')">'+T('مزامنة')+'</button>':'—'))+'</td>'+
       '<td>'+docsCell(x)+'</td>'+
       '<td>'+statusChip(x)+'</td>'+
@@ -321,7 +344,16 @@ function renderList(){
         (EXP.canApprove?('<button class="btn btn-ghost btn-sm" onclick="openApproveModal(\''+x.id+'\')" title="'+T('اعتماد')+'">✅</button> <button class="btn btn-ghost btn-sm" onclick="rejectExpense(\''+x.id+'\')" title="'+T('رفض')+'">❌</button> '):'')+
         (EXP.canManage?('<button class="btn btn-ghost btn-sm" onclick="openExpModal(\''+x.id+'\')">'+T('تعديل')+'</button> '):'')+
         (EXP.canDelete?'<button class="btn btn-danger btn-sm" onclick="deleteExpense(\''+x.id+'\')">'+T('حذف')+'</button>':'')+'</td></tr>';
-  }).join('') || '<tr><td colspan="11"><div class="empty-state"><div class="icon">🧾</div>'+T('لا مصاريف مسجّلة بعد')+'</div></td></tr>';
+  }).join('') || '<tr><td colspan="12"><div class="empty-state"><div class="icon">🧾</div>'+T('لا مصاريف مسجّلة بعد')+'</div></td></tr>';
+}
+function subNameById(id){
+  var s=(EXP.subs||[]).find(function(x){return x.id===id});
+  return s?s.name:('#'+id);
+}
+function bearerChip(x){
+  if(x.bearer!=='sub') return '<span class="muted" style="font-size:11px">'+T('ذاتي')+'</span>';
+  var settled=!!x.settledMusNo;
+  return '<span class="status-chip" style="background:#0c3324;color:#7ff0bb"'+(settled?' title="'+T('سُوّي ضمن مستخلص:')+' '+esc(x.settledMusNo)+'"':'')+'>🧱 '+esc(subNameById(x.subId))+(settled?' ✓':'')+'</span>';
 }
 function statusChip(x){
   var st=x.status||'pending';
@@ -403,9 +435,17 @@ function rejectExpense(id){
   });
 }
 
+function renderSubIdPicker(){
+  var sel=document.getElementById('e-subid');
+  sel.innerHTML=(EXP.subs||[]).map(function(s){ return '<option value="'+s.id+'">'+esc(s.name)+'</option>'; }).join('')
+    || '<option value="">'+T('لا مقاولو باطن مسجّلون')+'</option>';
+}
 function openExpModal(id){
   document.getElementById('exp-err').classList.add('hide');
+  document.getElementById('e-settled-note').classList.add('hide');
   DOCS=[];
+  renderSubIdPicker();
+  var settled=false;
   if(id){
     var x=(EXP.items||[]).find(function(i){return i.id===id});
     if(!x) return;
@@ -424,7 +464,15 @@ function openExpModal(id){
     document.getElementById('e-inv-date').value=x.taxInvoiceDate||'';
     document.getElementById('e-boq').value=x.boqItemId||'';
     document.getElementById('e-sync').checked=false;
+    document.getElementById('e-bearer').value=x.bearer==='sub'?'sub':'own';
+    if(x.bearer==='sub' && x.subId) document.getElementById('e-subid').value=String(x.subId);
     DOCS=(x.docs||[]).slice();
+    settled=!!x.settledMusNo;
+    if(settled){
+      var note=document.getElementById('e-settled-note');
+      note.textContent='🔒 '+T('سُوّي هذا المصروف ضمن مستخلص مقاول الباطن')+' '+x.settledMusNo+' — '+T('لا يمكن تغيير التحميل على مقاول باطن بعد التسوية.');
+      note.classList.remove('hide');
+    }
   } else {
     document.getElementById('exp-modal-title').textContent=T('مصروف جديد');
     document.getElementById('e-id').value='';
@@ -434,13 +482,20 @@ function openExpModal(id){
     document.getElementById('e-vat').value='15';
     document.getElementById('e-boq').value='';
     document.getElementById('e-sync').checked=false;
+    document.getElementById('e-bearer').value='own';
   }
+  document.getElementById('e-bearer').disabled=settled;
+  document.getElementById('e-subid').disabled=settled;
   onTypeChange();
+  onBearerChange();
   updateTotalPreview();
   renderDocs();
   document.getElementById('exp-ov').classList.add('open');
 }
 function closeExpModal(){ document.getElementById('exp-ov').classList.remove('open'); }
+function onBearerChange(){
+  document.getElementById('e-subid-field').style.display = document.getElementById('e-bearer').value==='sub' ? '' : 'none';
+}
 function onTypeChange(){
   var t=document.getElementById('e-type').value;
   document.getElementById('e-sal-row').style.display = t==='salary' ? 'flex' : 'none';
@@ -489,6 +544,8 @@ function saveExpense(){
     boqItemId:document.getElementById('e-boq').value||null,
     month:document.getElementById('e-month').value,
     headcount:document.getElementById('e-headcount').value===''?null:Number(document.getElementById('e-headcount').value),
+    bearer:document.getElementById('e-bearer').value,
+    subId:document.getElementById('e-bearer').value==='sub'?(Number(document.getElementById('e-subid').value)||null):null,
     docs:DOCS,
     syncErp:document.getElementById('e-sync').checked
   };
@@ -496,6 +553,7 @@ function saveExpense(){
   if(!body.date) return showExpErr(T('التاريخ مطلوب'));
   if(!(body.amount>0)) return showExpErr(T('المبلغ مطلوب ويجب أن يكون أكبر من صفر'));
   if(body.type==='material' && !DOCS.length) return showExpErr(T('إرفاق فاتورة المورد إلزامي لمصاريف المواد'));
+  if(body.bearer==='sub' && !body.subId) return showExpErr(T('اختر مقاول باطن صحيحاً للتحميل عليه'));
   var btn=document.getElementById('e-save'); btn.disabled=true; btn.innerHTML='<span class="spin"></span> '+T('جارٍ…');
   var req = id ? api('PUT','/api/projects/'+CUR.id+'/expenses/'+id,body) : api('POST','/api/projects/'+CUR.id+'/expenses',body);
   req.then(function(r){

@@ -34,6 +34,10 @@ module.exports = function initExpenses(ctx) {
     return canAccessProject(user, project) && ['admin', 'client', 'pmo', 'pm'].includes(user.role);
   }
 
+  function cleanDocs(arr) {
+    return Array.isArray(arr) ? arr.filter(d => d && d.url).map(d => ({ url: String(d.url), name: String(d.name || 'ملف') })).slice(0, 15) : [];
+  }
+
   // تطبيع سجل مصروف وحسابه
   function normalizeExpense(body, user) {
     const type = TYPES.includes(body.type) ? body.type : 'other';
@@ -57,7 +61,12 @@ module.exports = function initExpenses(ctx) {
       subId: body.bearer === 'sub' ? (Number(body.subId) || null) : null,
       settledMusNo: body.settledMusNo || null,   // رقم مستخلص الباطن الذي خُصمت فيه (null = لم تُخصم بعد)
       settledAt: body.settledAt || null,
-      docs: Array.isArray(body.docs) ? body.docs.filter(d => d && d.url).map(d => ({ url: String(d.url), name: String(d.name || 'ملف') })).slice(0, 15) : []
+      // إثبات الدفع: كم دُفع فعلاً + تاريخ التحويل + مرجع + مرفقات إثبات التحويل
+      paidAmount: body.paidAmount != null ? round2(body.paidAmount) : 0,
+      paidAt: String(body.paidAt || '').slice(0, 10),
+      paymentRef: String(body.paymentRef || '').trim(),
+      paymentDocs: cleanDocs(body.paymentDocs),
+      docs: cleanDocs(body.docs)
     };
   }
 

@@ -70,7 +70,7 @@
         <span class="hint" id="count-lbl"></span>
       </div>
       <div style="overflow:auto"><table>
-        <thead><tr><th>النوع</th><th>التاريخ</th><th>البيان</th><th>المورّد/الشهر</th><th>التحميل</th><th>المبلغ</th><th>الضريبة</th><th>الإجمالي</th><th>مرفق</th><th></th></tr></thead>
+        <thead><tr><th>النوع</th><th>التاريخ</th><th>البيان</th><th>المورّد/الشهر</th><th>التحميل</th><th>المبلغ</th><th>الضريبة</th><th>الإجمالي</th><th>المدفوع</th><th>مرفق</th><th></th></tr></thead>
         <tbody id="exp-body"></tbody>
       </table></div>
       <p class="hint" style="margin-top:10px">🧱 مستخلصات مقاولي الباطن تُحتسب تلقائياً في التكاليف من تبويب المقاولين — لا تُدخَل هنا.</p>
@@ -119,6 +119,22 @@
     <input type="file" id="e-files" accept="image/*,.pdf,application/pdf" multiple onchange="filesPicked(this)">
     <div id="e-files-list" style="display:flex;flex-direction:column;gap:4px;margin-top:6px"></div>
   </div>
+
+  <!-- إثبات الدفع: كم دُفع فعلاً + مرجع التحويل + صورة/ملف إثبات التحويل -->
+  <div style="border:1px solid var(--line);border-radius:12px;padding:12px;margin:6px 0;background:var(--surface)">
+    <div style="font-weight:800;font-size:13px;margin-bottom:8px">💳 إثبات الدفع <span class="hint" style="font-weight:400">(اختياري — سجّله عند تحويلك للمبلغ)</span></div>
+    <div class="row">
+      <div class="field" style="flex:1"><label>المبلغ المدفوع</label><input type="number" id="e-paid-amount" min="0" step="0.01" placeholder="كم دفعت فعلاً"></div>
+      <div class="field" style="flex:1"><label>تاريخ التحويل</label><input type="date" id="e-paid-date"></div>
+    </div>
+    <div class="field"><label>مرجع التحويل (اختياري)</label><input id="e-pay-ref" placeholder="رقم العملية / اسم البنك / آخر 4 أرقام"></div>
+    <div class="field"><label>📎 صورة/ملف إثبات التحويل</label>
+      <input type="file" id="e-pay-files" accept="image/*,.pdf,application/pdf" multiple onchange="payFilesPicked(this)">
+      <div id="e-pay-files-list" style="display:flex;flex-direction:column;gap:4px;margin-top:6px"></div>
+      <div class="hint">يبقى مرجعاً لك تعرف كم دفعت في هذا المصروف ومتى.</div>
+    </div>
+  </div>
+
   <label class="hint" style="display:flex;gap:8px;align-items:center;margin:4px 0"><input type="checkbox" id="e-sync" style="width:auto"> مزامنة مع Bassir ERP بعد الحفظ (إن كان التكامل مُفعّلاً)</label>
   <button class="btn btn-primary btn-block" id="e-save" onclick="saveExp()">💾 حفظ</button>
 </div></div>
@@ -126,7 +142,7 @@
 <div class="toast" id="toast"><span></span></div>
 
 <script>
-var TOKEN=localStorage.getItem('azoom_token')||'', ST=null, PID=null, DATA=null, FILTER='all', EDIT=null, pending=[];
+var TOKEN=localStorage.getItem('azoom_token')||'', ST=null, PID=null, DATA=null, FILTER='all', EDIT=null, pending=[], payPending=[];
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
 function money(n){return Number(n||0).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:2})}
 function toast(m){var t=document.getElementById('toast');t.querySelector('span').textContent=m;t.classList.add('show');setTimeout(function(){t.classList.remove('show')},2600)}
@@ -204,17 +220,29 @@ function renderList(){
     var doc=(e.docs||[]).length?('<a href="'+esc(e.docs[0].url)+'" target="_blank" style="color:var(--accent)">'+(String(e.docs[0].url).endsWith('.pdf')?'📄':'🖼')+(e.docs.length>1?(' ×'+e.docs.length):'')+'</a>'):'<span class="hint">—</span>';
     var manage=DATA.canManage?('<button class="btn btn-ghost btn-sm" onclick="openEdit(\''+e.id+'\')">✎</button> <button class="btn btn-ghost btn-sm" onclick="delExp(\''+e.id+'\')">🗑</button>'+(DATA.integrationEnabled?(' <button class="btn btn-ghost btn-sm" onclick="syncExp(\''+e.id+'\')" title="مزامنة ERP">'+(e.erpSyncedAt?'✅':'⇅')+'</button>'):'')):'';
     var bearer=e.bearer==='sub'?('<span class="typechip t-sub" title="محمّلة على مقاول الباطن — تُخصم من مستخلصه'+(e.settledMusNo?' (خُصمت في '+esc(e.settledMusNo)+')':'')+'">🧱 '+esc(subName(e.subId))+(e.settledMusNo?' ✓':'')+'</span>'):'<span class="hint">ذاتي</span>';
-    return '<tr><td><span class="typechip '+tl[1]+'">'+tl[0]+'</span></td><td>'+esc(e.date)+'</td><td>'+esc(e.description||'—')+(e.category?(' <span class="hint">· '+esc(e.category)+'</span>'):'')+'</td><td>'+esc(who)+(e.taxInvoiceNo?(' <span class="hint">· '+esc(e.taxInvoiceNo)+'</span>'):'')+'</td><td>'+bearer+'</td><td class="amount">'+money(e.amount)+'</td><td class="amount" style="color:var(--text3)">'+money(e.vat)+'</td><td class="amount">'+money(e.total)+'</td><td>'+doc+'</td><td>'+manage+'</td></tr>';
-  }).join('')||'<tr><td colspan="10" class="muted center">لا مصاريف</td></tr>';
+    var paid=paidCell(e);
+    return '<tr><td><span class="typechip '+tl[1]+'">'+tl[0]+'</span></td><td>'+esc(e.date)+'</td><td>'+esc(e.description||'—')+(e.category?(' <span class="hint">· '+esc(e.category)+'</span>'):'')+'</td><td>'+esc(who)+(e.taxInvoiceNo?(' <span class="hint">· '+esc(e.taxInvoiceNo)+'</span>'):'')+'</td><td>'+bearer+'</td><td class="amount">'+money(e.amount)+'</td><td class="amount" style="color:var(--text3)">'+money(e.vat)+'</td><td class="amount">'+money(e.total)+'</td><td>'+paid+'</td><td>'+doc+'</td><td>'+manage+'</td></tr>';
+  }).join('')||'<tr><td colspan="11" class="muted center">لا مصاريف</td></tr>';
 }
 function subName(id){var s=(DATA&&DATA.subs||[]).find(function(x){return x.id===id});return s?s.name:('#'+id)}
+function paidCell(e){
+  var pd=e.paymentDocs||[]; var amt=Number(e.paidAmount||0);
+  var proof=pd.length?(' <a href="'+esc(pd[0].url)+'" target="_blank" title="إثبات التحويل" style="color:var(--accent)">'+(String(pd[0].url).endsWith('.pdf')?'📄':'🖼')+(pd.length>1?(' ×'+pd.length):'')+'</a>'):'';
+  if(amt<=0 && !pd.length) return '<span class="hint">—</span>';
+  var tip=[]; if(e.paidAt) tip.push('بتاريخ '+e.paidAt); if(e.paymentRef) tip.push('مرجع: '+e.paymentRef);
+  if(amt<=0) return '<span class="hint" title="أُرفق إثبات دون مبلغ">إثبات</span>'+proof;
+  var tot=Number(e.total||e.amount||0);
+  var full=amt>=tot-0.01;
+  return '<span style="color:'+(full?'var(--green)':'#ffd27a')+';font-weight:700" title="'+esc(tip.join(' · ')||'مدفوع')+'">'+(full?'✓ ':'جزئي ')+money(amt)+'</span>'+proof;
+}
 function fillSubs(){var sel=document.getElementById('e-subid');sel.innerHTML=(DATA&&DATA.subs||[]).map(function(s){return '<option value="'+s.id+'">'+esc(s.name)+'</option>'}).join('')||'<option value="">لا مقاولون مسجّلون</option>';}
 function bearerChanged(){document.getElementById('e-subid-f').style.display=document.getElementById('e-bearer').value==='sub'?'':'none';}
 
 // ---- add/edit ----
 function openAdd(){ EDIT=null; pending=[]; document.getElementById('exp-title').textContent='إضافة مصروف'; resetForm(); document.getElementById('exp-ov').classList.add('open'); }
-function openEdit(id){ EDIT=id; var e=(DATA.items||[]).find(function(x){return x.id===id}); if(!e) return; pending=(e.docs||[]).slice();
+function openEdit(id){ EDIT=id; var e=(DATA.items||[]).find(function(x){return x.id===id}); if(!e) return; pending=(e.docs||[]).slice(); payPending=(e.paymentDocs||[]).slice();
   document.getElementById('exp-title').textContent='تعديل مصروف'; resetForm();
+  document.getElementById('e-paid-amount').value=e.paidAmount||''; document.getElementById('e-paid-date').value=e.paidAt||''; document.getElementById('e-pay-ref').value=e.paymentRef||'';
   document.getElementById('e-type').value=e.type; document.getElementById('e-date').value=e.date; document.getElementById('e-month').value=e.month||'';
   document.getElementById('e-desc').value=e.description||''; document.getElementById('e-amount').value=e.amount; document.getElementById('e-vatrate').value=e.vatRate;
   document.getElementById('e-supplier').value=e.supplier||''; document.getElementById('e-invno').value=e.taxInvoiceNo||''; document.getElementById('e-invdate').value=e.taxInvoiceDate||'';
@@ -223,10 +251,10 @@ function openEdit(id){ EDIT=id; var e=(DATA.items||[]).find(function(x){return x
   typeChanged(); recalc(); renderFiles(); document.getElementById('exp-ov').classList.add('open');
 }
 function closeAdd(){ document.getElementById('exp-ov').classList.remove('open'); }
-function resetForm(){ ['e-desc','e-amount','e-supplier','e-invno','e-invdate','e-headcount','e-category','e-month'].forEach(function(id){document.getElementById(id).value=''});
+function resetForm(){ ['e-desc','e-amount','e-supplier','e-invno','e-invdate','e-headcount','e-category','e-month','e-paid-amount','e-paid-date','e-pay-ref'].forEach(function(id){document.getElementById(id).value=''});
   document.getElementById('e-type').value='material'; document.getElementById('e-vatrate').value='15'; document.getElementById('e-date').value=new Date().toISOString().slice(0,10);
   document.getElementById('e-bearer').value='own'; fillSubs(); bearerChanged();
-  document.getElementById('e-sync').checked=false; document.getElementById('exp-err').classList.add('hide'); if(!EDIT) pending=[]; typeChanged(); recalc(); renderFiles(); }
+  document.getElementById('e-sync').checked=false; document.getElementById('exp-err').classList.add('hide'); if(!EDIT){ pending=[]; payPending=[]; } typeChanged(); recalc(); renderFiles(); renderPayFiles(); }
 function typeChanged(){
   var t=document.getElementById('e-type').value;
   document.getElementById('e-material-fields').style.display=t==='material'?'':'none';
@@ -254,6 +282,17 @@ async function filesPicked(input){
 function renderFiles(){
   document.getElementById('e-files-list').innerHTML=pending.map(function(f,i){return '<div class="spread" style="font-size:12px"><span>'+((f.name||'').toLowerCase().endsWith('.pdf')?'📄':'🖼')+' '+esc(f.name||'ملف')+'</span><button class="btn btn-ghost btn-sm" onclick="pending.splice('+i+',1);renderFiles()">✕</button></div>'}).join('');
 }
+async function payFilesPicked(input){
+  var files=[].slice.call(input.files||[]).slice(0,15-payPending.length);
+  for(var i=0;i<files.length;i++){ var f=files[i];
+    if(f.size>10*1024*1024){ toast(f.name+': أكبر من 10MB'); continue; }
+    try{ var du=await readFileAsDataURL(f); payPending.push({dataUrl:du,name:f.name}); }catch(e){ toast('تعذّر قراءة '+f.name); }
+  }
+  input.value=''; renderPayFiles();
+}
+function renderPayFiles(){
+  document.getElementById('e-pay-files-list').innerHTML=payPending.map(function(f,i){return '<div class="spread" style="font-size:12px"><span>'+((f.name||'').toLowerCase().endsWith('.pdf')?'📄':'🖼')+' '+esc(f.name||'ملف')+'</span><button class="btn btn-ghost btn-sm" onclick="payPending.splice('+i+',1);renderPayFiles()">✕</button></div>'}).join('');
+}
 async function saveExp(){
   var err=document.getElementById('exp-err'); err.classList.add('hide');
   var type=document.getElementById('e-type').value;
@@ -264,19 +303,26 @@ async function saveExp(){
   if(bearer==='sub' && !subId){ err.textContent='اختر مقاول الباطن المحمّل عليه المصروف'; err.classList.remove('hide'); return; }
   var btn=document.getElementById('e-save'); btn.disabled=true; btn.innerHTML='<span class="spin"></span> جارٍ…';
   // ارفع المرفقات الجديدة (التي تحمل dataUrl) عبر نقطة رفع الصور الحالية
-  var docs=[];
+  var docs=[], payDocs=[];
   try{
     for(var i=0;i<pending.length;i++){ var f=pending[i];
       if(f.url){ docs.push({url:f.url,name:f.name}); continue; }
       var r=await api('POST','/api/projects/'+PID+'/photos',{dataUrl:f.dataUrl});
       if(!r.ok) throw new Error(r.d.error||'تعذّر رفع المرفق'); docs.push({url:r.d.url,name:f.name});
     }
+    for(var k=0;k<payPending.length;k++){ var pf=payPending[k];
+      if(pf.url){ payDocs.push({url:pf.url,name:pf.name}); continue; }
+      var pr=await api('POST','/api/projects/'+PID+'/photos',{dataUrl:pf.dataUrl});
+      if(!pr.ok) throw new Error(pr.d.error||'تعذّر رفع إثبات الدفع'); payDocs.push({url:pr.d.url,name:pf.name});
+    }
   }catch(e){ btn.disabled=false; btn.textContent='💾 حفظ'; err.textContent=e.message; err.classList.remove('hide'); return; }
   var body={ type:type, date:document.getElementById('e-date').value, description:document.getElementById('e-desc').value,
     amount:amount, vatRate:Number(document.getElementById('e-vatrate').value)||0,
     supplier:document.getElementById('e-supplier').value, taxInvoiceNo:document.getElementById('e-invno').value, taxInvoiceDate:document.getElementById('e-invdate').value,
     month:document.getElementById('e-month').value, headcount:Number(document.getElementById('e-headcount').value)||0,
-    category:document.getElementById('e-category').value, bearer:bearer, subId:subId, docs:docs, syncErp:document.getElementById('e-sync').checked };
+    category:document.getElementById('e-category').value, bearer:bearer, subId:subId, docs:docs,
+    paidAmount:Number(document.getElementById('e-paid-amount').value)||0, paidAt:document.getElementById('e-paid-date').value, paymentRef:document.getElementById('e-pay-ref').value, paymentDocs:payDocs,
+    syncErp:document.getElementById('e-sync').checked };
   var res=await (EDIT?api('PUT','/api/projects/'+PID+'/expenses/'+EDIT,body):api('POST','/api/projects/'+PID+'/expenses',body));
   btn.disabled=false; btn.textContent='💾 حفظ';
   if(!res.ok){ err.textContent=res.d.error||'تعذّر الحفظ'; err.classList.remove('hide'); return; }

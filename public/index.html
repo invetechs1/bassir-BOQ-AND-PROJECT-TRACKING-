@@ -4445,7 +4445,7 @@ function showDoc(m){
     '<td style="padding:6px;border:1px solid var(--border);font-family:var(--mono);color:var(--amber)">' + esc(l.itemId) + '</td>' +
     '<td style="padding:6px;border:1px solid var(--border)">' + esc(l.desc) + '</td>' +
     '<td style="padding:6px;border:1px solid var(--border);text-align:center">' + esc(l.unit) + '</td>' +
-    '<td style="padding:6px;border:1px solid var(--border);text-align:center;font-family:var(--mono)">' + fmtN(l.rate) + '</td>' +
+    '<td style="padding:6px;border:1px solid var(--border);text-align:center;font-family:var(--mono)">' + fmtRate(l.rate) + '</td>' +
     '<td style="padding:6px;border:1px solid var(--border);text-align:center;font-family:var(--mono)">' + fmtQ(l.prevQty) + '</td>' +
     '<td style="padding:6px;border:1px solid var(--border);text-align:center;font-family:var(--mono);color:var(--green)">' + fmtQ(l.currQty) + '</td>' +
     '<td style="padding:6px;border:1px solid var(--border);text-align:center;font-family:var(--mono)">' + fmtQ(l.cumQty) + '</td>' +
@@ -5969,7 +5969,7 @@ function renderSubDraftItems(){
   $('sub-items-list').innerHTML = subDraftItems.length ? subDraftItems.map((r,i) => {
     const it = getItem(r.itemId);
     return '<div class="sc-item"><span class="sc-item-name" style="white-space:normal"><span class="item-no">' + esc(r.itemId) + '</span> ' + esc(it?it.desc.substring(0,40):T('(بند محذوف)')) + ' <span style="color:var(--text3)">(' + esc(it?it.unit:'') + ')</span></span>' +
-      '<span style="display:flex;align-items:center;gap:8px"><span class="sc-item-val">' + fmtN(r.rate) + ' ' + T('ر.س') + '</span>' +
+      '<span style="display:flex;align-items:center;gap:8px"><span class="sc-item-val">' + fmtRate(r.rate) + ' ' + T('ر.س') + '</span>' +
       '<button class="mini-btn red" onclick="subDraftItems.splice(' + i + ',1);renderSubDraftItems()">✕</button></span></div>';
   }).join('') : '<div style="color:var(--text3);font-size:12px;padding:6px">' + T('لم تُضف بنود بعد') + '</div>';
 }
@@ -5982,8 +5982,8 @@ function subAddItemRate(){
   // سعر مقاول الباطن لا يتجاوز سعر العقد (لا تُدفع للمقاول أكثر مما يُطالَب به العميل)
   const boqIt = getItem(itemId);
   if (boqIt && rate > (boqIt.unitRate || 0) + 0.01) {
-    if (editsGated()) { alert(T('⛔ سعر مقاول الباطن (') + fmtN(rate) + T(') لا يمكن أن يتجاوز سعر العقد للبند (') + fmtN(boqIt.unitRate) + ').'); return; }
-    if (!confirm(T('⚠️ تنبيه: سعر مقاول الباطن (') + fmtN(rate) + T(') أعلى من سعر العقد (') + fmtN(boqIt.unitRate) + T(') — أي أنك ستدفع للمقاول أكثر مما تطالب به العميل. متابعة؟'))) return;
+    if (editsGated()) { alert(T('⛔ سعر مقاول الباطن (') + fmtRate(rate) + T(') لا يمكن أن يتجاوز سعر العقد للبند (') + fmtRate(boqIt.unitRate) + ').'); return; }
+    if (!confirm(T('⚠️ تنبيه: سعر مقاول الباطن (') + fmtRate(rate) + T(') أعلى من سعر العقد (') + fmtRate(boqIt.unitRate) + T(') — أي أنك ستدفع للمقاول أكثر مما تطالب به العميل. متابعة؟'))) return;
   }
   subDraftItems.push({ itemId, rate });
   $('sub-item-id').value = ''; $('sub-item-search').value = ''; $('sub-item-rate').value = '';
@@ -6134,7 +6134,7 @@ function renderSubDetail(){
     return '<tr>' +
       '<td><span class="item-no">' + esc(id) + '</span> <span style="font-size:11px;color:var(--text3)">' + esc(it.desc.substring(0,24)) + '</span></td>' +
       '<td><span class="pill gray" style="font-size:10px">' + esc(it.unit) + '</span></td>' +
-      '<td class="amount muted">' + fmtN(rate) + '</td>' +
+      '<td class="amount muted">' + fmtRate(rate) + '</td>' +
       '<td class="amount">' + fmtQ(ex) + '</td>' +
       '<td class="amount" style="color:var(--blue)">' + fmtQ(elig) + '</td>' +
       '<td class="amount muted">' + fmtQ(claimed) + '</td>' +
@@ -6341,7 +6341,7 @@ async function buildSubMus(){
 // ---- عرض/اعتماد/صرف مستخلص مقاول الباطن ----
 function subMusDocHtml(m){
   const sub = getSub(m.subId);
-  const rows = (m.lines||[]).map(l => '<tr><td style="text-align:right">' + esc(l.itemId) + ' — ' + esc(l.desc) + '</td><td style="text-align:center">' + esc(l.unit) + '</td><td style="text-align:center;font-family:var(--mono)">' + fmtN(l.rate) + '</td><td style="text-align:center;font-family:var(--mono)">' + fmtQ(l.currQty) + '</td><td style="text-align:center;font-family:var(--mono)">' + fmtN(l.amount) + '</td></tr>').join('');
+  const rows = (m.lines||[]).map(l => '<tr><td style="text-align:right">' + esc(l.itemId) + ' — ' + esc(l.desc) + '</td><td style="text-align:center">' + esc(l.unit) + '</td><td style="text-align:center;font-family:var(--mono)">' + fmtRate(l.rate) + '</td><td style="text-align:center;font-family:var(--mono)">' + fmtQ(l.currQty) + '</td><td style="text-align:center;font-family:var(--mono)">' + fmtN(l.amount) + '</td></tr>').join('');
   const dedRows = [];
   if (m.retention) dedRows.push([T('حجز جودة') + ' ' + m.retRate + '%', m.retention]);
   if (m.ded && m.ded.materials) dedRows.push([T('خصم مواد'), m.ded.materials]);
@@ -6588,7 +6588,7 @@ function renderPdbItems(){
     '<td><span class="item-no">' + esc(i.code||'—') + '</span></td>' +
     '<td><div class="desc-text" style="max-width:340px" data-tip="' + esc(i.desc) + '">' + esc(i.desc) + '</div></td>' +
     '<td><span class="pill gray" style="font-size:10px">' + esc(i.unit||'—') + '</span></td>' +
-    '<td class="amount claimable">' + fmtN(i.rate) + '</td>' +
+    '<td class="amount claimable">' + fmtRate(i.rate) + '</td>' +
     '<td style="font-size:11px;color:var(--text2)">' + esc(i.category||'—') + '</td>' +
     '<td style="font-size:10px;color:var(--text3)" data-tip="' + esc(i.project||'') + '">' + esc(i.offerRef||'—') + '</td>' +
     '<td style="white-space:nowrap">' +
@@ -6752,7 +6752,7 @@ function openInsertToBoq(itemId){
   if (!it) return;
   if (!proj().id) { alert(T('افتح مشروعاً أولاً')); return; }
   pdbInsertItemId = itemId;
-  $('pdb-insert-info').innerHTML = '<strong>' + esc(it.desc) + '</strong><br>' + T('الوحدة:') + ' ' + esc(it.unit) + ' · ' + T('السعر:') + ' ' + fmtN(it.rate) + ' ' + (LANG==='en'?'SAR':'ر.س') + ' → ' + T('المشروع:') + ' ' + esc(proj().info.name);
+  $('pdb-insert-info').innerHTML = '<strong>' + esc(it.desc) + '</strong><br>' + T('الوحدة:') + ' ' + esc(it.unit) + ' · ' + T('السعر:') + ' ' + fmtRate(it.rate) + ' ' + (LANG==='en'?'SAR':'ر.س') + ' → ' + T('المشروع:') + ' ' + esc(proj().info.name);
   // اقترح رقم بند غير مكرر
   let base = it.code || 'P1', cand = base, n = 1;
   while (getItem(cand)) { cand = base + '-' + (++n); }

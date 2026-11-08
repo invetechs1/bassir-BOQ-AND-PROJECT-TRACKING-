@@ -91,7 +91,7 @@ var TOKEN=localStorage.getItem('azoom_token')||'', ME=null, selTier='15';
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
 function money(n){return Number(n||0).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:2})}
 function toast(m){var t=document.getElementById('toast');t.querySelector('span').textContent=m;t.classList.add('show');setTimeout(function(){t.classList.remove('show')},2800)}
-function fmtDate(iso){ if(!iso) return '—'; try{var d=new Date(iso);return d.toLocaleDateString('ar-SA-u-nu-latn',{year:'numeric',month:'short',day:'numeric'})}catch(e){return iso.slice(0,10)} }
+function fmtDate(iso){ if(!iso) return '—'; try{var d=new Date(iso);return d.toLocaleDateString('ar-SA-u-ca-gregory-nu-latn',{year:'numeric',month:'short',day:'numeric'})}catch(e){return iso.slice(0,10)} }
 function api(method,path,body){
   return fetch(path,{method:method,headers:{'Content-Type':'application/json',Authorization:'Bearer '+TOKEN},body:body?JSON.stringify(body):undefined})
     .then(function(r){return r.json().then(function(d){return{status:r.status,ok:r.ok,d:d}})});

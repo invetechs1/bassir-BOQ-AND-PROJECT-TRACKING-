@@ -34,6 +34,12 @@ module.exports = function initExpenses(ctx) {
     return canAccessProject(user, project) && ['admin', 'client', 'pmo', 'pm'].includes(user.role);
   }
 
+  // صلاحية الاعتماد والدفع (المالك/الإدارة فقط — ليس مدير المشروع).
+  // مدير المشروع يُدخل المصروف فقط؛ المالك يعتمده (كلي/جزئي) ويرفع كشف التحويل في خانة المدفوع.
+  function canApprove(user, project) {
+    return canAccessProject(user, project) && ['admin', 'client', 'pmo'].includes(user.role);
+  }
+
   function cleanDocs(arr) {
     return Array.isArray(arr) ? arr.filter(d => d && d.url).map(d => ({ url: String(d.url), name: String(d.name || 'ملف') })).slice(0, 15) : [];
   }
@@ -61,7 +67,12 @@ module.exports = function initExpenses(ctx) {
       subId: body.bearer === 'sub' ? (Number(body.subId) || null) : null,
       settledMusNo: body.settledMusNo || null,   // رقم مستخلص الباطن الذي خُصمت فيه (null = لم تُخصم بعد)
       settledAt: body.settledAt || null,
-      // إثبات الدفع: كم دُفع فعلاً + تاريخ التحويل + مرجع + مرفقات إثبات التحويل
+      // الاعتماد (يقوم به المالك/الإدارة، لا مدير المشروع): بانتظار الاعتماد | معتمد كلي | معتمد جزئي
+      approvalStatus: ['approved_full', 'approved_partial'].includes(body.approvalStatus) ? body.approvalStatus : 'pending',
+      approvedAmount: body.approvedAmount != null ? round2(body.approvedAmount) : 0,
+      approvedBy: String(body.approvedBy || '').trim(),
+      approvedAt: String(body.approvedAt || '').slice(0, 10),
+      // الدفع (يُرفع كشف التحويل بعد اعتماد المالك): كم دُفع فعلاً + تاريخ + مرجع + كشف التحويل
       paidAmount: body.paidAmount != null ? round2(body.paidAmount) : 0,
       paidAt: String(body.paidAt || '').slice(0, 10),
       paymentRef: String(body.paymentRef || '').trim(),
@@ -176,6 +187,7 @@ module.exports = function initExpenses(ctx) {
       subs: (p.subcontractors || []).map(s => ({ id: s.id, name: s.name })),
       subCharges: outstandingSubCharges(db.items),
       canManage: canWrite(req.user, p),
+      canApprove: canApprove(req.user, p),
       integrationEnabled: !!(companyIntegration && (companyIntegration(p.companyId) || {}).enabled)
     });
   });
@@ -208,6 +220,9 @@ module.exports = function initExpenses(ctx) {
     if (!(exp.amount >= 0) || exp.amount === 0) return res.status(400).json({ error: 'أدخل مبلغاً صحيحاً أكبر من صفر' });
     if (exp.type === 'material' && !exp.docs.length) return res.status(400).json({ error: 'فاتورة المورّد الضريبية إلزامية للمواد — أرفقها' });
     if (!validBearer(p, exp)) return res.status(400).json({ error: 'اختر مقاول باطن صحيحاً للتحميل عليه' });
+    // مصروف جديد = بانتظار اعتماد المالك دائماً؛ لا اعتماد/دفع عند الإدخال (خطوة منفصلة للمالك)
+    exp.approvalStatus = 'pending'; exp.approvedAmount = 0; exp.approvedBy = ''; exp.approvedAt = '';
+    exp.paidAmount = 0; exp.paidAt = ''; exp.paymentRef = ''; exp.paymentDocs = [];
     exp.id = nextExpId(); exp.by = req.user.name; exp.createdAt = now(); exp.updatedAt = now(); exp.erpSyncedAt = null; exp.erpStatus = '';
     const db = loadExpenses(p.id); db.items.push(exp); saveExpenses(p.id, db);
     // دفع اختياري للـ ERP إن طُلب والتكامل مُفعّل
@@ -220,13 +235,54 @@ module.exports = function initExpenses(ctx) {
     if (!canWrite(req.user, p)) return res.status(403).json({ error: 'غير مصرّح' });
     const db = loadExpenses(p.id); const i = db.items.findIndex(x => x.id === req.params.expId);
     if (i < 0) return res.status(404).json({ error: 'المصروف غير موجود' });
-    const exp = normalizeExpense({ ...db.items[i], ...req.body }, req.user);
+    const prev = db.items[i];
+    const exp = normalizeExpense({ ...prev, ...req.body }, req.user);
     if (exp.type === 'material' && !exp.docs.length) return res.status(400).json({ error: 'فاتورة المورّد إلزامية للمواد' });
     if (!validBearer(p, exp)) return res.status(400).json({ error: 'اختر مقاول باطن صحيحاً للتحميل عليه' });
-    exp.id = db.items[i].id; exp.by = db.items[i].by; exp.createdAt = db.items[i].createdAt; exp.updatedAt = now();
-    exp.erpSyncedAt = db.items[i].erpSyncedAt || null; exp.erpStatus = db.items[i].erpStatus || '';
+    // تعديل بيانات المصروف لا يغيّر الاعتماد ولا الدفع (خطوة المالك المنفصلة) — تُحفظ كما هي من السجل المخزّن
+    exp.approvalStatus = prev.approvalStatus || 'pending'; exp.approvedAmount = prev.approvedAmount || 0;
+    exp.approvedBy = prev.approvedBy || ''; exp.approvedAt = prev.approvedAt || '';
+    exp.paidAmount = prev.paidAmount || 0; exp.paidAt = prev.paidAt || ''; exp.paymentRef = prev.paymentRef || ''; exp.paymentDocs = prev.paymentDocs || [];
+    exp.id = prev.id; exp.by = prev.by; exp.createdAt = prev.createdAt; exp.updatedAt = now();
+    exp.erpSyncedAt = prev.erpSyncedAt || null; exp.erpStatus = prev.erpStatus || '';
     db.items[i] = exp; saveExpenses(p.id, db);
     res.json({ ok: true, expense: exp, profitability: profitability(p, db.items) });
+  });
+
+  // اعتماد المصروف (كلي/جزئي) وتسجيل الدفع ورفع كشف التحويل — للمالك/الإدارة فقط (ليس مدير المشروع)
+  app.post('/api/projects/:id/expenses/:expId/review', auth, (req, res) => {
+    const p = getProjectOr(req, res); if (!p) return;
+    if (!canApprove(req.user, p)) return res.status(403).json({ error: 'الاعتماد والدفع صلاحية المالك/الإدارة فقط — إدخال المصروف لمدير المشروع' });
+    const db = loadExpenses(p.id); const i = db.items.findIndex(x => x.id === req.params.expId);
+    if (i < 0) return res.status(404).json({ error: 'المصروف غير موجود' });
+    const e = db.items[i]; const b = req.body || {};
+    const total = round2(e.total || e.amount || 0);
+    // ---- الاعتماد ----
+    if (b.approvalStatus !== undefined) {
+      if (b.approvalStatus === 'approved_full') {
+        e.approvalStatus = 'approved_full'; e.approvedAmount = total;
+      } else if (b.approvalStatus === 'approved_partial') {
+        const amt = round2(b.approvedAmount);
+        if (!(amt > 0) || amt > total + 0.01) return res.status(400).json({ error: 'مبلغ الاعتماد الجزئي يجب أن يكون أكبر من صفر ولا يتجاوز إجمالي المصروف' });
+        e.approvalStatus = 'approved_partial'; e.approvedAmount = amt;
+      } else if (b.approvalStatus === 'pending') {
+        e.approvalStatus = 'pending'; e.approvedAmount = 0; e.approvedBy = ''; e.approvedAt = '';
+      } else {
+        return res.status(400).json({ error: 'حالة اعتماد غير صحيحة' });
+      }
+      if (e.approvalStatus !== 'pending') { e.approvedBy = req.user.name; e.approvedAt = now().slice(0, 10); }
+    }
+    // ---- الدفع (كشف التحويل يُرفع بعد الاعتماد) ----
+    if (b.paidAmount !== undefined || b.paymentDocs !== undefined || b.paidAt !== undefined || b.paymentRef !== undefined) {
+      if (e.approvalStatus === 'pending') return res.status(400).json({ error: 'لا يمكن تسجيل الدفع قبل اعتماد المصروف' });
+      if (b.paidAmount !== undefined) e.paidAmount = round2(b.paidAmount);
+      if (b.paidAt !== undefined) e.paidAt = String(b.paidAt || '').slice(0, 10);
+      if (b.paymentRef !== undefined) e.paymentRef = String(b.paymentRef || '').trim();
+      if (b.paymentDocs !== undefined) e.paymentDocs = cleanDocs(b.paymentDocs);
+    }
+    e.updatedAt = now();
+    db.items[i] = e; saveExpenses(p.id, db);
+    res.json({ ok: true, expense: e, profitability: profitability(p, db.items) });
   });
 
   app.delete('/api/projects/:id/expenses/:expId', auth, (req, res) => {

@@ -70,7 +70,7 @@
         <span class="hint" id="count-lbl"></span>
       </div>
       <div style="overflow:auto"><table>
-        <thead><tr><th>النوع</th><th>التاريخ</th><th>البيان</th><th>المورّد/الشهر</th><th>التحميل</th><th>المبلغ</th><th>الضريبة</th><th>الإجمالي</th><th>المدفوع</th><th>مرفق</th><th></th></tr></thead>
+        <thead><tr><th>النوع</th><th>التاريخ</th><th>البيان</th><th>المورّد/الشهر</th><th>التحميل</th><th>المبلغ</th><th>الضريبة</th><th>الإجمالي</th><th>الاعتماد والدفع</th><th>مرفق</th><th></th></tr></thead>
         <tbody id="exp-body"></tbody>
       </table></div>
       <p class="hint" style="margin-top:10px">🧱 مستخلصات مقاولي الباطن تُحتسب تلقائياً في التكاليف من تبويب المقاولين — لا تُدخَل هنا.</p>
@@ -120,29 +120,47 @@
     <div id="e-files-list" style="display:flex;flex-direction:column;gap:4px;margin-top:6px"></div>
   </div>
 
-  <!-- إثبات الدفع: كم دُفع فعلاً + مرجع التحويل + صورة/ملف إثبات التحويل -->
-  <div style="border:1px solid var(--line);border-radius:12px;padding:12px;margin:6px 0;background:var(--surface)">
-    <div style="font-weight:800;font-size:13px;margin-bottom:8px">💳 إثبات الدفع <span class="hint" style="font-weight:400">(اختياري — سجّله عند تحويلك للمبلغ)</span></div>
-    <div class="row">
-      <div class="field" style="flex:1"><label>المبلغ المدفوع</label><input type="number" id="e-paid-amount" min="0" step="0.01" placeholder="كم دفعت فعلاً"></div>
-      <div class="field" style="flex:1"><label>تاريخ التحويل</label><input type="date" id="e-paid-date"></div>
+  <label class="hint" style="display:flex;gap:8px;align-items:center;margin:4px 0"><input type="checkbox" id="e-sync" style="width:auto"> مزامنة مع Bassir ERP بعد الحفظ (إن كان التكامل مُفعّلاً)</label>
+  <p class="hint" style="margin:6px 2px">ℹ️ بعد الإدخال يعتمده المالك (كلي/جزئي) ثم يُرفع كشف التحويل في خانة «المدفوع».</p>
+  <button class="btn btn-primary btn-block" id="e-save" onclick="saveExp()">💾 حفظ</button>
+</div></div>
+
+<!-- اعتماد المصروف وتسجيل الدفع (المالك فقط) -->
+<div class="overlay" id="rev-ov"><div class="modal">
+  <span class="modal-x" onclick="closeReview()">✕</span>
+  <h2>اعتماد المصروف وتسجيل الدفع</h2>
+  <div id="rev-err" class="note note-err hide"></div>
+  <div class="note note-info" id="rev-summary" style="font-size:12.5px"></div>
+
+  <div style="border:1px solid var(--line);border-radius:12px;padding:12px;margin:8px 0;background:var(--surface)">
+    <div style="font-weight:800;font-size:13px;margin-bottom:8px">١) الاعتماد</div>
+    <div class="row" style="gap:16px">
+      <label class="hint" style="display:flex;gap:7px;align-items:center"><input type="radio" name="rev-appr" id="rev-full" value="approved_full" style="width:auto" onchange="revApprChanged()"> اعتماد كلي (كامل المبلغ)</label>
+      <label class="hint" style="display:flex;gap:7px;align-items:center"><input type="radio" name="rev-appr" id="rev-partial" value="approved_partial" style="width:auto" onchange="revApprChanged()"> اعتماد جزئي</label>
     </div>
-    <div class="field"><label>مرجع التحويل (اختياري)</label><input id="e-pay-ref" placeholder="رقم العملية / اسم البنك / آخر 4 أرقام"></div>
-    <div class="field"><label>📎 صورة/ملف إثبات التحويل</label>
-      <input type="file" id="e-pay-files" accept="image/*,.pdf,application/pdf" multiple onchange="payFilesPicked(this)">
-      <div id="e-pay-files-list" style="display:flex;flex-direction:column;gap:4px;margin-top:6px"></div>
-      <div class="hint">يبقى مرجعاً لك تعرف كم دفعت في هذا المصروف ومتى.</div>
-    </div>
+    <div class="field" id="rev-partial-f" style="display:none;margin-top:8px"><label>المبلغ المعتمد</label><input type="number" id="rev-appr-amount" min="0" step="0.01" placeholder="المبلغ المعتمد للصرف"></div>
   </div>
 
-  <label class="hint" style="display:flex;gap:8px;align-items:center;margin:4px 0"><input type="checkbox" id="e-sync" style="width:auto"> مزامنة مع Bassir ERP بعد الحفظ (إن كان التكامل مُفعّلاً)</label>
-  <button class="btn btn-primary btn-block" id="e-save" onclick="saveExp()">💾 حفظ</button>
+  <div style="border:1px solid var(--line);border-radius:12px;padding:12px;margin:8px 0;background:var(--surface)" id="rev-pay-box">
+    <div style="font-weight:800;font-size:13px;margin-bottom:8px">٢) الدفع ورفع كشف التحويل <span class="hint" style="font-weight:400">(بعد تحويل المالية)</span></div>
+    <div class="row">
+      <div class="field" style="flex:1"><label>المبلغ المدفوع</label><input type="number" id="rev-paid-amount" min="0" step="0.01" placeholder="المبلغ المحوّل فعلاً"></div>
+      <div class="field" style="flex:1"><label>تاريخ التحويل</label><input type="date" id="rev-paid-date"></div>
+    </div>
+    <div class="field"><label>مرجع التحويل (اختياري)</label><input id="rev-pay-ref" placeholder="رقم العملية / البنك / آخر 4 أرقام"></div>
+    <div class="field"><label>📎 كشف التحويل (صورة/PDF)</label>
+      <input type="file" id="rev-pay-files" accept="image/*,.pdf,application/pdf" multiple onchange="payFilesPicked(this)">
+      <div id="rev-pay-files-list" style="display:flex;flex-direction:column;gap:4px;margin-top:6px"></div>
+      <div class="hint">يبقى مرجعاً لك: كم دُفع فعلاً · متى · وبأي حوالة.</div>
+    </div>
+  </div>
+  <button class="btn btn-primary btn-block" id="rev-save" onclick="saveReview()">💾 حفظ الاعتماد والدفع</button>
 </div></div>
 
 <div class="toast" id="toast"><span></span></div>
 
 <script>
-var TOKEN=localStorage.getItem('azoom_token')||'', ST=null, PID=null, DATA=null, FILTER='all', EDIT=null, pending=[], payPending=[];
+var TOKEN=localStorage.getItem('azoom_token')||'', ST=null, PID=null, DATA=null, FILTER='all', EDIT=null, pending=[], payPending=[], REV=null;
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
 function money(n){return Number(n||0).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:2})}
 function toast(m){var t=document.getElementById('toast');t.querySelector('span').textContent=m;t.classList.add('show');setTimeout(function(){t.classList.remove('show')},2600)}
@@ -218,7 +236,8 @@ function renderList(){
     var tl=typeLabel(e.type);
     var who=e.type==='salary'?(e.month||'—')+(e.headcount?(' · '+e.headcount+' عامل'):''):(e.supplier||'—');
     var doc=(e.docs||[]).length?('<a href="'+esc(e.docs[0].url)+'" target="_blank" style="color:var(--accent)">'+(String(e.docs[0].url).endsWith('.pdf')?'📄':'🖼')+(e.docs.length>1?(' ×'+e.docs.length):'')+'</a>'):'<span class="hint">—</span>';
-    var manage=DATA.canManage?('<button class="btn btn-ghost btn-sm" onclick="openEdit(\''+e.id+'\')">✎</button> <button class="btn btn-ghost btn-sm" onclick="delExp(\''+e.id+'\')">🗑</button>'+(DATA.integrationEnabled?(' <button class="btn btn-ghost btn-sm" onclick="syncExp(\''+e.id+'\')" title="مزامنة ERP">'+(e.erpSyncedAt?'✅':'⇅')+'</button>'):'')):'';
+    var appBtn=DATA.canApprove?('<button class="btn btn-ghost btn-sm" onclick="openReview(\''+e.id+'\')" title="اعتماد ودفع ورفع كشف التحويل">💳</button> '):'';
+    var manage=appBtn+(DATA.canManage?('<button class="btn btn-ghost btn-sm" onclick="openEdit(\''+e.id+'\')">✎</button> <button class="btn btn-ghost btn-sm" onclick="delExp(\''+e.id+'\')">🗑</button>'+(DATA.integrationEnabled?(' <button class="btn btn-ghost btn-sm" onclick="syncExp(\''+e.id+'\')" title="مزامنة ERP">'+(e.erpSyncedAt?'✅':'⇅')+'</button>'):'')):'');
     var bearer=e.bearer==='sub'?('<span class="typechip t-sub" title="محمّلة على مقاول الباطن — تُخصم من مستخلصه'+(e.settledMusNo?' (خُصمت في '+esc(e.settledMusNo)+')':'')+'">🧱 '+esc(subName(e.subId))+(e.settledMusNo?' ✓':'')+'</span>'):'<span class="hint">ذاتي</span>';
     var paid=paidCell(e);
     return '<tr><td><span class="typechip '+tl[1]+'">'+tl[0]+'</span></td><td>'+esc(e.date)+'</td><td>'+esc(e.description||'—')+(e.category?(' <span class="hint">· '+esc(e.category)+'</span>'):'')+'</td><td>'+esc(who)+(e.taxInvoiceNo?(' <span class="hint">· '+esc(e.taxInvoiceNo)+'</span>'):'')+'</td><td>'+bearer+'</td><td class="amount">'+money(e.amount)+'</td><td class="amount" style="color:var(--text3)">'+money(e.vat)+'</td><td class="amount">'+money(e.total)+'</td><td>'+paid+'</td><td>'+doc+'</td><td>'+manage+'</td></tr>';
@@ -226,23 +245,36 @@ function renderList(){
 }
 function subName(id){var s=(DATA&&DATA.subs||[]).find(function(x){return x.id===id});return s?s.name:('#'+id)}
 function paidCell(e){
-  var pd=e.paymentDocs||[]; var amt=Number(e.paidAmount||0);
-  var proof=pd.length?(' <a href="'+esc(pd[0].url)+'" target="_blank" title="إثبات التحويل" style="color:var(--accent)">'+(String(pd[0].url).endsWith('.pdf')?'📄':'🖼')+(pd.length>1?(' ×'+pd.length):'')+'</a>'):'';
-  if(amt<=0 && !pd.length) return '<span class="hint">—</span>';
-  var tip=[]; if(e.paidAt) tip.push('بتاريخ '+e.paidAt); if(e.paymentRef) tip.push('مرجع: '+e.paymentRef);
-  if(amt<=0) return '<span class="hint" title="أُرفق إثبات دون مبلغ">إثبات</span>'+proof;
+  var st=e.approvalStatus||'pending';
   var tot=Number(e.total||e.amount||0);
-  var full=amt>=tot-0.01;
-  return '<span style="color:'+(full?'var(--green)':'#ffd27a')+';font-weight:700" title="'+esc(tip.join(' · ')||'مدفوع')+'">'+(full?'✓ ':'جزئي ')+money(amt)+'</span>'+proof;
+  var pd=e.paymentDocs||[]; var amt=Number(e.paidAmount||0);
+  var proof=pd.length?(' <a href="'+esc(pd[0].url)+'" target="_blank" title="كشف التحويل" style="color:var(--accent)">'+(String(pd[0].url).endsWith('.pdf')?'📄':'🖼')+(pd.length>1?(' ×'+pd.length):'')+'</a>'):'';
+  // سطر الاعتماد
+  var appr;
+  if(st==='approved_full') appr='<span style="color:var(--green);font-weight:700" title="اعتمده '+esc(e.approvedBy||'')+(e.approvedAt?(' · '+e.approvedAt):'')+'">معتمد كلي ✓</span>';
+  else if(st==='approved_partial') appr='<span style="color:#7ab8ff;font-weight:700" title="اعتمده '+esc(e.approvedBy||'')+(e.approvedAt?(' · '+e.approvedAt):'')+'">معتمد جزئي '+money(e.approvedAmount)+'</span>';
+  else appr='<span style="color:#ffd27a;font-weight:700">⏳ بانتظار الاعتماد</span>';
+  // سطر الدفع
+  var pay='';
+  if(st!=='pending'){
+    if(amt>0){
+      var tip=[]; if(e.paidAt) tip.push('بتاريخ '+e.paidAt); if(e.paymentRef) tip.push('مرجع: '+e.paymentRef);
+      pay='<div style="color:var(--green);font-weight:700;font-size:12px" title="'+esc(tip.join(' · ')||'مدفوع')+'">💰 دُفع '+money(amt)+proof+'</div>';
+    } else if(pd.length){
+      pay='<div style="font-size:12px"><span class="hint">كشف مرفق</span>'+proof+'</div>';
+    } else {
+      pay='<div class="hint" style="font-size:11.5px">لم يُدفع بعد</div>';
+    }
+  }
+  return appr+pay;
 }
 function fillSubs(){var sel=document.getElementById('e-subid');sel.innerHTML=(DATA&&DATA.subs||[]).map(function(s){return '<option value="'+s.id+'">'+esc(s.name)+'</option>'}).join('')||'<option value="">لا مقاولون مسجّلون</option>';}
 function bearerChanged(){document.getElementById('e-subid-f').style.display=document.getElementById('e-bearer').value==='sub'?'':'none';}
 
 // ---- add/edit ----
 function openAdd(){ EDIT=null; pending=[]; document.getElementById('exp-title').textContent='إضافة مصروف'; resetForm(); document.getElementById('exp-ov').classList.add('open'); }
-function openEdit(id){ EDIT=id; var e=(DATA.items||[]).find(function(x){return x.id===id}); if(!e) return; pending=(e.docs||[]).slice(); payPending=(e.paymentDocs||[]).slice();
+function openEdit(id){ EDIT=id; var e=(DATA.items||[]).find(function(x){return x.id===id}); if(!e) return; pending=(e.docs||[]).slice();
   document.getElementById('exp-title').textContent='تعديل مصروف'; resetForm();
-  document.getElementById('e-paid-amount').value=e.paidAmount||''; document.getElementById('e-paid-date').value=e.paidAt||''; document.getElementById('e-pay-ref').value=e.paymentRef||'';
   document.getElementById('e-type').value=e.type; document.getElementById('e-date').value=e.date; document.getElementById('e-month').value=e.month||'';
   document.getElementById('e-desc').value=e.description||''; document.getElementById('e-amount').value=e.amount; document.getElementById('e-vatrate').value=e.vatRate;
   document.getElementById('e-supplier').value=e.supplier||''; document.getElementById('e-invno').value=e.taxInvoiceNo||''; document.getElementById('e-invdate').value=e.taxInvoiceDate||'';
@@ -251,10 +283,10 @@ function openEdit(id){ EDIT=id; var e=(DATA.items||[]).find(function(x){return x
   typeChanged(); recalc(); renderFiles(); document.getElementById('exp-ov').classList.add('open');
 }
 function closeAdd(){ document.getElementById('exp-ov').classList.remove('open'); }
-function resetForm(){ ['e-desc','e-amount','e-supplier','e-invno','e-invdate','e-headcount','e-category','e-month','e-paid-amount','e-paid-date','e-pay-ref'].forEach(function(id){document.getElementById(id).value=''});
+function resetForm(){ ['e-desc','e-amount','e-supplier','e-invno','e-invdate','e-headcount','e-category','e-month'].forEach(function(id){document.getElementById(id).value=''});
   document.getElementById('e-type').value='material'; document.getElementById('e-vatrate').value='15'; document.getElementById('e-date').value=new Date().toISOString().slice(0,10);
   document.getElementById('e-bearer').value='own'; fillSubs(); bearerChanged();
-  document.getElementById('e-sync').checked=false; document.getElementById('exp-err').classList.add('hide'); if(!EDIT){ pending=[]; payPending=[]; } typeChanged(); recalc(); renderFiles(); renderPayFiles(); }
+  document.getElementById('e-sync').checked=false; document.getElementById('exp-err').classList.add('hide'); if(!EDIT){ pending=[]; } typeChanged(); recalc(); renderFiles(); }
 function typeChanged(){
   var t=document.getElementById('e-type').value;
   document.getElementById('e-material-fields').style.display=t==='material'?'':'none';
@@ -291,7 +323,7 @@ async function payFilesPicked(input){
   input.value=''; renderPayFiles();
 }
 function renderPayFiles(){
-  document.getElementById('e-pay-files-list').innerHTML=payPending.map(function(f,i){return '<div class="spread" style="font-size:12px"><span>'+((f.name||'').toLowerCase().endsWith('.pdf')?'📄':'🖼')+' '+esc(f.name||'ملف')+'</span><button class="btn btn-ghost btn-sm" onclick="payPending.splice('+i+',1);renderPayFiles()">✕</button></div>'}).join('');
+  document.getElementById('rev-pay-files-list').innerHTML=payPending.map(function(f,i){return '<div class="spread" style="font-size:12px"><span>'+((f.name||'').toLowerCase().endsWith('.pdf')?'📄':'🖼')+' '+esc(f.name||'ملف')+'</span><button class="btn btn-ghost btn-sm" onclick="payPending.splice('+i+',1);renderPayFiles()">✕</button></div>'}).join('');
 }
 async function saveExp(){
   var err=document.getElementById('exp-err'); err.classList.add('hide');
@@ -303,17 +335,12 @@ async function saveExp(){
   if(bearer==='sub' && !subId){ err.textContent='اختر مقاول الباطن المحمّل عليه المصروف'; err.classList.remove('hide'); return; }
   var btn=document.getElementById('e-save'); btn.disabled=true; btn.innerHTML='<span class="spin"></span> جارٍ…';
   // ارفع المرفقات الجديدة (التي تحمل dataUrl) عبر نقطة رفع الصور الحالية
-  var docs=[], payDocs=[];
+  var docs=[];
   try{
     for(var i=0;i<pending.length;i++){ var f=pending[i];
       if(f.url){ docs.push({url:f.url,name:f.name}); continue; }
       var r=await api('POST','/api/projects/'+PID+'/photos',{dataUrl:f.dataUrl});
       if(!r.ok) throw new Error(r.d.error||'تعذّر رفع المرفق'); docs.push({url:r.d.url,name:f.name});
-    }
-    for(var k=0;k<payPending.length;k++){ var pf=payPending[k];
-      if(pf.url){ payDocs.push({url:pf.url,name:pf.name}); continue; }
-      var pr=await api('POST','/api/projects/'+PID+'/photos',{dataUrl:pf.dataUrl});
-      if(!pr.ok) throw new Error(pr.d.error||'تعذّر رفع إثبات الدفع'); payDocs.push({url:pr.d.url,name:pf.name});
     }
   }catch(e){ btn.disabled=false; btn.textContent='💾 حفظ'; err.textContent=e.message; err.classList.remove('hide'); return; }
   var body={ type:type, date:document.getElementById('e-date').value, description:document.getElementById('e-desc').value,
@@ -321,7 +348,6 @@ async function saveExp(){
     supplier:document.getElementById('e-supplier').value, taxInvoiceNo:document.getElementById('e-invno').value, taxInvoiceDate:document.getElementById('e-invdate').value,
     month:document.getElementById('e-month').value, headcount:Number(document.getElementById('e-headcount').value)||0,
     category:document.getElementById('e-category').value, bearer:bearer, subId:subId, docs:docs,
-    paidAmount:Number(document.getElementById('e-paid-amount').value)||0, paidAt:document.getElementById('e-paid-date').value, paymentRef:document.getElementById('e-pay-ref').value, paymentDocs:payDocs,
     syncErp:document.getElementById('e-sync').checked };
   var res=await (EDIT?api('PUT','/api/projects/'+PID+'/expenses/'+EDIT,body):api('POST','/api/projects/'+PID+'/expenses',body));
   btn.disabled=false; btn.textContent='💾 حفظ';
@@ -330,6 +356,59 @@ async function saveExp(){
 }
 function delExp(id){ if(!confirm('حذف هذا المصروف؟')) return; api('DELETE','/api/projects/'+PID+'/expenses/'+id).then(function(r){ if(r.ok){toast('حُذف');loadProject();}else toast(r.d.error||'تعذّر'); }); }
 function syncExp(id){ api('POST','/api/projects/'+PID+'/expenses/'+id+'/sync',{}).then(function(r){ if(r.ok&&r.d.ok){toast('✅ تمت المزامنة مع ERP');loadProject();}else toast(r.d.error||'تعذّرت المزامنة'); }); }
+
+// ---- اعتماد ودفع (المالك فقط) ----
+function openReview(id){
+  REV=(DATA.items||[]).find(function(x){return x.id===id}); if(!REV) return;
+  payPending=(REV.paymentDocs||[]).slice();
+  document.getElementById('rev-err').classList.add('hide');
+  var tot=Number(REV.total||REV.amount||0);
+  document.getElementById('rev-summary').innerHTML='<strong>'+esc(REV.description||typeLabel(REV.type)[0])+'</strong> · الإجمالي: <strong>'+money(tot)+' ر.س</strong>'+(REV.by?(' · أدخله: '+esc(REV.by)):'');
+  // اعتماد
+  var st=REV.approvalStatus||'pending';
+  document.getElementById('rev-full').checked=(st==='approved_full');
+  document.getElementById('rev-partial').checked=(st==='approved_partial');
+  document.getElementById('rev-appr-amount').value=(st==='approved_partial')?(REV.approvedAmount||''):'';
+  // دفع
+  document.getElementById('rev-paid-amount').value=REV.paidAmount||'';
+  document.getElementById('rev-paid-date').value=REV.paidAt||'';
+  document.getElementById('rev-pay-ref').value=REV.paymentRef||'';
+  revApprChanged(); renderPayFiles();
+  document.getElementById('rev-ov').classList.add('open');
+}
+function closeReview(){ document.getElementById('rev-ov').classList.remove('open'); REV=null; payPending=[]; }
+function revApprChanged(){
+  var partial=document.getElementById('rev-partial').checked;
+  document.getElementById('rev-partial-f').style.display=partial?'':'none';
+  var approved=document.getElementById('rev-full').checked||partial;
+  // لا يمكن تسجيل الدفع قبل الاعتماد
+  var box=document.getElementById('rev-pay-box');
+  box.style.opacity=approved?'1':'.5'; box.style.pointerEvents=approved?'':'none';
+}
+async function saveReview(){
+  if(!REV) return; var err=document.getElementById('rev-err'); err.classList.add('hide');
+  var full=document.getElementById('rev-full').checked, partial=document.getElementById('rev-partial').checked;
+  if(!full && !partial){ err.textContent='اختر نوع الاعتماد: كلي أو جزئي'; err.classList.remove('hide'); return; }
+  var tot=Number(REV.total||REV.amount||0);
+  var apprAmt=Number(document.getElementById('rev-appr-amount').value)||0;
+  if(partial && (apprAmt<=0 || apprAmt>tot+0.01)){ err.textContent='المبلغ المعتمد يجب أن يكون أكبر من صفر ولا يتجاوز '+money(tot); err.classList.remove('hide'); return; }
+  var btn=document.getElementById('rev-save'); btn.disabled=true; btn.innerHTML='<span class="spin"></span> جارٍ…';
+  var payDocs=[];
+  try{
+    for(var k=0;k<payPending.length;k++){ var pf=payPending[k];
+      if(pf.url){ payDocs.push({url:pf.url,name:pf.name}); continue; }
+      var pr=await api('POST','/api/projects/'+PID+'/photos',{dataUrl:pf.dataUrl});
+      if(!pr.ok) throw new Error(pr.d.error||'تعذّر رفع كشف التحويل'); payDocs.push({url:pr.d.url,name:pf.name});
+    }
+  }catch(e){ btn.disabled=false; btn.textContent='💾 حفظ الاعتماد والدفع'; err.textContent=e.message; err.classList.remove('hide'); return; }
+  var body={ approvalStatus: full?'approved_full':'approved_partial', approvedAmount: partial?apprAmt:tot,
+    paidAmount:Number(document.getElementById('rev-paid-amount').value)||0, paidAt:document.getElementById('rev-paid-date').value,
+    paymentRef:document.getElementById('rev-pay-ref').value, paymentDocs:payDocs };
+  var res=await api('POST','/api/projects/'+PID+'/expenses/'+REV.id+'/review',body);
+  btn.disabled=false; btn.textContent='💾 حفظ الاعتماد والدفع';
+  if(!res.ok){ err.textContent=res.d.error||'تعذّر الحفظ'; err.classList.remove('hide'); return; }
+  closeReview(); toast('✅ تم حفظ الاعتماد والدفع'); loadProject();
+}
 boot();
 </script>
 </body>

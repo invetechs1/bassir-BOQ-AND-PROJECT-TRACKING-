@@ -188,6 +188,26 @@
   <button class="btn btn-primary btn-block" id="approve-go" onclick="confirmApprove()" data-i18n="تأكيد الاعتماد">تأكيد الاعتماد</button>
 </div></div>
 
+<!-- تسجيل دفع مصروف معتمد (كلي/جزئي) + رفع كشف التحويل البنكي — بعد الاعتماد فقط -->
+<div class="overlay" id="pay-ov"><div class="modal" style="max-width:440px">
+  <span class="modal-x" onclick="document.getElementById('pay-ov').classList.remove('open')">✕</span>
+  <h2 data-i18n="تسجيل الدفع">تسجيل الدفع</h2>
+  <div class="note note-info" id="pay-hint" style="font-size:12.5px"></div>
+  <div class="row">
+    <div class="field" style="flex:1"><label for="pay-amount" data-i18n="المبلغ المدفوع (ر.س) *">المبلغ المدفوع (ر.س) *</label><input type="number" id="pay-amount" min="0" step="0.01"></div>
+    <div class="field" style="flex:1"><label for="pay-date" data-i18n="تاريخ التحويل">تاريخ التحويل</label><input type="date" id="pay-date"></div>
+  </div>
+  <div class="field"><label for="pay-ref" data-i18n="مرجع التحويل (اختياري)">مرجع التحويل (اختياري)</label><input id="pay-ref" data-i18n-ph="رقم العملية / البنك / آخر 4 أرقام" placeholder="رقم العملية / البنك / آخر 4 أرقام"></div>
+  <div class="field">
+    <label for="pay-file"><span data-i18n="📎 كشف التحويل البنكي *">📎 كشف التحويل البنكي *</span></label>
+    <div id="pay-docs-list" style="margin-bottom:8px"></div>
+    <input type="file" id="pay-file" accept="image/*,application/pdf" onchange="uploadPayDoc(this)">
+    <div class="help" id="pay-upload-status"></div>
+  </div>
+  <div class="note note-err hide" id="pay-err" role="alert"></div>
+  <button class="btn btn-primary btn-block" id="pay-go" onclick="confirmPay()" data-i18n="حفظ الدفع">حفظ الدفع</button>
+</div></div>
+
 <div class="toast" id="toast"><span></span></div>
 
 <script src="/saas/shared.js"></script>
@@ -239,7 +259,14 @@ Object.assign(I18N_EN, {
   'المعتمد:':'Approved:', 'مبلغ المصروف:':'Expense amount:',
   'لا يمكن أن يتجاوز المبلغ المعتمد مبلغ المصروف (':'Approved amount cannot exceed the expense amount (',
   'أدخل مبلغاً أكبر من صفر':'Enter an amount greater than zero',
-  'تم الاعتماد':'Approved', 'سبب الرفض (اختياري):':'Rejection reason (optional):', 'تم الرفض':'Rejected'
+  'تم الاعتماد':'Approved', 'سبب الرفض (اختياري):':'Rejection reason (optional):', 'تم الرفض':'Rejected',
+  'تسجيل الدفع':'Record payment', 'المبلغ المدفوع (ر.س) *':'Paid amount (SAR) *', 'تاريخ التحويل':'Transfer date',
+  'مرجع التحويل (اختياري)':'Transfer reference (optional)', '📎 كشف التحويل البنكي *':'📎 Bank transfer statement *',
+  'حفظ الدفع':'Save payment', 'المبلغ المعتمد:':'Approved amount:',
+  'لا يمكن أن يتجاوز المبلغ المدفوع المبلغ المعتمد (':'Paid amount cannot exceed the approved amount (',
+  'تم تسجيل الدفع':'Payment recorded', '💰 دُفع':'💰 Paid', 'لم يُدفع بعد':'Not paid yet', 'مرجع:':'Ref:',
+  '📎 إرفاق كشف التحويل البنكي إلزامي':'📎 Attaching a bank transfer statement is mandatory',
+  'لا يمكن تسجيل الدفع قبل اعتماد المصروف':'Payment cannot be recorded before the expense is approved'
 });
 applyDir(); translateStaticDOM();
 window.onLangChange = function(){ if(CUR){ renderBoqPicker(); if(EXP){ renderKpis(); renderList(); } } };
@@ -339,9 +366,10 @@ function renderList(){
       '<td class="hs">'+bearerChip(x)+'</td>'+
       '<td class="hs">'+(x.erpStatus?'<span class="muted" style="font-size:11px">'+esc(x.erpStatus)+'</span>':(EXP.integrationEnabled&&EXP.canManage?'<button class="btn btn-ghost btn-sm" onclick="syncExpense(\''+x.id+'\')">'+T('مزامنة')+'</button>':'—'))+'</td>'+
       '<td>'+docsCell(x)+'</td>'+
-      '<td>'+statusChip(x)+'</td>'+
+      '<td>'+statusChip(x)+paymentLine(x)+'</td>'+
       '<td style="white-space:nowrap">'+
         (EXP.canApprove?('<button class="btn btn-ghost btn-sm" onclick="openApproveModal(\''+x.id+'\')" title="'+T('اعتماد')+'">✅</button> <button class="btn btn-ghost btn-sm" onclick="rejectExpense(\''+x.id+'\')" title="'+T('رفض')+'">❌</button> '):'')+
+        (EXP.canApprove && (x.status==='approved'||x.status==='partially_approved')?('<button class="btn btn-ghost btn-sm" onclick="openPayModal(\''+x.id+'\')" title="'+T('تسجيل الدفع')+'">💰</button> '):'')+
         (EXP.canManage?('<button class="btn btn-ghost btn-sm" onclick="openExpModal(\''+x.id+'\')">'+T('تعديل')+'</button> '):'')+
         (EXP.canDelete?'<button class="btn btn-danger btn-sm" onclick="deleteExpense(\''+x.id+'\')">'+T('حذف')+'</button>':'')+'</td></tr>';
   }).join('') || '<tr><td colspan="12"><div class="empty-state"><div class="icon">🧾</div>'+T('لا مصاريف مسجّلة بعد')+'</div></td></tr>';
@@ -574,6 +602,72 @@ function syncExpense(id){
     toast(r.ok?T('تمت المزامنة'):((r.d&&r.d.error)||T('فشلت المزامنة'))); loadExpenses();
   });
 }
+
+// ---------- تسجيل الدفع (بعد الاعتماد) ----------
+var PAY_EXP_ID=null, PAY_DOCS=[];
+function paymentLine(x){
+  if(x.status==='pending' || x.status==='rejected') return '';
+  if(x.paidAmount>0){
+    var tip=[]; if(x.paidAt) tip.push(x.paidAt); if(x.paymentRef) tip.push(T('مرجع:')+' '+x.paymentRef);
+    var docs=x.paymentDocs||[];
+    var proof=docs.length?(' <a href="'+esc(docs[0].url)+'" target="_blank" style="color:var(--accent)">'+(isImageUrl(docs[0].url)?'🖼':'📄')+'</a>'):'';
+    return '<div style="font-size:11px;color:var(--green);margin-top:3px" title="'+esc(tip.join(' · '))+'">'+T('💰 دُفع')+' '+money(x.paidAmount)+proof+'</div>';
+  }
+  return '<div style="font-size:11px;color:var(--text3);margin-top:3px">'+T('لم يُدفع بعد')+'</div>';
+}
+function openPayModal(id){
+  var x=(EXP.items||[]).find(function(i){return i.id===id}); if(!x) return;
+  PAY_EXP_ID=id; PAY_DOCS=[];
+  var cap = x.status==='approved' ? x.amount : x.approvedAmount;
+  document.getElementById('pay-hint').textContent = T('المبلغ المعتمد:')+' '+money(cap)+' '+T('ر.س');
+  document.getElementById('pay-amount').value = cap;
+  document.getElementById('pay-amount').max = cap;
+  document.getElementById('pay-date').value = x.paidAt || new Date().toISOString().slice(0,10);
+  document.getElementById('pay-ref').value = x.paymentRef||'';
+  document.getElementById('pay-err').classList.add('hide');
+  renderPayDocs();
+  document.getElementById('pay-ov').classList.add('open');
+}
+function renderPayDocs(){
+  document.getElementById('pay-docs-list').innerHTML = PAY_DOCS.map(function(d,i){
+    return '<span class="doc-pill">📎 '+esc(d.name||T('ملف'))+' <a href="'+esc(d.url)+'" target="_blank" style="color:var(--accent)">'+T('عرض')+'</a> <span class="x" onclick="PAY_DOCS.splice('+i+',1);renderPayDocs()">✕</span></span>';
+  }).join('') || '<span class="muted" style="font-size:12.5px">'+T('لا مرفقات بعد')+'</span>';
+}
+function uploadPayDoc(inp){
+  var file=inp.files&&inp.files[0]; if(!file) return;
+  if(file.size>50*1024*1024){ toast(T('الملف أكبر من 50 ميجابايت')); inp.value=''; return; }
+  var status=document.getElementById('pay-upload-status'); status.textContent=T('جارٍ الرفع…');
+  var reader=new FileReader();
+  reader.onload=function(){
+    api('POST','/api/projects/'+CUR.id+'/photos',{dataUrl:reader.result}).then(function(r){
+      inp.value='';
+      if(!r.ok){ status.textContent=''; toast((r.d&&r.d.error)||T('تعذّر رفع الملف')); return; }
+      PAY_DOCS.push({url:r.d.url, name:file.name}); renderPayDocs(); status.textContent='';
+    });
+  };
+  reader.onerror=function(){ status.textContent=''; toast(T('تعذّر قراءة الملف')); };
+  reader.readAsDataURL(file);
+}
+function confirmPay(){
+  var x=(EXP.items||[]).find(function(i){return i.id===PAY_EXP_ID}); if(!x) return;
+  var errEl=document.getElementById('pay-err'); errEl.classList.add('hide');
+  var amount=Number(document.getElementById('pay-amount').value);
+  var cap = x.status==='approved' ? x.amount : x.approvedAmount;
+  if(!(amount>0)){ errEl.textContent=T('أدخل مبلغاً أكبر من صفر'); errEl.classList.remove('hide'); return; }
+  if(amount>cap+0.01){ errEl.textContent=T('لا يمكن أن يتجاوز المبلغ المدفوع المبلغ المعتمد (')+money(cap)+')'; errEl.classList.remove('hide'); return; }
+  if(!PAY_DOCS.length){ errEl.textContent=T('📎 إرفاق كشف التحويل البنكي إلزامي'); errEl.classList.remove('hide'); return; }
+  var btn=document.getElementById('pay-go'); btn.disabled=true;
+  api('POST','/api/projects/'+CUR.id+'/expenses/'+x.id+'/pay',{
+    paidAmount:amount, paidAt:document.getElementById('pay-date').value,
+    paymentRef:document.getElementById('pay-ref').value.trim(), paymentDocs:PAY_DOCS
+  }).then(function(r){
+    btn.disabled=false;
+    if(!r.ok){ errEl.textContent=(r.d&&r.d.error)||T('تعذّر'); errEl.classList.remove('hide'); return; }
+    document.getElementById('pay-ov').classList.remove('open');
+    toast('✅ '+T('تم تسجيل الدفع')); loadExpenses();
+  });
+}
+
 boot();
 </script>
 </body>

@@ -1,9 +1,14 @@
 'use strict';
 /*
- * وحدة مصاريف وتكاليف المشروع: تسجّل المواد (بفواتير الموردين) والرواتب الموزّعة والنثريات،
- * وتجمّع تكلفة مستخلصات الباطن ومستخلصات العميل حيّاً من ملف المشروع (بلا ازدواج)، وتعرض ربحية
- * المشروع (الإيراد ناقص التكلفة). تتبّع تكاليف فقط — ليست محاسبة — وتغذّي Bassir ERP باتجاه واحد
- * ولا تحلّ محله: لا قيود دفتر أستاذ، لا احتساب رواتب فعلي (GOSI/WPS)، لا تنفيذ دفع فعلي، لا إقرارات ضريبية.
+ * وحدة مصاريف وتكاليف المشروع (تتبّع تكاليف + ربحية، تغذّي Bassir ERP ولا تحل محله):
+ * تسجّل المواد (بفواتير الموردين) والرواتب الموزّعة والنثريات، وتجمّع تكلفة مستخلصات الباطن
+ * ومستخلصات العميل حيّاً من ملف المشروع (بلا ازدواج)، وتعرض ربحية المشروع (الإيراد ناقص التكلفة).
+ * تتبّع تكاليف فقط — ليست محاسبة: لا قيود دفتر أستاذ، لا احتساب رواتب فعلي (GOSI/WPS)،
+ * لا تنفيذ دفع فعلي، لا إقرارات ضريبية.
+ *
+ * دورة حياة المصروف: مدير المشروع (pm) يُدخل المصروف فقط (بلا اعتماد ولا دفع) ← المالك/الإدارة
+ * (admin/client) يعتمده كاملاً أو جزئياً أو يرفضه ← بعد الاعتماد فقط، المالك يسجّل مبلغ الدفع الفعلي
+ * ويرفع كشف التحويل البنكي كإثبات. كل خطوة منفصلة عن التي تليها ومحفوظة بصلاحية مختلفة.
  *
  * التخزين منفصل عمداً عن ملف المشروع (data/expenses/<projectId>.json) حتى لا يُفقد أو يُستبدل
  * عند أي حفظ كامل لبيانات المشروع (PUT /api/projects/:id يستبدل الملف بالكامل).
@@ -35,7 +40,8 @@ module.exports = function initExpenses(ctx) {
   // الحذف مستثنى عمداً من هذا الفحص (انظر أسفل) — أي مستخدم يملك صلاحية الوصول لهذا المشروع يمكنه الحذف،
   // بصرف النظر عن دوره، لأن هذه وحدة تتبّع تكاليف وليست دفتر محاسبة (انظر التعليق أعلى الملف).
   const canManage = user => isAdmin(user) || ['client', 'pmo', 'pm'].includes(user.role);
-  // من يعتمد/يرفض المصروف؟ أدمن النظام والعميل (مالك الشركة) فقط — وليس مدير المشاريع (pmo) أو مدير المشروع (pm).
+  // من يعتمد/يرفض/يدفع المصروف؟ أدمن النظام والعميل (مالك الشركة) فقط — وليس مدير المشاريع (pmo)
+  // ولا مدير المشروع (pm). مدير المشروع يُدخل المصروف فقط؛ المالك يعتمده ويسجّل دفعه.
   const canApprove = user => isAdmin(user) || user.role === 'client';
   // المساهمة الفعلية للمصروف في إجمالي التكلفة/الربحية بعد الاعتماد:
   // مرفوض = صفر، معتمد جزئياً = المبلغ المعتمد فقط، معتمد كامل أو لم يُراجَع بعد = كامل المبلغ
@@ -135,6 +141,9 @@ module.exports = function initExpenses(ctx) {
     }
     return null;
   }
+  function cleanDocs(arr) {
+    return Array.isArray(arr) ? arr.filter(d => d && d.url).map(d => ({ url: String(d.url), name: String(d.name || 'ملف') })).slice(0, 15) : [];
+  }
   function buildExpenseFields(body) {
     const amount = round2(body.amount);
     const vatRate = Number(body.vatRate) || 0;
@@ -148,7 +157,7 @@ module.exports = function initExpenses(ctx) {
       // التحميل: 'own' = ذاتي (تكلفة مشروع كالمعتاد) | 'sub' = على مقاول باطن (يُستبعد من تكلفة المشروع ويُخصم من مستخلصه)
       bearer: body.bearer === 'sub' ? 'sub' : 'own',
       subId: body.bearer === 'sub' ? (Number(body.subId) || null) : null,
-      docs: Array.isArray(body.docs) ? body.docs.filter(d => d && d.url).map(d => ({ url: d.url, name: d.name || '' })) : []
+      docs: cleanDocs(body.docs)
     };
   }
   // المصاريف المحمّلة على مقاولي الباطن وغير المخصومة بعد (لكل مقاول) — يستدعيها بنّاء مستخلص الباطن
@@ -208,7 +217,7 @@ module.exports = function initExpenses(ctx) {
     res.json({ ok: true, settled, count });
   });
 
-  // ---------- POST: إضافة مصروف ----------
+  // ---------- POST: إضافة مصروف — مدير المشروع يُدخلها فقط، بلا اعتماد ولا دفع (خطوة منفصلة للمالك) ----------
   app.post('/api/projects/:id/expenses', auth, async (req, res) => {
     const project = loadProjectOr404(req, res); if (!project) return;
     if (!canManage(req.user)) return res.status(403).json({ error: 'إضافة المصاريف ليست من صلاحيتك' });
@@ -218,7 +227,8 @@ module.exports = function initExpenses(ctx) {
     const exp = {
       id: genId(), ...buildExpenseFields(req.body || {}), by: req.user.name, createdAt: now(), updatedAt: now(), erpSyncedAt: null, erpStatus: '',
       status: 'pending', approvedAmount: 0, approvedBy: null, approvedAt: null, rejectReason: '',
-      settledMusNo: null, settledAt: null // تُخصَّص فقط عبر /sub-charges/settle بعد بناء مستخلص الباطن
+      settledMusNo: null, settledAt: null, // تُخصَّص فقط عبر /sub-charges/settle بعد بناء مستخلص الباطن
+      paidAmount: 0, paidAt: null, paymentRef: '', paymentDocs: [] // تُخصَّص فقط عبر /pay بعد الاعتماد
     };
     store.items = store.items || []; store.items.push(exp); store.version = (store.version || 0) + 1;
     saveExpenses(project.id, store);
@@ -230,7 +240,7 @@ module.exports = function initExpenses(ctx) {
     res.json({ ok: true, item: exp });
   });
 
-  // ---------- PUT: تعديل مصروف ----------
+  // ---------- PUT: تعديل مصروف — تعديل البيانات الأساسية فقط، لا يمسّ الاعتماد ولا الدفع ----------
   app.put('/api/projects/:id/expenses/:expId', auth, (req, res) => {
     const project = loadProjectOr404(req, res); if (!project) return;
     if (!canManage(req.user)) return res.status(403).json({ error: 'تعديل المصاريف ليس من صلاحيتك' });
@@ -252,6 +262,8 @@ module.exports = function initExpenses(ctx) {
     // الواقع الجديد، ونُنزل الاعتماد الكامل إلى جزئي تلقائياً بدل ترك حالة غير متسقة (معتمد > المبلغ الفعلي).
     if ((exp.approvedAmount || 0) > exp.amount) exp.approvedAmount = exp.amount;
     if (exp.status === 'approved' && (exp.approvedAmount || 0) < exp.amount - 0.01) exp.status = 'partially_approved';
+    // وبالمثل: لا يصح أن يبقى المدفوع أكبر من المعتمد بعد التعديل
+    if ((exp.paidAmount || 0) > (exp.approvedAmount || 0)) exp.paidAmount = exp.approvedAmount || 0;
     store.version = (store.version || 0) + 1;
     saveExpenses(project.id, store);
     res.json({ ok: true, item: exp });
@@ -266,6 +278,10 @@ module.exports = function initExpenses(ctx) {
     if (existing && existing.settledMusNo) {
       return res.status(400).json({ error: 'هذا المصروف سُوّي ضمن مستخلص مقاول الباطن ' + existing.settledMusNo + ' — لا يمكن حذفه' });
     }
+    // دُفع بالفعل (كشف تحويل مرفوع) — حذفها يفقد أثر دفعة حقيقية فعلاً
+    if (existing && existing.paidAmount > 0) {
+      return res.status(400).json({ error: 'هذا المصروف سُجِّل دفعه بالفعل — لا يمكن حذفه' });
+    }
     const before = (store.items || []).length;
     store.items = (store.items || []).filter(x => x.id !== req.params.expId);
     if (store.items.length === before) return res.status(404).json({ error: 'المصروف غير موجود' });
@@ -277,12 +293,14 @@ module.exports = function initExpenses(ctx) {
   // ---------- POST: اعتماد مصروف — كاملاً أو جزئياً (مبلغ الاعتماد <= مبلغ المصروف قبل الضريبة) ----------
   app.post('/api/projects/:id/expenses/:expId/approve', auth, (req, res) => {
     const project = loadProjectOr404(req, res); if (!project) return;
-    if (!canApprove(req.user)) return res.status(403).json({ error: 'اعتماد المصاريف صلاحية العميل أو مدير المشاريع أو أدمن النظام' });
+    if (!canApprove(req.user)) return res.status(403).json({ error: 'اعتماد المصاريف صلاحية العميل أو أدمن النظام' });
     const store = loadExpenses(project.id);
     const exp = (store.items || []).find(x => x.id === req.params.expId);
     if (!exp) return res.status(404).json({ error: 'المصروف غير موجود' });
     const amount = round2(Number((req.body || {}).amount));
     if (!(amount > 0) || amount > exp.amount + 0.01) return res.status(400).json({ error: 'مبلغ الاعتماد يجب أن يكون أكبر من صفر ولا يتجاوز مبلغ المصروف' });
+    // لا يصح إنزال الاعتماد تحت ما دُفع بالفعل
+    if (amount < (exp.paidAmount || 0) - 0.01) return res.status(400).json({ error: 'تم دفع ' + exp.paidAmount + ' بالفعل — لا يمكن اعتماد مبلغ أقل من المدفوع' });
     exp.approvedAmount = Math.min(amount, exp.amount);
     exp.status = exp.approvedAmount >= exp.amount - 0.01 ? 'approved' : 'partially_approved';
     exp.approvedBy = req.user.name; exp.approvedAt = now(); exp.rejectReason = '';
@@ -294,13 +312,39 @@ module.exports = function initExpenses(ctx) {
   // ---------- POST: رفض مصروف ----------
   app.post('/api/projects/:id/expenses/:expId/reject', auth, (req, res) => {
     const project = loadProjectOr404(req, res); if (!project) return;
-    if (!canApprove(req.user)) return res.status(403).json({ error: 'رفض المصاريف صلاحية العميل أو مدير المشاريع أو أدمن النظام' });
+    if (!canApprove(req.user)) return res.status(403).json({ error: 'رفض المصاريف صلاحية العميل أو أدمن النظام' });
     const store = loadExpenses(project.id);
     const exp = (store.items || []).find(x => x.id === req.params.expId);
     if (!exp) return res.status(404).json({ error: 'المصروف غير موجود' });
+    if (exp.paidAmount > 0) return res.status(400).json({ error: 'هذا المصروف دُفع بالفعل — لا يمكن رفضه' });
     exp.status = 'rejected'; exp.approvedAmount = 0;
     exp.rejectReason = String((req.body || {}).reason || '').trim();
     exp.approvedBy = req.user.name; exp.approvedAt = now();
+    store.version = (store.version || 0) + 1;
+    saveExpenses(project.id, store);
+    res.json({ ok: true, item: exp });
+  });
+
+  // ---------- POST: تسجيل دفع مصروف معتمد (كلياً أو جزئياً) + رفع كشف التحويل البنكي كإثبات ----------
+  // لا يجوز الدفع قبل الاعتماد، ولا يتجاوز المدفوع المبلغ المعتمد — خطوة منفصلة تماماً عن الاعتماد نفسه.
+  app.post('/api/projects/:id/expenses/:expId/pay', auth, (req, res) => {
+    const project = loadProjectOr404(req, res); if (!project) return;
+    if (!canApprove(req.user)) return res.status(403).json({ error: 'تسجيل الدفع صلاحية العميل أو أدمن النظام' });
+    const store = loadExpenses(project.id);
+    const exp = (store.items || []).find(x => x.id === req.params.expId);
+    if (!exp) return res.status(404).json({ error: 'المصروف غير موجود' });
+    if (exp.status === 'pending' || exp.status === 'rejected') return res.status(400).json({ error: 'لا يمكن تسجيل الدفع قبل اعتماد المصروف' });
+    const body = req.body || {};
+    const paidAmount = round2(Number(body.paidAmount));
+    const cap = exp.status === 'approved' ? exp.amount : exp.approvedAmount;
+    if (!(paidAmount > 0) || paidAmount > cap + 0.01) return res.status(400).json({ error: 'مبلغ الدفع يجب أن يكون أكبر من صفر ولا يتجاوز المبلغ المعتمد (' + cap + ')' });
+    const docs = cleanDocs(body.paymentDocs);
+    if (!docs.length) return res.status(400).json({ error: 'إرفاق كشف التحويل البنكي إلزامي لتسجيل الدفع' });
+    exp.paidAmount = paidAmount;
+    exp.paidAt = String(body.paidAt || '').slice(0, 10) || now().slice(0, 10);
+    exp.paymentRef = String(body.paymentRef || '').trim();
+    exp.paymentDocs = docs;
+    exp.updatedAt = now();
     store.version = (store.version || 0) + 1;
     saveExpenses(project.id, store);
     res.json({ ok: true, item: exp });

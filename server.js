@@ -374,7 +374,7 @@ const SAAS = require('./saas')({
   fs, crypto
 });
 
-// ---------- وحدة مصاريف وتكاليف المشروع (طبقة تتبّع تكاليف تغذّي Bassir ERP ولا تحل محله) ----------
+// ---------- وحدة مصاريف وتكاليف المشروع (تتبّع تكاليف + ربحية، تغذّي Bassir ERP ولا تحل محله) ----------
 const EXPENSES = require('./expenses')({
   app, DATA_DIR, PUBLIC_DIR: path.join(__dirname, 'public'),
   readJSON, writeJSON, fs,

@@ -358,9 +358,8 @@
   <div class="nav-tab" data-tab="prod" onclick="switchTab('prod')"><span data-i18n="👷 الإنتاجية">👷 الإنتاجية</span> <span class="tab-count" id="tc-prod">0</span><span class="tab-count" id="tc-prod-req" style="display:none;background:var(--red);color:#fff">0</span></div>
   <div class="nav-tab" data-tab="pricedb" onclick="switchTab('pricedb')"><span data-i18n="💲 قاعدة الأسعار">💲 قاعدة الأسعار</span> <span class="tab-count" id="tc-pricedb">0</span></div>
   <div class="nav-tab" data-tab="subs" onclick="switchTab('subs')"><span data-i18n="🧱 مقاولو الباطن">🧱 مقاولو الباطن</span> <span class="tab-count" id="tc-subs">0</span><span class="tab-count" id="tc-subs-alert" style="display:none;background:var(--red);color:#fff">0</span></div>
-  <div class="nav-tab" onclick="location.href='/expenses'+((window.state&&state.currentProjectId)?('?project='+state.currentProjectId):'')" title="المصاريف وربحية المشروع"><span data-i18n="💵 المصاريف والربحية">💵 المصاريف والربحية</span></div>
   <div class="nav-tab" data-tab="archive" onclick="switchTab('archive')"><span data-i18n="📁 الأرشيف والمستندات">📁 الأرشيف والمستندات</span> <span class="tab-count" id="tc-archive">0</span></div>
-  <div class="nav-tab" onclick="openExpensesModule()"><span data-i18n="💰 المصاريف">💰 المصاريف</span></div>
+  <div class="nav-tab" onclick="openExpensesModule()" title="مصاريف وربحية المشروع"><span data-i18n="💰 المصاريف والربحية">💰 المصاريف والربحية</span></div>
 </div>
 
 <div class="main">
@@ -1446,7 +1445,7 @@ Object.assign(I18N_EN, {
   '+ إضافة عرض':'+ Add offer',
   '🧱 مقاولو الباطن':'🧱 Subcontractors',
   '📁 الأرشيف والمستندات':'📁 Archive & Documents',
-  '💰 المصاريف':'💰 Expenses',
+  '💰 المصاريف والربحية':'💰 Expenses & Profitability',
   '📷 ملفات التقارير اليومية':'📷 Daily report files',
   '🕵 مستندات اعتمادات الاستشاري':'🕵 Consultant approval documents',
   '💰 مرفقات المستخلصات':'💰 Claim attachments',

@@ -27,7 +27,11 @@
 .doc-pill{display:inline-flex;align-items:center;gap:5px;background:#0c1830;border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:11.5px;margin-inline-end:5px;margin-bottom:5px}
 .doc-pill .x{cursor:pointer;color:var(--text3)}
 .doc-pill .x:hover{color:#ff9d9d}
-@media(max-width:700px){th.hs,td.hs{display:none}}
+.exp-table{table-layout:fixed;width:100%}
+.exp-table .btn-icon{width:28px;height:28px;padding:0;font-size:13.5px;border-radius:7px;flex:none}
+.exp-table .cell-ellipsis{display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom}
+.exp-table td .status-chip{max-width:100%;display:inline-block;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom}
+@media(max-width:700px){th.hs,td.hs,col.hs{display:none}}
 </style>
 </head>
 <body>
@@ -80,7 +84,12 @@
         </select></div>
         <div class="field" style="flex:1;min-width:200px"><label for="f-search" data-i18n="بحث">بحث</label><input id="f-search" data-i18n-ph="الوصف أو المورّد…" placeholder="الوصف أو المورّد…" oninput="renderList()"></div>
       </div>
-      <div style="overflow:auto"><table>
+      <div style="overflow:auto"><table class="exp-table">
+        <colgroup>
+          <col style="width:7%"><col style="width:6%"><col style="width:14%"><col class="hs" style="width:8%">
+          <col style="width:7%"><col class="hs" style="width:6%"><col style="width:7%"><col class="hs" style="width:8%">
+          <col class="hs" style="width:6%"><col style="width:8%"><col style="width:11%"><col style="width:12%">
+        </colgroup>
         <thead><tr><th data-i18n="التاريخ">التاريخ</th><th data-i18n="النوع">النوع</th><th data-i18n="الوصف">الوصف</th><th class="hs" data-i18n="المورّد">المورّد</th><th data-i18n="المبلغ">المبلغ</th><th class="hs" data-i18n="الضريبة">الضريبة</th><th data-i18n="الإجمالي">الإجمالي</th><th class="hs" data-i18n="التحميل على">التحميل على</th><th class="hs">ERP</th><th data-i18n="المستندات">المستندات</th><th data-i18n="الحالة">الحالة</th><th></th></tr></thead>
         <tbody id="exp-body"></tbody>
       </table></div>
@@ -347,6 +356,13 @@ function renderKpis(){
   }).join('') + (p.chargedToSubs ? '<div class="panel" style="padding:12px;text-align:center;grid-column:1/-1" title="'+T('مصاريف محمّلة على مقاولي الباطن — مُستبعدة من تكلفة المشروع وتُخصم تلقائياً من مستخلصاتهم')+'"><div class="muted" style="font-size:12px">🧱 '+T('محمّل على مقاولي الباطن (مُستبعد من التكلفة)')+'</div><div class="k-val" style="font-size:19px;color:var(--text3)">'+money(p.chargedToSubs)+'</div></div>' : '');
 }
 function typeLabel(t){ return {material:T('مواد'),salary:T('رواتب'),other:T('نثريات')}[t]||t; }
+function truncateWords(s, maxWords){
+  var str = String(s||'').trim();
+  if (!str) return '';
+  var words = str.split(/\s+/);
+  if (words.length <= maxWords) return str;
+  return words.slice(0, maxWords).join(' ') + '…';
+}
 function renderList(){
   if(!EXP) return;
   var ft=document.getElementById('f-type').value, q=(document.getElementById('f-search').value||'').toLowerCase();
@@ -358,8 +374,8 @@ function renderList(){
   document.getElementById('exp-body').innerHTML = items.map(function(x){
     return '<tr><td>'+fmtDate(x.date)+'</td>'+
       '<td><span class="type-chip type-'+x.type+'">'+typeLabel(x.type)+'</span></td>'+
-      '<td>'+esc(x.description)+'</td>'+
-      '<td class="hs">'+esc(x.supplier||'—')+'</td>'+
+      '<td title="'+esc(x.description)+'"><span class="cell-ellipsis">'+esc(truncateWords(x.description,6))+'</span></td>'+
+      '<td class="hs" title="'+esc(x.supplier||'')+'"><span class="cell-ellipsis">'+esc(x.supplier||'—')+'</span></td>'+
       '<td class="amount">'+money(x.amount)+'</td>'+
       '<td class="hs amount">'+money(x.vat)+'</td>'+
       '<td class="amount">'+money(x.total)+'</td>'+
@@ -367,11 +383,11 @@ function renderList(){
       '<td class="hs">'+(x.erpStatus?'<span class="muted" style="font-size:11px">'+esc(x.erpStatus)+'</span>':(EXP.integrationEnabled&&EXP.canManage?'<button class="btn btn-ghost btn-sm" onclick="syncExpense(\''+x.id+'\')">'+T('مزامنة')+'</button>':'—'))+'</td>'+
       '<td>'+docsCell(x)+'</td>'+
       '<td>'+statusChip(x)+paymentLine(x)+'</td>'+
-      '<td style="white-space:nowrap">'+
-        (EXP.canApprove?('<button class="btn btn-ghost btn-sm" onclick="openApproveModal(\''+x.id+'\')" title="'+T('اعتماد')+'">✅</button> <button class="btn btn-ghost btn-sm" onclick="rejectExpense(\''+x.id+'\')" title="'+T('رفض')+'">❌</button> '):'')+
-        (EXP.canApprove && (x.status==='approved'||x.status==='partially_approved')?('<button class="btn btn-ghost btn-sm" onclick="openPayModal(\''+x.id+'\')" title="'+T('تسجيل الدفع')+'">💰</button> '):'')+
-        (EXP.canManage?('<button class="btn btn-ghost btn-sm" onclick="openExpModal(\''+x.id+'\')">'+T('تعديل')+'</button> '):'')+
-        (EXP.canDelete?'<button class="btn btn-danger btn-sm" onclick="deleteExpense(\''+x.id+'\')">'+T('حذف')+'</button>':'')+'</td></tr>';
+      '<td style="white-space:normal;line-height:2">'+
+        (EXP.canApprove?('<button class="btn btn-ghost btn-icon" onclick="openApproveModal(\''+x.id+'\')" title="'+T('اعتماد')+'">✅</button> <button class="btn btn-ghost btn-icon" onclick="rejectExpense(\''+x.id+'\')" title="'+T('رفض')+'">❌</button> '):'')+
+        (EXP.canApprove && (x.status==='approved'||x.status==='partially_approved')?('<button class="btn btn-ghost btn-icon" onclick="openPayModal(\''+x.id+'\')" title="'+T('تسجيل الدفع')+'">💰</button> '):'')+
+        (EXP.canManage?('<button class="btn btn-ghost btn-icon" onclick="openExpModal(\''+x.id+'\')" title="'+T('تعديل')+'">✎</button> '):'')+
+        (EXP.canDelete?'<button class="btn btn-danger btn-icon" onclick="deleteExpense(\''+x.id+'\')" title="'+T('حذف')+'">🗑</button>':'')+'</td></tr>';
   }).join('') || '<tr><td colspan="12"><div class="empty-state"><div class="icon">🧾</div>'+T('لا مصاريف مسجّلة بعد')+'</div></td></tr>';
 }
 function subNameById(id){
@@ -381,7 +397,9 @@ function subNameById(id){
 function bearerChip(x){
   if(x.bearer!=='sub') return '<span class="muted" style="font-size:11px">'+T('ذاتي')+'</span>';
   var settled=!!x.settledMusNo;
-  return '<span class="status-chip" style="background:#0c3324;color:#7ff0bb"'+(settled?' title="'+T('سُوّي ضمن مستخلص:')+' '+esc(x.settledMusNo)+'"':'')+'>🧱 '+esc(subNameById(x.subId))+(settled?' ✓':'')+'</span>';
+  var name=subNameById(x.subId);
+  var tip=settled?(T('سُوّي ضمن مستخلص:')+' '+x.settledMusNo+' — '+name):name;
+  return '<span class="status-chip cell-ellipsis" style="background:#0c3324;color:#7ff0bb" title="'+esc(tip)+'">🧱 '+esc(name)+(settled?' ✓':'')+'</span>';
 }
 function statusChip(x){
   var st=x.status||'pending';

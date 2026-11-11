@@ -5858,7 +5858,9 @@ function subDueSummary(subId){
   return { musCount: ms.length, net, paid, remaining: Math.max(0, round2(net-paid)), availValue: avail };
 }
 // من يعتمد مستخلصات مقاولي الباطن؟ العميل ومدير المشاريع والأدمن
-const canApproveSubMus = () => isAdmin();
+// اعتماد مستخلصات مقاولي الباطن وصرف دفعاتها وتعديلها: صاحب الشركة (العميل) أو أدمن النظام فقط.
+// مدير المشروع (pm) ومدير المشاريع (pmo) يرفعون المستخلص فقط ولا يصرفون.
+const canApproveSubMus = () => isAdmin() || (!!state.me && state.me.role === 'client');
 const SUBMUS_STATUS = {
   submitted:{label:'⏳ بانتظار الاعتماد', color:'amber'},
   rejected:{label:'↩ مرفوض', color:'red'},
@@ -5949,7 +5951,8 @@ function renderSubMusTable(){
       '<td class="amount">' + fmtN(m.gross) + '</td>' +
       '<td class="amount muted">' + fmtN(round2((m.retention||0)+(m.dedTotal||0))) + '</td>' +
       '<td class="amount claimable">' + fmtN(m.net) + '</td>' +
-      '<td class="amount" style="color:' + (paid>=m.net-1?'var(--green-bright)':paid>0?'var(--amber)':'var(--text3)') + '">' + (paid>0?fmtN(paid):'—') + '</td>' +
+      '<td class="amount" style="color:' + (paid>=m.net-1?'var(--green-bright)':paid>0?'var(--amber)':'var(--text3)') + '">' + (paid>0?fmtN(paid):'—') +
+        ((m.payments||[]).length ? '<div style="font-size:9.5px;color:var(--text3);font-weight:400;margin-top:3px;line-height:1.5;font-family:var(--font);text-align:right">' + (m.payments||[]).map(p=>'📅 ' + esc(p.date) + ': ' + fmtN(p.amount)).join('<br>') + '</div>' : '') + '</td>' +
       '<td><span class="pill ' + st.color + '"' + (m.status==='rejected'&&m.rejectReason?' data-tip="'+esc(m.rejectReason)+'"':'') + '>' + T(st.label) + '</span></td>' +
       '<td style="white-space:nowrap">' + btns + (canDel?'<button class="mini-btn red" onclick="deleteSubMus(' + m.id + ')">🗑</button>':'') + '</td>' +
       '</tr>';

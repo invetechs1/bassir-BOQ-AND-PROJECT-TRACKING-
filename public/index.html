@@ -893,6 +893,21 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="sub-approve-modal">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-title"><span data-i18n="✅ اعتماد مستخلص مقاول الباطن">✅ اعتماد مستخلص مقاول الباطن</span><span class="modal-close" onclick="closeModal('sub-approve-modal')">✕</span></div>
+    <div class="f-grid" style="grid-template-columns:1fr">
+      <div class="f-field"><label id="subapprove-info" style="font-size:12px;color:var(--text2)"></label></div>
+      <div class="f-field"><label data-i18n="المبلغ المعتمد (ر.س) — عدّله لاعتماد جزئي">المبلغ المعتمد (ر.س) — عدّله لاعتماد جزئي</label><input type="number" id="subapprove-amount" min="0" step="0.01"></div>
+      <div class="f-field"><label style="font-size:11px;color:var(--text3)" data-i18n="لا يمكن أن يتجاوز المبلغ المعتمد الصافي المحسوب من الكميات">لا يمكن أن يتجاوز المبلغ المعتمد الصافي المحسوب من الكميات</label></div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:16px">
+      <button class="btn btn-green" onclick="saveSubApprove()" data-i18n="💾 اعتماد المستخلص">💾 اعتماد المستخلص</button>
+      <button class="btn btn-ghost" onclick="closeModal('sub-approve-modal')" data-i18n="إلغاء">إلغاء</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="subpay-modal">
   <div class="modal" style="max-width:420px">
     <div class="modal-title"><span data-i18n="💵 اعتماد صرف لمقاول الباطن">💵 اعتماد صرف لمقاول الباطن</span><span class="modal-close" onclick="closeModal('subpay-modal')">✕</span></div>
@@ -901,6 +916,10 @@
       <div class="f-field"><label data-i18n="تاريخ الصرف">تاريخ الصرف</label><input type="date" id="subpay-date"></div>
       <div class="f-field"><label data-i18n="المبلغ المعتمَد صرفه (ر.س) — كامل أو جزء">المبلغ المعتمَد صرفه (ر.س) — كامل أو جزء</label><input type="number" id="subpay-amount" min="0" step="0.01"></div>
       <div class="f-field"><label data-i18n="ملاحظات">ملاحظات</label><input type="text" id="subpay-note" placeholder="حوالة / شيك..."></div>
+      <div class="f-field full"><label data-i18n="📎 إيصال التحويل البنكي (اختياري)">📎 إيصال التحويل البنكي (اختياري)</label>
+        <input type="file" id="subpay-files" accept="image/*,.pdf,application/pdf" multiple onchange="subpayFilesPicked(this)">
+        <div id="subpay-files-list" style="display:flex;flex-direction:column;gap:4px;margin-top:6px"></div>
+      </div>
     </div>
     <div style="display:flex;gap:10px;margin-top:16px">
       <button class="btn btn-green" onclick="saveSubPay()" data-i18n="💾 اعتماد الصرف">💾 اعتماد الصرف</button>
@@ -6074,9 +6093,12 @@ const subAvailQty = (subId, itemId) => Math.max(0, round2(subEligibleQty(subId, 
 const subItemIds = sub => (sub.items||[]).map(x => x.itemId).filter(id => getItem(id));
 function subMusOf(subId){ return (proj().subMustakhlasat||[]).filter(m => m.subId === subId); }
 function subPaid(m){ return (m.payments||[]).reduce((s,p)=>s+(Number(p.amount)||0),0); }
+// المبلغ القابل فعلياً للصرف لهذا المستخلص: المعتمد له (قد يكون أقل من الصافي المحسوب عند اعتماد جزئي)
+// أو الصافي المحسوب نفسه إن لم يُعتمد جزئياً بعد — الصافي (m.net) يبقى دوماً القيمة المحسوبة من الكميات والأسعار.
+function subMusPayable(m){ return m.approvedAmount != null ? m.approvedAmount : m.net; }
 function subDueSummary(subId){
   const ms = subMusOf(subId).filter(m => m.status !== 'rejected');
-  const net = round2(ms.reduce((s,m)=>s+(m.net||0),0));
+  const net = round2(ms.reduce((s,m)=>s+subMusPayable(m),0));
   const paid = round2(ms.reduce((s,m)=>s+subPaid(m),0));
   // متاح للتعميد الآن (لم يُبنَ له مستخلص بعد)
   const avail = round2(subItemIds(getSub(subId)).reduce((s,id)=>s+subAvailQty(subId,id)*subRate(getSub(subId),id),0));
@@ -6228,7 +6250,7 @@ function clearSubAlerts(){ if (!canApproveSubMus()) return; proj().subAlerts = [
 
 function renderSubMusTable(){
   const ms = [...(proj().subMustakhlasat||[])].sort((a,b)=> (b.date||'').localeCompare(a.date||'') || b.id-a.id);
-  const totNet = round2(ms.filter(m=>m.status!=='rejected').reduce((s,m)=>s+(m.net||0),0));
+  const totNet = round2(ms.filter(m=>m.status!=='rejected').reduce((s,m)=>s+subMusPayable(m),0));
   const totPaid = round2(ms.reduce((s,m)=>s+subPaid(m),0));
   $('submus-kpis').innerHTML = [
     {label:'عدد المستخلصات', value:ms.length, color:'amber', sub:''},
@@ -6238,10 +6260,11 @@ function renderSubMusTable(){
   ].map(k => '<div class="kpi-card ' + k.color + '"><div class="kpi-label">' + T(k.label) + '</div><div class="kpi-value ' + k.color + '">' + k.value + '</div><div class="kpi-sub">' + k.sub + '</div></div>').join('');
   $('submus-tbody').innerHTML = ms.map(m => {
     const sub = getSub(m.subId); const st = SUBMUS_STATUS[m.status]||SUBMUS_STATUS.submitted;
-    const paid = subPaid(m); const nAtt = (m.docs||[]).length;
+    const payable = subMusPayable(m); const paid = subPaid(m); const nAtt = (m.docs||[]).length;
+    const partial = m.approvedAmount != null && m.approvedAmount < round2(m.net) - 0.01;
     let btns = '<button class="mini-btn" onclick="viewSubMus(' + m.id + ')">📄 ' + T('عرض') + '</button> ';
     if (canApproveSubMus()) {
-      if (m.status === 'submitted') btns += '<button class="mini-btn green" onclick="approveSubMus(' + m.id + ')">✅ ' + T('اعتماد') + '</button> <button class="mini-btn red" onclick="rejectSubMus(' + m.id + ')">↩ ' + T('رفض') + '</button> ';
+      if (m.status === 'submitted') btns += '<button class="mini-btn green" onclick="openSubApprove(' + m.id + ')">✅ ' + T('اعتماد') + '</button> <button class="mini-btn red" onclick="rejectSubMus(' + m.id + ')">↩ ' + T('رفض') + '</button> ';
       if (['approved','paid'].includes(m.status)) btns += '<button class="mini-btn green" onclick="openSubPay(' + m.id + ')">💵 ' + T('اعتماد صرف') + '</button> ';
     }
     const canDel = isManagerial() || ['submitted','rejected'].includes(m.status);
@@ -6252,9 +6275,9 @@ function renderSubMusTable(){
       '<td>' + (m.lines||[]).length + '</td>' +
       '<td class="amount">' + fmtN(m.gross) + '</td>' +
       '<td class="amount muted">' + fmtN(round2((m.retention||0)+(m.dedTotal||0))) + '</td>' +
-      '<td class="amount claimable">' + fmtN(m.net) + '</td>' +
+      '<td class="amount claimable">' + fmtN(m.net) + (partial?('<br><span class="pill amber" style="font-size:9px" data-tip="'+T('اعتماد جزئي')+'">✓ ' + fmtN(m.approvedAmount) + '</span>'):'') + '</td>' +
       '<td class="amount muted">' + (m.prevPaid?fmtN(m.prevPaid):'—') + '</td>' +
-      '<td class="amount" style="color:' + (paid>=m.net-1?'var(--green-bright)':paid>0?'var(--amber)':'var(--text3)') + '">' + (paid>0?fmtN(paid):'—') + '</td>' +
+      '<td class="amount" style="color:' + (paid>=payable-1?'var(--green-bright)':paid>0?'var(--amber)':'var(--text3)') + '">' + (paid>0?fmtN(paid):'—') + '</td>' +
       '<td><span class="pill ' + st.color + '"' + (m.status==='rejected'&&m.rejectReason?' data-tip="'+esc(m.rejectReason)+'"':'') + '>' + T(st.label) + '</span></td>' +
       '<td style="white-space:nowrap">' + btns + (canDel?'<button class="mini-btn red" onclick="deleteSubMus(' + m.id + ')">🗑</button>':'') + '</td>' +
       '</tr>';
@@ -6787,6 +6810,7 @@ function subMusDocHtml(m){
       (m.by ? '<div><span style="color:var(--text2)">' + T('معد المستخلص:') + '</span> <strong>' + esc(m.by) + '</strong></div>' : '') +
       (m.status ? '<div><span style="color:var(--text2)">' + T('الحالة:') + '</span> <strong>' + (SUBMUS_STATUS[m.status]?T(SUBMUS_STATUS[m.status].label):m.status) + '</strong></div>' : '') +
       (m.approvedBy && m.status !== 'rejected' ? '<div><span style="color:var(--text2)">' + T('اعتمده:') + '</span> <strong>' + esc(m.approvedBy) + (m.approvedAt ? ' — ' + esc(m.approvedAt) : '') + '</strong></div>' : '') +
+      (m.approvedAmount != null && m.approvedAmount < round2(m.net) - 0.01 ? '<div style="color:var(--amber)"><span style="color:var(--text2)">' + T('المعتمد للصرف:') + '</span> <strong>' + money(m.approvedAmount) + ' (' + T('اعتماد جزئي') + ')</strong></div>' : '') +
       (m.status === 'rejected' && m.rejectReason ? '<div style="grid-column:1/-1;color:var(--red)"><span>' + T('سبب الإرجاع:') + '</span> <strong>' + esc(m.rejectReason) + '</strong></div>' : '') +
     '</div>' +
     (contract.originalValue ?
@@ -6827,6 +6851,19 @@ function subMusDocHtml(m){
       sumRow(T('رصيد الدفعة المقدمة المتبقي'), m.advanceRemaining||0, 'var(--text)') +
       '</table>' : '') +
     docsHtml +
+    ((m.payments||[]).length ?
+      '<div style="margin-top:14px"><div style="font-size:13px;font-weight:700;margin-bottom:6px">' + T('سجل المدفوعات') + '</div>' +
+      '<table style="width:100%;border-collapse:collapse;font-size:11.5px">' +
+      '<thead><tr style="background:var(--bg3)">' + [T('التاريخ'),T('المبلغ'),T('ملاحظات'),T('المستندات')]
+        .map(h=>'<th style="padding:5px;border:1px solid var(--border);color:var(--amber);text-align:center">' + h + '</th>').join('') +
+      '</tr></thead><tbody>' +
+      (m.payments||[]).map(p => '<tr>' +
+        '<td style="padding:5px;border:1px solid var(--border);text-align:center">' + esc(p.date||'—') + '</td>' +
+        '<td style="padding:5px;border:1px solid var(--border);text-align:center;font-family:var(--mono);font-weight:700;color:var(--green-bright)">' + fmtN(p.amount) + '</td>' +
+        '<td style="padding:5px;border:1px solid var(--border);text-align:center">' + esc(p.note||'—') + '</td>' +
+        '<td style="padding:5px;border:1px solid var(--border);text-align:center">' + ((p.docs||[]).length ? (p.docs||[]).map(d=>'<a href="'+esc(d.url)+'" target="_blank" style="color:var(--blue);text-decoration:none">'+(String(d.url).endsWith('.pdf')?'📄':'🖼')+'</a>').join(' ') : '—') + '</td>' +
+      '</tr>').join('') +
+      '</tbody></table></div>' : '') +
     '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:16px;margin-top:28px">' +
       sig('أُعدّ بواسطة (QS)', appr.preparedBy) + sig('روجع بواسطة (PM)', appr.reviewedBy) + sig('اعتمد بواسطة (العقود/المالك)', appr.approvedBy) + sig('إقرار استلام مقاول الباطن', appr.subAcknowledged) +
     '</div>' +
@@ -6834,12 +6871,25 @@ function subMusDocHtml(m){
     '</div>';
 }
 function viewSubMus(id){ const m = (proj().subMustakhlasat||[]).find(x=>x.id===id); if (m) showPrintable(T('مستخلص مقاول باطن') + ' ' + m.no, subMusDocHtml(m)); }
-function approveSubMus(id){
+let subApproveId = null;
+function openSubApprove(id){
   if (!canApproveSubMus()) { alert(T('اعتماد مستخلصات مقاولي الباطن صلاحية العميل ومدير المشاريع')); return; }
   const m = (proj().subMustakhlasat||[]).find(x=>x.id===id); if (!m || m.status!=='submitted') return;
-  if (!confirm(T('اعتماد مستخلص ') + m.no + T(' بصافي ') + money(m.net) + T('؟ راجع الأوراق والتسوية قبل الاعتماد.'))) return;
-  m.status = 'approved'; m.approvedBy = currentUser().name; m.approvedAt = todayStr(); m.rejectReason = '';
-  save(); renderAll();
+  subApproveId = id;
+  $('subapprove-info').textContent = m.no + ' — ' + T('الصافي المحسوب من الكميات:') + ' ' + money(m.net);
+  $('subapprove-amount').value = m.net;
+  $('subapprove-amount').max = m.net;
+  $('sub-approve-modal').classList.add('open');
+}
+function saveSubApprove(){
+  const m = (proj().subMustakhlasat||[]).find(x=>x.id===subApproveId); if (!m || m.status!=='submitted') return;
+  const amount = Number($('subapprove-amount').value);
+  if (!(amount > 0)) { alert(T('أدخل مبلغاً أكبر من صفر')); return; }
+  if (amount > round2(m.net) + 0.01) { alert(T('لا يمكن أن يتجاوز المبلغ المعتمد الصافي المحسوب (') + money(m.net) + ')'); return; }
+  const partial = amount < round2(m.net) - 0.01;
+  if (!confirm((partial ? T('اعتماد جزئي لمستخلص ') : T('اعتماد مستخلص ')) + m.no + T(' بمبلغ ') + money(amount) + T('؟ راجع الأوراق والتسوية قبل الاعتماد.'))) return;
+  m.status = 'approved'; m.approvedAmount = round2(amount); m.approvedBy = currentUser().name; m.approvedAt = todayStr(); m.rejectReason = '';
+  closeModal('sub-approve-modal'); save(); renderAll();
 }
 function rejectSubMus(id){
   if (!canApproveSubMus()) return;
@@ -6848,25 +6898,45 @@ function rejectSubMus(id){
   m.status = 'rejected'; m.rejectReason = reason.trim()||T('يحتاج تعديل'); m.approvedBy = currentUser().name; m.approvedAt = todayStr();
   save(); renderAll();
 }
-let subPayId = null;
+let subPayId = null, subpayPendingFiles = [];
 function openSubPay(id){
   if (!canApproveSubMus()) { alert(T('اعتماد الصرف صلاحية العميل ومدير المشاريع')); return; }
   const m = (proj().subMustakhlasat||[]).find(x=>x.id===id); if (!m) return;
-  subPayId = id; const paid = subPaid(m);
-  $('subpay-info').textContent = m.no + ' — ' + T('صافي') + ' ' + money(m.net) + ' · ' + T('مدفوع') + ' ' + money(paid) + ' · ' + T('متبقٍ') + ' ' + money(Math.max(0,round2(m.net-paid)));
+  subPayId = id; subpayPendingFiles = [];
+  const payable = subMusPayable(m), paid = subPaid(m);
+  const partial = m.approvedAmount != null && m.approvedAmount < round2(m.net) - 0.01;
+  $('subpay-info').textContent = m.no + ' — ' + (partial ? T('المعتمد للصرف:') : T('صافي')) + ' ' + money(payable) + ' · ' + T('مدفوع') + ' ' + money(paid) + ' · ' + T('متبقٍ') + ' ' + money(Math.max(0,round2(payable-paid)));
   $('subpay-date').value = todayStr();
-  $('subpay-amount').value = Math.max(0, round2(m.net - paid));
+  $('subpay-amount').value = Math.max(0, round2(payable - paid));
   $('subpay-note').value = '';
+  $('subpay-files-list').innerHTML = '';
   $('subpay-modal').classList.add('open');
 }
-function saveSubPay(){
+async function subpayFilesPicked(input){
+  const files = [...(input.files||[])].slice(0, 15 - subpayPendingFiles.length);
+  for (const f of files) {
+    try {
+      if (f.type === 'application/pdf') { if (f.size > 50*1024*1024) { alert(f.name+': '+T('أكبر من 50MB')); continue; } subpayPendingFiles.push({dataUrl: await readFileAsDataURL(f), name:f.name}); }
+      else if (f.type.startsWith('image/')) subpayPendingFiles.push({dataUrl: await compressImage(f), name:f.name});
+      else alert(f.name+': '+T('صيغة غير مدعومة'));
+    } catch(e){ alert(e.message); }
+  }
+  input.value = '';
+  $('subpay-files-list').innerHTML = subpayPendingFiles.map((f,i)=>'<div class="sc-item" style="padding:3px 0"><span class="sc-item-name" style="font-size:11px">' + (f.name.toLowerCase().endsWith('.pdf')?'📄':'🖼') + ' ' + esc(f.name) + '</span><button class="mini-btn red" onclick="subpayPendingFiles.splice(' + i + ',1);subpayFilesPicked({files:[]})">✕</button></div>').join('');
+}
+async function saveSubPay(){
   const m = (proj().subMustakhlasat||[]).find(x=>x.id===subPayId); if (!m) return;
   const amount = Number($('subpay-amount').value);
   if (!amount || amount <= 0) { alert(T('اكتب مبلغ الصرف')); return; }
-  const paid = subPaid(m);
-  if (amount > round2(m.net - paid) + 0.01) { if (!confirm(T('المبلغ أكبر من المتبقٍ — متابعة؟'))) return; }
-  m.payments.push({id:nextSeq(), date:$('subpay-date').value||todayStr(), amount:round2(amount), note:$('subpay-note').value.trim(), by:currentUser().name});
-  if (subPaid(m) >= m.net - 1) m.status = 'paid';
+  const payable = subMusPayable(m), paid = subPaid(m);
+  if (amount > round2(payable - paid) + 0.01) { if (!confirm(T('المبلغ أكبر من المتبقٍ — متابعة؟'))) return; }
+  let docs = [];
+  if (subpayPendingFiles.length) {
+    try { for (const f of subpayPendingFiles) { const r = await API.req('POST', '/api/projects/' + proj().id + '/photos', {dataUrl:f.dataUrl}); docs.push({url:r.url, name:f.name}); } }
+    catch(e){ alert(T('تعذر رفع المرفقات:') + ' ' + e.message); return; }
+  }
+  m.payments.push({id:nextSeq(), date:$('subpay-date').value||todayStr(), amount:round2(amount), note:$('subpay-note').value.trim(), docs, by:currentUser().name});
+  if (subPaid(m) >= payable - 1) m.status = 'paid';
   closeModal('subpay-modal'); save(); renderAll();
 }
 function deleteSubMus(id){
@@ -6918,6 +6988,22 @@ Object.assign(I18N_EN, {
   'متبقٍ':'Remaining',
   'اكتب مبلغ الصرف':'Enter the disbursement amount',
   'المبلغ أكبر من المتبقٍ — متابعة؟':'The amount is greater than what remains — continue?',
+  '✅ اعتماد مستخلص مقاول الباطن':'✅ Approve subcontractor claim',
+  'المبلغ المعتمد (ر.س) — عدّله لاعتماد جزئي':'Approved amount (SAR) — adjust it for a partial approval',
+  'لا يمكن أن يتجاوز المبلغ المعتمد الصافي المحسوب من الكميات':'The approved amount cannot exceed the net calculated from quantities',
+  '💾 اعتماد المستخلص':'💾 Approve claim',
+  '📎 إيصال التحويل البنكي (اختياري)':'📎 Bank transfer receipt (optional)',
+  'الصافي المحسوب من الكميات:':'Net calculated from quantities:',
+  'لا يمكن أن يتجاوز المبلغ المعتمد الصافي المحسوب (':'The approved amount cannot exceed the calculated net (',
+  'أدخل مبلغاً أكبر من صفر':'Enter an amount greater than zero',
+  'اعتماد جزئي لمستخلص ':'Partial approval of claim ',
+  ' بمبلغ ':' with amount ',
+  'المعتمد للصرف:':'Approved for disbursement:',
+  'اعتماد جزئي':'Partial approval',
+  'سجل المدفوعات':'Payment history',
+  'لا مدفوعات بعد':'No payments yet',
+  'المعتمد للصرف':'Approved for disbursement',
+  'المبلغ':'Amount',
   'لا يمكن حذف مستخلص معتمد — راجع الإدارة':'An approved claim cannot be deleted — contact admin',
   'حذف مستخلص ':'Delete claim ',
   '؟ سترجع كمياته للمتاح.':'? Its quantities will be returned to the available balance.'

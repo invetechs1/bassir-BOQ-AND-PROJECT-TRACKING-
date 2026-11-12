@@ -934,6 +934,20 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="subpaid-quick-modal">
+  <div class="modal" style="max-width:360px">
+    <div class="modal-title"><span data-i18n="✎ تعديل المبلغ المدفوع">✎ تعديل المبلغ المدفوع</span><span class="modal-close" onclick="closeModal('subpaid-quick-modal')">✕</span></div>
+    <div id="subpaid-quick-info" class="alert info" style="font-size:12px"></div>
+    <div class="f-grid" style="grid-template-columns:1fr">
+      <div class="f-field"><label data-i18n="المبلغ المدفوع (ر.س)">المبلغ المدفوع (ر.س)</label><input type="number" id="subpaid-quick-amount" min="0" step="0.01" onkeydown="if(event.key==='Enter')saveSubpaidQuick()"></div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:16px">
+      <button class="btn btn-green" onclick="saveSubpaidQuick()" data-i18n="💾 حفظ">💾 حفظ</button>
+      <button class="btn btn-ghost" onclick="closeModal('subpaid-quick-modal')" data-i18n="إلغاء">إلغاء</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="project-modal">
   <div class="modal">
     <div class="modal-title"><span id="project-modal-title" data-i18n="إضافة مشروع">إضافة مشروع</span><span class="modal-close" onclick="closeModal('project-modal')">✕</span></div>
@@ -6286,6 +6300,7 @@ function renderSubMusTable(){
       '<td class="amount claimable">' + fmtN(m.net) + (partial?('<br><span class="pill amber" style="font-size:9px" data-tip="'+T('اعتماد جزئي')+'">✓ ' + fmtN(m.approvedAmount) + '</span>'):'') + '</td>' +
       '<td class="amount muted">' + (m.prevPaid?fmtN(m.prevPaid):'—') + '</td>' +
       '<td class="amount" style="color:' + (paid>=payable-1?'var(--green-bright)':paid>0?'var(--amber)':'var(--text3)') + '">' + (paid>0?fmtN(paid):'—') +
+        (paid>0 && canApproveSubMus() ? ' <span onclick="quickEditSubPaid(' + m.id + ')" title="' + T('تعديل المبلغ المدفوع') + '" style="cursor:pointer;color:var(--text3);font-size:12px">✎</span>' : '') +
         ((m.payments||[]).length ? '<div style="font-size:9.5px;color:var(--text3);font-weight:400;margin-top:3px;line-height:1.5;font-family:var(--font);text-align:right">' + (m.payments||[]).map(p=>'📅 ' + esc(p.date) + ': ' + fmtN(p.amount)).join('<br>') + '</div>' : '') + '</td>' +
       '<td><span class="pill ' + st.color + '"' + (m.status==='rejected'&&m.rejectReason?' data-tip="'+esc(m.rejectReason)+'"':'') + '>' + T(st.label) + '</span></td>' +
       '<td style="white-space:nowrap">' + btns + (canDel?'<button class="mini-btn red" onclick="deleteSubMus(' + m.id + ')">🗑</button>':'') + '</td>' +
@@ -6993,6 +7008,33 @@ function subPayRecomputeStatus(m){
   const payable = subMusPayable(m);
   m.status = (subPaid(m) >= payable - 1) ? 'paid' : (m.status === 'paid' ? 'approved' : m.status);
 }
+// تعديل سريع لمبلغ مدفوع واحد مباشرة من جدول المستخلصات (بدون فتح نافذة الصرف الكاملة) —
+// يعمل فقط حين تكون هناك دفعة واحدة؛ لو هناك عدة دفعات تُفتح نافذة الصرف الكاملة لتعديل كل دفعة بعينها.
+let subpaidQuickMusId = null;
+function quickEditSubPaid(musId){
+  if (!canApproveSubMus()) { alert(T('اعتماد الصرف صلاحية العميل ومدير المشاريع')); return; }
+  const m = (proj().subMustakhlasat||[]).find(x=>x.id===musId); if (!m) return;
+  const pays = m.payments||[];
+  if (!pays.length) return;
+  if (pays.length > 1) { openSubPay(musId); return; }
+  subpaidQuickMusId = musId;
+  const p = pays[0];
+  $('subpaid-quick-info').textContent = m.no + ' — ' + T('المبلغ الحالي:') + ' ' + money(p.amount);
+  $('subpaid-quick-amount').value = p.amount;
+  $('subpaid-quick-modal').classList.add('open');
+  setTimeout(()=>{ const f=$('subpaid-quick-amount'); f.focus(); f.select(); }, 50);
+}
+function saveSubpaidQuick(){
+  const m = (proj().subMustakhlasat||[]).find(x=>x.id===subpaidQuickMusId); if (!m) return;
+  const p = (m.payments||[])[0]; if (!p) return;
+  const amount = round2(Number($('subpaid-quick-amount').value));
+  if (!amount || amount <= 0) { alert(T('أدخل مبلغاً أكبر من صفر')); return; }
+  const payable = subMusPayable(m);
+  if (amount > round2(payable) + 0.01 && !confirm(T('المبلغ أكبر من المعتمد للصرف — متابعة؟'))) return;
+  p.amount = amount; p.by = currentUser().name;
+  subPayRecomputeStatus(m);
+  closeModal('subpaid-quick-modal'); save(); renderAll();
+}
 async function saveSubPay(){
   const m = (proj().subMustakhlasat||[]).find(x=>x.id===subPayId); if (!m) return;
   const amount = round2(Number($('subpay-amount').value));
@@ -7095,6 +7137,11 @@ Object.assign(I18N_EN, {
   'حذف هذه الدفعة؟':'Delete this payment?',
   'لم تُسجَّل دفعات بعد':'No payments recorded yet',
   '✎ تعديل':'✎ Edit',
+  '✎ تعديل المبلغ المدفوع':'✎ Edit paid amount',
+  'تعديل المبلغ المدفوع':'Edit paid amount',
+  'المبلغ المدفوع (ر.س)':'Paid amount (SAR)',
+  'المبلغ الحالي:':'Current amount:',
+  'المبلغ أكبر من المعتمد للصرف — متابعة؟':'Amount is greater than the approved disbursement amount — continue?',
   'لا يمكن حذف مستخلص معتمد — راجع الإدارة':'An approved claim cannot be deleted — contact admin',
   'حذف مستخلص ':'Delete claim ',
   '؟ سترجع كمياته للمتاح.':'? Its quantities will be returned to the available balance.'

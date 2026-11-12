@@ -100,8 +100,10 @@ tbody tr:hover{background:#16284880}
 /* modal */
 .overlay{position:fixed;inset:0;background:#030712cc;backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:50;padding:18px}
 .overlay.open{display:flex}
-.modal{background:linear-gradient(180deg,var(--surface),#0f1a30);border:1px solid var(--line);border-radius:18px;padding:26px;width:100%;max-width:520px;max-height:92vh;overflow:auto;box-shadow:var(--shadow)}
-.modal-x{float:left;cursor:pointer;color:var(--text3);font-size:20px;line-height:1}
+.modal{position:relative;background:linear-gradient(180deg,var(--surface),#0f1a30);border:1px solid var(--line);border-radius:18px;padding:26px;width:100%;max-width:520px;max-height:92vh;overflow:auto;box-shadow:var(--shadow)}
+.modal-x{position:absolute;top:14px;left:14px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:9px;cursor:pointer;color:var(--text3);font-size:18px;line-height:1;background:rgba(255,255,255,.05);transition:.15s}
+.modal-x:hover{background:rgba(255,255,255,.12);color:var(--text)}
+.modal-x+h2{padding-inline-end:36px}
 
 /* تنبيهات */
 .note{border-radius:12px;padding:12px 15px;font-size:13.5px;margin:12px 0;border:1px solid}

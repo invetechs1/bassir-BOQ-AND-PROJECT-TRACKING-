@@ -140,11 +140,26 @@
     <div class="field" style="flex:1"><label for="e-inv-date" data-i18n="تاريخ الفاتورة">تاريخ الفاتورة</label><input id="e-inv-date" type="date"></div>
   </div>
   <div class="field"><label for="e-boq" data-i18n="ربط ببند جدول الكميات (اختياري)">ربط ببند جدول الكميات (اختياري)</label><select id="e-boq"><option value="" data-i18n="— بلا ربط —">— بلا ربط —</option></select></div>
-  <div class="field" id="e-docs-field">
-    <label for="e-file"><span data-i18n="مستندات / فواتير">مستندات / فواتير</span> <span id="e-docs-required" class="muted" style="font-weight:400"></span></label>
-    <div id="e-docs-list" style="margin-bottom:8px"></div>
-    <input type="file" id="e-file" accept="image/*,application/pdf" onchange="uploadDoc(this)">
-    <div class="help" id="e-upload-status"></div>
+  <div class="field" id="e-docs-field" style="border:1px solid var(--line);border-radius:12px;padding:12px;background:rgba(255,255,255,.02)">
+    <label style="font-weight:700" data-i18n="📎 مستندات المصروف">📎 مستندات المصروف</label>
+    <div class="field" style="margin-top:8px">
+      <label for="e-quote-file" data-i18n="📋 عرض السعر">📋 عرض السعر</label>
+      <div id="e-quote-list" style="margin-bottom:8px"></div>
+      <input type="file" id="e-quote-file" accept="image/*,application/pdf" onchange="uploadDocSlot(this,'quote')">
+      <div class="help" id="e-quote-upload-status"></div>
+    </div>
+    <div class="field">
+      <label for="e-invoice-file"><span data-i18n="🧾 فاتورة المصروف">🧾 فاتورة المصروف</span> <span class="muted" style="font-weight:400" data-i18n="(تُرفع بعد التحويل)">(تُرفع بعد التحويل)</span></label>
+      <div id="e-invoice-list" style="margin-bottom:8px"></div>
+      <input type="file" id="e-invoice-file" accept="image/*,application/pdf" onchange="uploadDocSlot(this,'invoice')">
+      <div class="help" id="e-invoice-upload-status"></div>
+    </div>
+    <div class="field" style="margin-bottom:0">
+      <label for="e-delivery-file" data-i18n="📦 كشف الاستلام">📦 كشف الاستلام</label>
+      <div id="e-delivery-list" style="margin-bottom:8px"></div>
+      <input type="file" id="e-delivery-file" accept="image/*,application/pdf" onchange="uploadDocSlot(this,'delivery')">
+      <div class="help" id="e-delivery-upload-status"></div>
+    </div>
   </div>
   <div class="field">
     <label class="toggle-row" for="e-sync" style="margin-bottom:0">
@@ -175,6 +190,7 @@
 <div class="overlay" id="approve-ov"><div class="modal" style="max-width:420px">
   <span class="modal-x" onclick="document.getElementById('approve-ov').classList.remove('open')">✕</span>
   <h2 data-i18n="اعتماد المصروف">اعتماد المصروف</h2>
+  <div id="approve-docs-info" style="margin-bottom:10px"></div>
   <div class="approve-choice sel" id="approve-card-full" onclick="selectApproveMode('full')">
     <input type="radio" name="approve-mode" id="approve-mode-full" checked onchange="syncApproveCards()">
     <div class="approve-choice-body">
@@ -221,7 +237,7 @@
 
 <script src="/saas/shared.js"></script>
 <script>
-var PROJECTS=[], CUR=null, EXP=null, DOCS=[];
+var PROJECTS=[], CUR=null, EXP=null, QUOTE_DOCS=[], INVOICE_DOCS=[], DELIVERY_DOCS=[];
 Object.assign(I18N_EN, {
   'مصاريف المشروع':'Project Expenses', '→ النظام':'→ System', 'خروج':'Log out', 'تسجيل الدخول':'Log in',
   'مصاريف المشروع — نظام زمام':'Project Expenses — ZIMAM',
@@ -250,6 +266,8 @@ Object.assign(I18N_EN, {
   'حذف هذا المصروف؟':'Delete this expense?', 'تم الحذف':'Deleted', 'تعذّر':'Failed', 'تمت المزامنة':'Synced', 'فشلت المزامنة':'Sync failed',
   'مزامنة':'Sync', 'تعديل':'Edit', 'حذف':'Delete', 'لا مصاريف مسجّلة بعد':'No expenses recorded yet', 'بند #':'Item #',
   'المستندات':'Documents', 'مستندات المصروف':'Expense documents', 'فتح':'Open',
+  '📎 مستندات المصروف':'📎 Expense documents', '📋 عرض السعر':'📋 Quotation', '🧾 فاتورة المصروف':'🧾 Invoice',
+  '(تُرفع بعد التحويل)':'(uploaded after the transfer)', '📦 كشف الاستلام':'📦 Delivery note', 'المستندات:':'Documents:',
   'الحالة':'Status', 'اعتماد':'Approve', 'رفض':'Reject',
   'اعتماد المصروف':'Approve expense', 'اعتماد كامل المبلغ':'Approve full amount', 'اعتماد جزئي':'Partial approval',
   'أدخل مبلغاً أقل من قيمة المصروف':'Enter an amount less than the expense value',
@@ -409,18 +427,23 @@ function statusChip(x){
   return '<span class="status-chip status-pending">⏳ '+T('بانتظار الاعتماد')+'</span>';
 }
 function isImageUrl(url){ return /\.(png|jpe?g|webp|gif)$/i.test(String(url||'')); }
+// مستندات المصروف الثلاثة مجمّعة مع نوع كل مستند — المرفقات القديمة (docs) تُعامَل كفاتورة عند عدم وجود invoiceDocs
+function allDocsOf(x){
+  var invoice=(x.invoiceDocs&&x.invoiceDocs.length)?x.invoiceDocs:(x.docs||[]);
+  function tag(arr,kind,label){ return (arr||[]).map(function(d){ return {url:d.url,name:d.name,kind:kind,label:label}; }); }
+  return tag(x.quoteDocs,'quote',T('📋 عرض السعر')).concat(tag(invoice,'invoice',T('🧾 فاتورة المصروف'))).concat(tag(x.deliveryDocs,'delivery',T('📦 كشف الاستلام')));
+}
 function docsCell(x){
-  var docs=x.docs||[];
+  var docs=allDocsOf(x);
   if(!docs.length) return '<span class="muted" style="font-size:11px">—</span>';
-  if(docs.length===1) return '<button class="btn btn-ghost btn-sm" onclick="window.open(\''+esc(docs[0].url)+'\',\'_blank\')">👁 '+T('عرض')+'</button>';
   return '<button class="btn btn-ghost btn-sm" onclick="viewDocs(\''+x.id+'\')">👁 '+T('عرض')+' ('+docs.length+')</button>';
 }
 function viewDocs(id){
   var x=(EXP.items||[]).find(function(i){return i.id===id}); if(!x) return;
-  var docs=x.docs||[];
+  var docs=allDocsOf(x);
   document.getElementById('docs-view-list').innerHTML = docs.map(function(d){
     return '<div class="doc-pill" style="display:flex;justify-content:space-between;align-items:center;width:100%;box-sizing:border-box">'+
-      '<span>'+(isImageUrl(d.url)?'🖼':'📄')+' '+esc(d.name||T('ملف'))+'</span>'+
+      '<span>'+(isImageUrl(d.url)?'🖼':'📄')+' '+esc(d.label)+' — '+esc(d.name||T('ملف'))+'</span>'+
       '<a class="btn btn-ghost btn-sm" href="'+esc(d.url)+'" target="_blank" rel="noopener">'+T('فتح')+'</a>'+
     '</div>';
   }).join('') || '<span class="muted" style="font-size:12.5px">'+T('لا مرفقات بعد')+'</span>';
@@ -432,6 +455,9 @@ var APPROVE_EXP_ID=null;
 function openApproveModal(id){
   var x=(EXP.items||[]).find(function(i){return i.id===id}); if(!x) return;
   APPROVE_EXP_ID=id;
+  var docs=allDocsOf(x);
+  document.getElementById('approve-docs-info').innerHTML = '<span class="muted" style="font-size:12px">'+T('المستندات:')+' </span>' +
+    (docs.length ? docs.map(function(d){ return '<a href="'+esc(d.url)+'" target="_blank" style="color:var(--accent);font-size:12px;margin-inline-end:8px">'+(isImageUrl(d.url)?'🖼':'📄')+' '+esc(d.label)+'</a>'; }).join('') : '<span class="muted" style="font-size:12px">'+T('لا مرفقات بعد')+'</span>');
   document.getElementById('approve-full-amount-label').textContent = money(x.amount)+' '+T('ر.س');
   document.getElementById('approve-mode-full').checked=true;
   document.getElementById('approve-amount').value=x.amount;
@@ -489,7 +515,7 @@ function renderSubIdPicker(){
 function openExpModal(id){
   document.getElementById('exp-err').classList.add('hide');
   document.getElementById('e-settled-note').classList.add('hide');
-  DOCS=[];
+  QUOTE_DOCS=[]; INVOICE_DOCS=[]; DELIVERY_DOCS=[];
   renderSubIdPicker();
   var settled=false;
   if(id){
@@ -512,7 +538,9 @@ function openExpModal(id){
     document.getElementById('e-sync').checked=false;
     document.getElementById('e-bearer').value=x.bearer==='sub'?'sub':'own';
     if(x.bearer==='sub' && x.subId) document.getElementById('e-subid').value=String(x.subId);
-    DOCS=(x.docs||[]).slice();
+    QUOTE_DOCS=(x.quoteDocs||[]).slice();
+    INVOICE_DOCS=((x.invoiceDocs&&x.invoiceDocs.length)?x.invoiceDocs:(x.docs||[])).slice(); // توافق رجعي: مرفقات قديمة تُعامَل كفاتورة
+    DELIVERY_DOCS=(x.deliveryDocs||[]).slice();
     settled=!!x.settledMusNo;
     if(settled){
       var note=document.getElementById('e-settled-note');
@@ -535,7 +563,7 @@ function openExpModal(id){
   onTypeChange();
   onBearerChange();
   updateTotalPreview();
-  renderDocs();
+  renderAllDocSlots();
   document.getElementById('exp-ov').classList.add('open');
 }
 function closeExpModal(){ document.getElementById('exp-ov').classList.remove('open'); }
@@ -545,29 +573,31 @@ function onBearerChange(){
 function onTypeChange(){
   var t=document.getElementById('e-type').value;
   document.getElementById('e-sal-row').style.display = t==='salary' ? 'flex' : 'none';
-  document.getElementById('e-docs-required').textContent = t==='material' ? T('(إلزامي للمواد)') : T('(اختياري)');
 }
 function updateTotalPreview(){
   var amount=Number(document.getElementById('e-amount').value)||0, vatRate=Number(document.getElementById('e-vat').value)||0;
   var vat=round2(amount*vatRate/100), total=round2(amount+vat);
   document.getElementById('e-total-preview').textContent=T('الإجمالي شامل الضريبة:')+' '+money(total)+' '+T('ر.س')+' ('+T('ضريبة')+' '+money(vat)+' '+T('ر.س')+')';
 }
-function renderDocs(){
-  document.getElementById('e-docs-list').innerHTML = DOCS.map(function(d,i){
-    return '<span class="doc-pill">📎 '+esc(d.name||T('ملف'))+' <a href="'+esc(d.url)+'" target="_blank" style="color:var(--accent)">'+T('عرض')+'</a> <span class="x" onclick="removeDoc('+i+')">✕</span></span>';
+function docSlotBuf(kind){ return kind==='quote'?QUOTE_DOCS:kind==='invoice'?INVOICE_DOCS:DELIVERY_DOCS; }
+function renderDocSlot(kind){
+  var buf=docSlotBuf(kind);
+  document.getElementById('e-'+kind+'-list').innerHTML = buf.map(function(d,i){
+    return '<span class="doc-pill">📎 '+esc(d.name||T('ملف'))+' <a href="'+esc(d.url)+'" target="_blank" style="color:var(--accent)">'+T('عرض')+'</a> <span class="x" onclick="removeDocSlot(\''+kind+'\','+i+')">✕</span></span>';
   }).join('') || '<span class="muted" style="font-size:12.5px">'+T('لا مرفقات بعد')+'</span>';
 }
-function removeDoc(i){ DOCS.splice(i,1); renderDocs(); }
-function uploadDoc(inp){
+function renderAllDocSlots(){ renderDocSlot('quote'); renderDocSlot('invoice'); renderDocSlot('delivery'); }
+function removeDocSlot(kind,i){ var buf=docSlotBuf(kind); buf.splice(i,1); renderDocSlot(kind); }
+function uploadDocSlot(inp,kind){
   var file=inp.files&&inp.files[0]; if(!file) return;
   if(file.size>50*1024*1024){ toast(T('الملف أكبر من 50 ميجابايت')); inp.value=''; return; }
-  var status=document.getElementById('e-upload-status'); status.textContent=T('جارٍ الرفع…');
+  var status=document.getElementById('e-'+kind+'-upload-status'); status.textContent=T('جارٍ الرفع…');
   var reader=new FileReader();
   reader.onload=function(){
     api('POST','/api/projects/'+CUR.id+'/photos',{dataUrl:reader.result}).then(function(r){
       inp.value='';
       if(!r.ok){ status.textContent=''; toast((r.d&&r.d.error)||T('تعذّر رفع الملف')); return; }
-      DOCS.push({url:r.d.url, name:file.name}); renderDocs(); status.textContent='';
+      docSlotBuf(kind).push({url:r.d.url, name:file.name}); renderDocSlot(kind); status.textContent='';
     });
   };
   reader.onerror=function(){ status.textContent=''; toast(T('تعذّر قراءة الملف')); };
@@ -592,13 +622,12 @@ function saveExpense(){
     headcount:document.getElementById('e-headcount').value===''?null:Number(document.getElementById('e-headcount').value),
     bearer:document.getElementById('e-bearer').value,
     subId:document.getElementById('e-bearer').value==='sub'?(Number(document.getElementById('e-subid').value)||null):null,
-    docs:DOCS,
+    quoteDocs:QUOTE_DOCS, invoiceDocs:INVOICE_DOCS, deliveryDocs:DELIVERY_DOCS, docs:[],
     syncErp:document.getElementById('e-sync').checked
   };
   if(!body.description) return showExpErr(T('الوصف مطلوب'));
   if(!body.date) return showExpErr(T('التاريخ مطلوب'));
   if(!(body.amount>0)) return showExpErr(T('المبلغ مطلوب ويجب أن يكون أكبر من صفر'));
-  if(body.type==='material' && !DOCS.length) return showExpErr(T('إرفاق فاتورة المورد إلزامي لمصاريف المواد'));
   if(body.bearer==='sub' && !body.subId) return showExpErr(T('اختر مقاول باطن صحيحاً للتحميل عليه'));
   var btn=document.getElementById('e-save'); btn.disabled=true; btn.innerHTML='<span class="spin"></span> '+T('جارٍ…');
   var req = id ? api('PUT','/api/projects/'+CUR.id+'/expenses/'+id,body) : api('POST','/api/projects/'+CUR.id+'/expenses',body);

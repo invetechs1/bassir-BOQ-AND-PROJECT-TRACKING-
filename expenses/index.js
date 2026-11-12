@@ -126,9 +126,8 @@ module.exports = function initExpenses(ctx) {
     const amount = Number(body.amount);
     if (!(amount > 0)) return 'المبلغ مطلوب ويجب أن يكون أكبر من صفر';
     if (!body.description || !String(body.description).trim()) return 'الوصف مطلوب';
-    if (type === 'material' && !(Array.isArray(body.docs) && body.docs.some(d => d && d.url))) {
-      return 'إرفاق فاتورة المورد إلزامي لمصاريف المواد';
-    }
+    // عرض السعر يُرفع عند الإدخال (اختياري)؛ الفاتورة وكشف الاستلام يصلان لاحقاً بعد التحويل —
+    // لذا لا يُشترط أي مستند عند إنشاء مصروف المواد (كان يُشترط سابقاً قبل فصل المستندات الثلاثة).
     if (body.boqItemId && !(project.boqItems || []).some(i => i.id === body.boqItemId)) {
       return 'رقم البند غير موجود في جدول الكميات';
     }
@@ -157,7 +156,11 @@ module.exports = function initExpenses(ctx) {
       // التحميل: 'own' = ذاتي (تكلفة مشروع كالمعتاد) | 'sub' = على مقاول باطن (يُستبعد من تكلفة المشروع ويُخصم من مستخلصه)
       bearer: body.bearer === 'sub' ? 'sub' : 'own',
       subId: body.bearer === 'sub' ? (Number(body.subId) || null) : null,
-      docs: cleanDocs(body.docs)
+      // مستندات المصروف الثلاثة (يرفعها مدير المشروع): عرض السعر عند الإدخال، والفاتورة وكشف الاستلام بعد التحويل
+      quoteDocs: cleanDocs(body.quoteDocs),        // عرض السعر (Quotation)
+      invoiceDocs: cleanDocs(body.invoiceDocs),    // فاتورة المصروف (Invoice)
+      deliveryDocs: cleanDocs(body.deliveryDocs),  // كشف الاستلام (Delivery note)
+      docs: cleanDocs(body.docs)                   // مرفقات قديمة (توافق رجعي)
     };
   }
   // المصاريف المحمّلة على مقاولي الباطن وغير المخصومة بعد (لكل مقاول) — يستدعيها بنّاء مستخلص الباطن

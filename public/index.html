@@ -911,19 +911,25 @@
 <div class="modal-overlay" id="subpay-modal">
   <div class="modal" style="max-width:420px">
     <div class="modal-title"><span data-i18n="💵 اعتماد صرف لمقاول الباطن">💵 اعتماد صرف لمقاول الباطن</span><span class="modal-close" onclick="closeModal('subpay-modal')">✕</span></div>
-    <div class="f-grid" style="grid-template-columns:1fr">
-      <div class="f-field"><label id="subpay-info" style="font-size:12px;color:var(--text2)"></label></div>
-      <div class="f-field"><label data-i18n="تاريخ الصرف">تاريخ الصرف</label><input type="date" id="subpay-date"></div>
-      <div class="f-field"><label data-i18n="المبلغ المعتمَد صرفه (ر.س) — كامل أو جزء">المبلغ المعتمَد صرفه (ر.س) — كامل أو جزء</label><input type="number" id="subpay-amount" min="0" step="0.01"></div>
-      <div class="f-field"><label data-i18n="ملاحظات">ملاحظات</label><input type="text" id="subpay-note" placeholder="حوالة / شيك..."></div>
-      <div class="f-field full"><label data-i18n="📎 إيصال التحويل البنكي (اختياري)">📎 إيصال التحويل البنكي (اختياري)</label>
-        <input type="file" id="subpay-files" accept="image/*,.pdf,application/pdf" multiple onchange="subpayFilesPicked(this)">
-        <div id="subpay-files-list" style="display:flex;flex-direction:column;gap:4px;margin-top:6px"></div>
+    <div class="f-field"><label id="subpay-info" style="font-size:12px;color:var(--text2)"></label></div>
+    <!-- الدفعات المسجّلة: يمكن تعديل مبلغ أي دفعة أو حذفها -->
+    <div id="subpay-list" style="margin:6px 0 10px"></div>
+    <div style="border:1px solid var(--border);border-radius:10px;padding:10px;background:var(--bg2)">
+      <div id="subpay-form-title" style="font-weight:700;font-size:12.5px;margin-bottom:8px" data-i18n="➕ دفعة جديدة">➕ دفعة جديدة</div>
+      <div class="f-grid" style="grid-template-columns:1fr 1fr">
+        <div class="f-field"><label data-i18n="تاريخ الصرف">تاريخ الصرف</label><input type="date" id="subpay-date"></div>
+        <div class="f-field"><label data-i18n="المبلغ (ر.س)">المبلغ (ر.س)</label><input type="number" id="subpay-amount" min="0" step="0.01"></div>
+        <div class="f-field full"><label data-i18n="ملاحظات">ملاحظات</label><input type="text" id="subpay-note" placeholder="حوالة / شيك..."></div>
+        <div class="f-field full"><label data-i18n="📎 إيصال التحويل البنكي (اختياري)">📎 إيصال التحويل البنكي (اختياري)</label>
+          <input type="file" id="subpay-files" accept="image/*,.pdf,application/pdf" multiple onchange="subpayFilesPicked(this)">
+          <div id="subpay-files-list" style="display:flex;flex-direction:column;gap:4px;margin-top:6px"></div>
+        </div>
       </div>
     </div>
     <div style="display:flex;gap:10px;margin-top:16px">
-      <button class="btn btn-green" onclick="saveSubPay()" data-i18n="💾 اعتماد الصرف">💾 اعتماد الصرف</button>
-      <button class="btn btn-ghost" onclick="closeModal('subpay-modal')" data-i18n="إلغاء">إلغاء</button>
+      <button class="btn btn-green" id="subpay-save-btn" onclick="saveSubPay()" data-i18n="💾 اعتماد الصرف">💾 اعتماد الصرف</button>
+      <button class="btn btn-ghost" id="subpay-cancel-edit" onclick="subPayResetForm()" style="display:none" data-i18n="إلغاء التعديل">إلغاء التعديل</button>
+      <button class="btn btn-ghost" onclick="closeModal('subpay-modal')" data-i18n="إغلاق">إغلاق</button>
     </div>
   </div>
 </div>
@@ -6184,7 +6190,9 @@ function numberToWordsAr(amount){
   return out;
 }
 // من يعتمد مستخلصات مقاولي الباطن؟ العميل ومدير المشاريع والأدمن
-const canApproveSubMus = () => isAdmin();
+// اعتماد مستخلصات مقاولي الباطن وصرف دفعاتها وتعديلها: صاحب الشركة (العميل) أو أدمن النظام فقط.
+// مدير المشروع (pm) ومدير المشاريع (pmo) يرفعون المستخلص فقط ولا يصرفون.
+const canApproveSubMus = () => isAdmin() || (!!state.me && state.me.role === 'client');
 const SUBMUS_STATUS = {
   submitted:{label:'⏳ بانتظار الاعتماد', color:'amber'},
   rejected:{label:'↩ مرفوض', color:'red'},
@@ -6277,7 +6285,8 @@ function renderSubMusTable(){
       '<td class="amount muted">' + fmtN(round2((m.retention||0)+(m.dedTotal||0))) + '</td>' +
       '<td class="amount claimable">' + fmtN(m.net) + (partial?('<br><span class="pill amber" style="font-size:9px" data-tip="'+T('اعتماد جزئي')+'">✓ ' + fmtN(m.approvedAmount) + '</span>'):'') + '</td>' +
       '<td class="amount muted">' + (m.prevPaid?fmtN(m.prevPaid):'—') + '</td>' +
-      '<td class="amount" style="color:' + (paid>=payable-1?'var(--green-bright)':paid>0?'var(--amber)':'var(--text3)') + '">' + (paid>0?fmtN(paid):'—') + '</td>' +
+      '<td class="amount" style="color:' + (paid>=payable-1?'var(--green-bright)':paid>0?'var(--amber)':'var(--text3)') + '">' + (paid>0?fmtN(paid):'—') +
+        ((m.payments||[]).length ? '<div style="font-size:9.5px;color:var(--text3);font-weight:400;margin-top:3px;line-height:1.5;font-family:var(--font);text-align:right">' + (m.payments||[]).map(p=>'📅 ' + esc(p.date) + ': ' + fmtN(p.amount)).join('<br>') + '</div>' : '') + '</td>' +
       '<td><span class="pill ' + st.color + '"' + (m.status==='rejected'&&m.rejectReason?' data-tip="'+esc(m.rejectReason)+'"':'') + '>' + T(st.label) + '</span></td>' +
       '<td style="white-space:nowrap">' + btns + (canDel?'<button class="mini-btn red" onclick="deleteSubMus(' + m.id + ')">🗑</button>':'') + '</td>' +
       '</tr>';
@@ -6851,19 +6860,26 @@ function subMusDocHtml(m){
       sumRow(T('رصيد الدفعة المقدمة المتبقي'), m.advanceRemaining||0, 'var(--text)') +
       '</table>' : '') +
     docsHtml +
-    ((m.payments||[]).length ?
-      '<div style="margin-top:14px"><div style="font-size:13px;font-weight:700;margin-bottom:6px">' + T('سجل المدفوعات') + '</div>' +
-      '<table style="width:100%;border-collapse:collapse;font-size:11.5px">' +
-      '<thead><tr style="background:var(--bg3)">' + [T('التاريخ'),T('المبلغ'),T('ملاحظات'),T('المستندات')]
-        .map(h=>'<th style="padding:5px;border:1px solid var(--border);color:var(--amber);text-align:center">' + h + '</th>').join('') +
-      '</tr></thead><tbody>' +
-      (m.payments||[]).map(p => '<tr>' +
-        '<td style="padding:5px;border:1px solid var(--border);text-align:center">' + esc(p.date||'—') + '</td>' +
-        '<td style="padding:5px;border:1px solid var(--border);text-align:center;font-family:var(--mono);font-weight:700;color:var(--green-bright)">' + fmtN(p.amount) + '</td>' +
-        '<td style="padding:5px;border:1px solid var(--border);text-align:center">' + esc(p.note||'—') + '</td>' +
-        '<td style="padding:5px;border:1px solid var(--border);text-align:center">' + ((p.docs||[]).length ? (p.docs||[]).map(d=>'<a href="'+esc(d.url)+'" target="_blank" style="color:var(--blue);text-decoration:none">'+(String(d.url).endsWith('.pdf')?'📄':'🖼')+'</a>').join(' ') : '—') + '</td>' +
-      '</tr>').join('') +
-      '</tbody></table></div>' : '') +
+    (function(){
+      const pays = m.payments||[]; const totalPaid = subPaid(m); const remaining = Math.max(0, round2(subMusPayable(m) - totalPaid));
+      return '<div style="margin-top:14px"><div style="font-size:13px;font-weight:700;margin-bottom:6px">' + T('سجل المدفوعات') + '</div>' +
+      (pays.length ?
+        '<table style="width:100%;border-collapse:collapse;font-size:11.5px">' +
+        '<thead><tr style="background:var(--bg3)">' + [T('التاريخ'),T('المبلغ'),T('ملاحظات'),T('المستندات')]
+          .map(h=>'<th style="padding:5px;border:1px solid var(--border);color:var(--amber);text-align:center">' + h + '</th>').join('') +
+        '</tr></thead><tbody>' +
+        pays.map(p => '<tr>' +
+          '<td style="padding:5px;border:1px solid var(--border);text-align:center">' + esc(p.date||'—') + '</td>' +
+          '<td style="padding:5px;border:1px solid var(--border);text-align:center;font-family:var(--mono);font-weight:700;color:var(--green-bright)">' + fmtN(p.amount) + '</td>' +
+          '<td style="padding:5px;border:1px solid var(--border);text-align:center">' + esc(p.note||'—') + '</td>' +
+          '<td style="padding:5px;border:1px solid var(--border);text-align:center">' + ((p.docs||[]).length ? (p.docs||[]).map(d=>'<a href="'+esc(d.url)+'" target="_blank" style="color:var(--blue);text-decoration:none">'+(String(d.url).endsWith('.pdf')?'📄':'🖼')+'</a>').join(' ') : '—') + '</td>' +
+        '</tr>').join('') +
+        '<tr style="border-top:2px solid var(--border);background:var(--bg2)"><td colspan="2" style="padding:5px;text-align:center"><strong>' + T('إجمالي المصروف') + '</strong> <span style="font-family:var(--mono);color:var(--green-bright)">' + fmtN(totalPaid) + '</span></td>' +
+          '<td colspan="2" style="padding:5px;text-align:center"><strong>' + T('المتبقٍ للمقاول') + '</strong> <span style="font-family:var(--mono);color:' + (remaining>0.5?'var(--amber)':'var(--green-bright)') + '">' + fmtN(remaining) + '</span></td></tr>' +
+        '</tbody></table>'
+        : '<div style="color:var(--text3);font-size:12px">' + T('لم تُصرف دفعات بعد — كامل الصافي متبقٍ:') + ' ' + fmtN(remaining) + '</div>') +
+      '</div>';
+    })() +
     '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:16px;margin-top:28px">' +
       sig('أُعدّ بواسطة (QS)', appr.preparedBy) + sig('روجع بواسطة (PM)', appr.reviewedBy) + sig('اعتمد بواسطة (العقود/المالك)', appr.approvedBy) + sig('إقرار استلام مقاول الباطن', appr.subAcknowledged) +
     '</div>' +
@@ -6898,22 +6914,40 @@ function rejectSubMus(id){
   m.status = 'rejected'; m.rejectReason = reason.trim()||T('يحتاج تعديل'); m.approvedBy = currentUser().name; m.approvedAt = todayStr();
   save(); renderAll();
 }
-let subPayId = null, subpayPendingFiles = [];
+let subPayId = null, subPayEditId = null, subpayPendingFiles = [], subpayExistingDocs = [];
 function openSubPay(id){
   if (!canApproveSubMus()) { alert(T('اعتماد الصرف صلاحية العميل ومدير المشاريع')); return; }
   const m = (proj().subMustakhlasat||[]).find(x=>x.id===id); if (!m) return;
-  subPayId = id; subpayPendingFiles = [];
-  const payable = subMusPayable(m), paid = subPaid(m);
-  const partial = m.approvedAmount != null && m.approvedAmount < round2(m.net) - 0.01;
-  $('subpay-info').textContent = m.no + ' — ' + (partial ? T('المعتمد للصرف:') : T('صافي')) + ' ' + money(payable) + ' · ' + T('مدفوع') + ' ' + money(paid) + ' · ' + T('متبقٍ') + ' ' + money(Math.max(0,round2(payable-paid)));
-  $('subpay-date').value = todayStr();
-  $('subpay-amount').value = Math.max(0, round2(payable - paid));
-  $('subpay-note').value = '';
-  $('subpay-files-list').innerHTML = '';
+  m.payments = m.payments || [];
+  subPayId = id;
+  subPayRefreshInfo(); renderSubPayList(); subPayResetForm();
   $('subpay-modal').classList.add('open');
 }
+function subPayRefreshInfo(){
+  const m = (proj().subMustakhlasat||[]).find(x=>x.id===subPayId); if (!m) return;
+  const payable = subMusPayable(m), paid = subPaid(m);
+  const partial = m.approvedAmount != null && m.approvedAmount < round2(m.net) - 0.01;
+  $('subpay-info').innerHTML = '<strong>' + esc(m.no) + '</strong> — ' + (partial ? T('المعتمد للصرف:') : T('صافي')) + ' ' + money(payable) + ' · ' + T('مدفوع') + ' ' + money(paid) + ' · ' + T('متبقٍ') + ' ' + money(Math.max(0,round2(payable-paid)));
+}
+function renderSubPayList(){
+  const m = (proj().subMustakhlasat||[]).find(x=>x.id===subPayId); if (!m) return;
+  const pays = m.payments||[];
+  $('subpay-list').innerHTML = pays.length ? pays.map(p =>
+    '<div class="sc-item" style="padding:6px 8px">' +
+      '<span class="sc-item-name" style="font-size:12px">' + esc(p.date) + ' · <strong>' + fmtN(p.amount) + '</strong> ' + T('ر.س') + (p.note?(' <span style="color:var(--text3)">· ' + esc(p.note) + '</span>'):'') + ((p.docs||[]).length ? (' ' + (p.docs||[]).map(d=>'<a href="'+esc(d.url)+'" target="_blank" style="color:var(--blue)">'+(String(d.url).endsWith('.pdf')?'📄':'🖼')+'</a>').join(' ')) : '') + '</span>' +
+      '<span style="display:flex;gap:6px">' +
+        '<button class="mini-btn" onclick="editSubPay(' + p.id + ')">✎ ' + T('تعديل') + '</button>' +
+        '<button class="mini-btn red" onclick="delSubPay(' + p.id + ')">🗑</button>' +
+      '</span></div>'
+  ).join('') : '<div style="color:var(--text3);font-size:12px;padding:4px">' + T('لم تُسجَّل دفعات بعد') + '</div>';
+}
+function renderSubpayFiles(){
+  const existing = subpayExistingDocs.map((d,i)=>'<div class="sc-item" style="padding:3px 0"><span class="sc-item-name" style="font-size:11px">' + (String(d.url).toLowerCase().endsWith('.pdf')?'📄':'🖼') + ' <a href="'+esc(d.url)+'" target="_blank" style="color:var(--blue)">' + esc(d.name||T('ملف')) + '</a></span><button class="mini-btn red" onclick="subpayExistingDocs.splice(' + i + ',1);renderSubpayFiles()">✕</button></div>');
+  const pending = subpayPendingFiles.map((f,i)=>'<div class="sc-item" style="padding:3px 0"><span class="sc-item-name" style="font-size:11px">' + (f.name.toLowerCase().endsWith('.pdf')?'📄':'🖼') + ' ' + esc(f.name) + '</span><button class="mini-btn red" onclick="subpayPendingFiles.splice(' + i + ',1);renderSubpayFiles()">✕</button></div>');
+  $('subpay-files-list').innerHTML = existing.concat(pending).join('');
+}
 async function subpayFilesPicked(input){
-  const files = [...(input.files||[])].slice(0, 15 - subpayPendingFiles.length);
+  const files = [...(input.files||[])].slice(0, 15 - subpayPendingFiles.length - subpayExistingDocs.length);
   for (const f of files) {
     try {
       if (f.type === 'application/pdf') { if (f.size > 50*1024*1024) { alert(f.name+': '+T('أكبر من 50MB')); continue; } subpayPendingFiles.push({dataUrl: await readFileAsDataURL(f), name:f.name}); }
@@ -6922,22 +6956,69 @@ async function subpayFilesPicked(input){
     } catch(e){ alert(e.message); }
   }
   input.value = '';
-  $('subpay-files-list').innerHTML = subpayPendingFiles.map((f,i)=>'<div class="sc-item" style="padding:3px 0"><span class="sc-item-name" style="font-size:11px">' + (f.name.toLowerCase().endsWith('.pdf')?'📄':'🖼') + ' ' + esc(f.name) + '</span><button class="mini-btn red" onclick="subpayPendingFiles.splice(' + i + ',1);subpayFilesPicked({files:[]})">✕</button></div>').join('');
+  renderSubpayFiles();
+}
+function subPayResetForm(){
+  const m = (proj().subMustakhlasat||[]).find(x=>x.id===subPayId); if (!m) return;
+  subPayEditId = null; subpayPendingFiles = []; subpayExistingDocs = [];
+  $('subpay-form-title').textContent = T('➕ دفعة جديدة');
+  $('subpay-date').value = todayStr();
+  $('subpay-amount').value = Math.max(0, round2(subMusPayable(m) - subPaid(m)));
+  $('subpay-note').value = '';
+  $('subpay-save-btn').textContent = T('💾 اعتماد الصرف');
+  $('subpay-cancel-edit').style.display = 'none';
+  renderSubpayFiles();
+}
+function editSubPay(pid){
+  const m = (proj().subMustakhlasat||[]).find(x=>x.id===subPayId); if (!m) return;
+  const p = (m.payments||[]).find(x=>x.id===pid); if (!p) return;
+  subPayEditId = pid; subpayPendingFiles = []; subpayExistingDocs = (p.docs||[]).slice();
+  $('subpay-form-title').textContent = T('✎ تعديل الدفعة');
+  $('subpay-date').value = p.date||todayStr();
+  $('subpay-amount').value = p.amount;
+  $('subpay-note').value = p.note||'';
+  $('subpay-save-btn').textContent = T('💾 حفظ التعديل');
+  $('subpay-cancel-edit').style.display = '';
+  renderSubpayFiles();
+}
+function delSubPay(pid){
+  const m = (proj().subMustakhlasat||[]).find(x=>x.id===subPayId); if (!m) return;
+  if (!confirm(T('حذف هذه الدفعة؟'))) return;
+  m.payments = (m.payments||[]).filter(x=>x.id!==pid);
+  subPayRecomputeStatus(m);
+  save(); renderAll();
+  subPayRefreshInfo(); renderSubPayList(); subPayResetForm();
+}
+function subPayRecomputeStatus(m){
+  const payable = subMusPayable(m);
+  m.status = (subPaid(m) >= payable - 1) ? 'paid' : (m.status === 'paid' ? 'approved' : m.status);
 }
 async function saveSubPay(){
   const m = (proj().subMustakhlasat||[]).find(x=>x.id===subPayId); if (!m) return;
-  const amount = Number($('subpay-amount').value);
+  const amount = round2(Number($('subpay-amount').value));
   if (!amount || amount <= 0) { alert(T('اكتب مبلغ الصرف')); return; }
-  const payable = subMusPayable(m), paid = subPaid(m);
-  if (amount > round2(payable - paid) + 0.01) { if (!confirm(T('المبلغ أكبر من المتبقٍ — متابعة؟'))) return; }
-  let docs = [];
+  const date = $('subpay-date').value||todayStr();
+  const note = $('subpay-note').value.trim();
+  const payable = subMusPayable(m);
+  // المتبقٍ المسموح = المعتمد للصرف ناقص بقية الدفعات (باستثناء الدفعة قيد التعديل)
+  const paidOther = subPaid(m) - (subPayEditId ? ((m.payments.find(x=>x.id===subPayEditId)||{}).amount||0) : 0);
+  if (amount > round2(payable - paidOther) + 0.01) { if (!confirm(T('المبلغ أكبر من المتبقٍ — متابعة؟'))) return; }
+  let docs = subpayExistingDocs.slice();
   if (subpayPendingFiles.length) {
+    const btn = $('subpay-save-btn'); btn.disabled = true;
     try { for (const f of subpayPendingFiles) { const r = await API.req('POST', '/api/projects/' + proj().id + '/photos', {dataUrl:f.dataUrl}); docs.push({url:r.url, name:f.name}); } }
-    catch(e){ alert(T('تعذر رفع المرفقات:') + ' ' + e.message); return; }
+    catch(e){ btn.disabled = false; alert(T('تعذر رفع المرفقات:') + ' ' + e.message); return; }
+    btn.disabled = false;
   }
-  m.payments.push({id:nextSeq(), date:$('subpay-date').value||todayStr(), amount:round2(amount), note:$('subpay-note').value.trim(), docs, by:currentUser().name});
-  if (subPaid(m) >= payable - 1) m.status = 'paid';
-  closeModal('subpay-modal'); save(); renderAll();
+  if (subPayEditId){
+    const p = m.payments.find(x=>x.id===subPayEditId);
+    if (p){ p.amount = amount; p.date = date; p.note = note; p.docs = docs; p.by = currentUser().name; }
+  } else {
+    m.payments.push({id:nextSeq(), date, amount, note, docs, by:currentUser().name});
+  }
+  subPayRecomputeStatus(m);
+  save(); renderAll();
+  subPayRefreshInfo(); renderSubPayList(); subPayResetForm();
 }
 function deleteSubMus(id){
   const m = (proj().subMustakhlasat||[]).find(x=>x.id===id); if (!m) return;
@@ -7004,6 +7085,16 @@ Object.assign(I18N_EN, {
   'لا مدفوعات بعد':'No payments yet',
   'المعتمد للصرف':'Approved for disbursement',
   'المبلغ':'Amount',
+  'إجمالي المصروف':'Total disbursed',
+  'المتبقٍ للمقاول':'Remaining for the subcontractor',
+  'لم تُصرف دفعات بعد — كامل الصافي متبقٍ:':'No payments disbursed yet — the full net is still remaining:',
+  '➕ دفعة جديدة':'➕ New payment',
+  '✎ تعديل الدفعة':'✎ Edit payment',
+  '💾 حفظ التعديل':'💾 Save edit',
+  'إلغاء التعديل':'Cancel edit',
+  'حذف هذه الدفعة؟':'Delete this payment?',
+  'لم تُسجَّل دفعات بعد':'No payments recorded yet',
+  '✎ تعديل':'✎ Edit',
   'لا يمكن حذف مستخلص معتمد — راجع الإدارة':'An approved claim cannot be deleted — contact admin',
   'حذف مستخلص ':'Delete claim ',
   '؟ سترجع كمياته للمتاح.':'? Its quantities will be returned to the available balance.'

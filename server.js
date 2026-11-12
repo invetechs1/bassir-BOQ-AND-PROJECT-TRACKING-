@@ -961,12 +961,15 @@ app.put('/api/projects/:id', auth, (req, res) => {
       if (['approved', 'rejected'].includes(m.status) && (!s || s.status !== m.status)) return deny('approval_admin_only', { id: m.id });
       if (s && (s.approvedBy || '') !== (m.approvedBy || '')) return deny('approval_admin_only', { id: m.id });
     }
+    // اعتماد/صرف مستخلصات مقاولي الباطن: صاحب الشركة (العميل) أو الأدمن. مدير المشروع/المشاريع يرفع فقط.
+    const isOwner = canAdminCompany(req.user, stored.companyId);
     const storedSubMus = new Map((stored.subMustakhlasat || []).map(m => [m.id, m]));
     for (const m of (Array.isArray(data.subMustakhlasat) ? data.subMustakhlasat : [])) {
       const s = storedSubMus.get(m.id);
-      if (['approved', 'rejected'].includes(m.status) && (!s || s.status !== m.status)) return deny('approval_admin_only', { id: m.id });
-      if (s && (s.approvedBy || '') !== (m.approvedBy || '')) return deny('approval_admin_only', { id: m.id });
-      if ((m.payments || []).length > (s ? (s.payments || []).length : 0)) return deny('subcontractor_payment_admin_only', { id: m.id });
+      if (['approved', 'rejected'].includes(m.status) && (!s || s.status !== m.status) && !isOwner) return deny('subcontractor_approval_owner_only', { id: m.id });
+      if (s && (s.approvedBy || '') !== (m.approvedBy || '') && !isOwner) return deny('subcontractor_approval_owner_only', { id: m.id });
+      // الدفعات (إضافة/تعديل/حذف أي دفعة): صاحب الشركة أو الأدمن فقط
+      if (JSON.stringify(s ? (s.payments || []) : []) !== JSON.stringify(m.payments || []) && !isOwner) return deny('subcontractor_payment_owner_only', { id: m.id });
     }
     const storedReqs = new Map((stored.editRequests || []).map(r => [r.id, r]));
     for (const r of (Array.isArray(data.editRequests) ? data.editRequests : [])) {

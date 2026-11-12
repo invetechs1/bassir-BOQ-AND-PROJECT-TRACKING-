@@ -30,8 +30,8 @@ npm install                               # no new dependencies, safe to run
 
 | File | What |
 |---|---|
-| `expenses/index.js` | **New module** — Project Costs / Expenses + profitability + approval/payment |
-| `public/expenses.html` | **New page** — expenses UI (entry, approve/pay, charge-to, proof) |
+| `expenses/index.js` | **New module** — Project Costs / Expenses + profitability + approval/payment + expense documents |
+| `public/expenses.html` | **New page** — expenses UI (entry, approve/pay, charge-to, proof, 3 document slots) |
 | `public/index.html` | Expenses menu entry; sub-certificate payments (edit/delete, dates, print); decimal prices |
 | `server.js` | Owner-only guard for sub-certificate approve/pay |
 | `saas/index.js`, `saas/tap.js` | Tap recurring (merchant-initiated) hardening |
@@ -74,7 +74,15 @@ On a subcontractor certificate:
 - **Owner-only**: approving, paying, and editing/deleting payments is limited to the company **owner (client)** and admin; **pm/pmo only submit**. Enforced in `server.js` (`subcontractor_approval_owner_only` / `subcontractor_payment_owner_only`), closing an earlier gap where editing/deleting a payment was unguarded.
 *Details: `docs/handover-sub-payments-edit.md`.*
 
-### 7. Tap recurring hardening
+### 7. Three document slots on an expense
+Adding an expense now has three separate, labeled upload slots:
+- **📋 عرض السعر (Quotation)** — uploaded at entry.
+- **🧾 فاتورة المصروف (Invoice)** — uploaded by the project manager **after the transfer**.
+- **📦 كشف الاستلام (Delivery note)** — proof the materials were received.
+All three are optional at entry and can be added later by editing the expense; the owner sees links to all three in the review dialog before approving/paying. The old "material requires an invoice at creation" rule was removed (the invoice arrives after the transfer). Legacy attachments are kept and shown under the invoice slot.
+*Details: `docs/handover-expense-documents.md`.*
+
+### 8. Tap recurring hardening
 Tap adapter hardened for real monthly recurring charges (payment agreement + merchant-initiated charges). Keys are entered by you; sim/test/live modes supported.
 
 ---
@@ -87,6 +95,7 @@ Tap adapter hardened for real monthly recurring charges (payment agreement + mer
 4. **Expense review**: pm enters an expense → owner approves (partial) and uploads a transfer statement; pm cannot approve/pay.
 5. **Sub-certificate payment**: owner records a payment → edit its amount → it updates; the table/print show the payment date(s); pm/pmo cannot pay.
 6. **Dates** on billing/owner pages show Gregorian; a sub rate of `10.5` shows as `10.50`.
+7. **Expense documents**: add an expense with only a **quotation** (no invoice) → it saves; edit it later to add the **invoice** and **delivery note** → they persist and the quotation is kept; the three links show in the table and the owner review dialog.
 
 ---
 

@@ -6904,7 +6904,7 @@ function subMusDocHtml(m){
 function viewSubMus(id){ const m = (proj().subMustakhlasat||[]).find(x=>x.id===id); if (m) showPrintable(T('مستخلص مقاول باطن') + ' ' + m.no, subMusDocHtml(m)); }
 let subApproveId = null;
 function openSubApprove(id){
-  if (!canApproveSubMus()) { alert(T('اعتماد مستخلصات مقاولي الباطن صلاحية العميل ومدير المشاريع')); return; }
+  if (!canApproveSubMus()) { alert(T('اعتماد مستخلصات مقاولي الباطن صلاحية مالك الشركة أو أدمن النظام فقط')); return; }
   const m = (proj().subMustakhlasat||[]).find(x=>x.id===id); if (!m || m.status!=='submitted') return;
   subApproveId = id;
   $('subapprove-info').textContent = m.no + ' — ' + T('الصافي المحسوب من الكميات:') + ' ' + money(m.net);
@@ -6931,7 +6931,7 @@ function rejectSubMus(id){
 }
 let subPayId = null, subPayEditId = null, subpayPendingFiles = [], subpayExistingDocs = [];
 function openSubPay(id){
-  if (!canApproveSubMus()) { alert(T('اعتماد الصرف صلاحية العميل ومدير المشاريع')); return; }
+  if (!canApproveSubMus()) { alert(T('اعتماد الصرف صلاحية مالك الشركة أو أدمن النظام فقط')); return; }
   const m = (proj().subMustakhlasat||[]).find(x=>x.id===id); if (!m) return;
   m.payments = m.payments || [];
   subPayId = id;
@@ -7012,7 +7012,7 @@ function subPayRecomputeStatus(m){
 // يعمل فقط حين تكون هناك دفعة واحدة؛ لو هناك عدة دفعات تُفتح نافذة الصرف الكاملة لتعديل كل دفعة بعينها.
 let subpaidQuickMusId = null;
 function quickEditSubPaid(musId){
-  if (!canApproveSubMus()) { alert(T('اعتماد الصرف صلاحية العميل ومدير المشاريع')); return; }
+  if (!canApproveSubMus()) { alert(T('اعتماد الصرف صلاحية مالك الشركة أو أدمن النظام فقط')); return; }
   const m = (proj().subMustakhlasat||[]).find(x=>x.id===musId); if (!m) return;
   const pays = m.payments||[];
   if (!pays.length) return;
@@ -7101,12 +7101,12 @@ Object.assign(I18N_EN, {
   'سبق صرفه تراكمياً':'Previously disbursed (cumulative)',
   'سبق صرفه':'Previously paid',
   'مستحق الآن (بعد خصم ما سبق صرفه)':'Due now (after deducting previous payments)',
-  'اعتماد مستخلصات مقاولي الباطن صلاحية العميل ومدير المشاريع':'Approving subcontractor claims is restricted to the client and projects manager',
+  'اعتماد مستخلصات مقاولي الباطن صلاحية مالك الشركة أو أدمن النظام فقط':'Approving subcontractor claims is restricted to the company owner or system admin only',
   'اعتماد مستخلص ':'Approve claim ',
   ' بصافي ':' with net ',
   '؟ راجع الأوراق والتسوية قبل الاعتماد.':'? Review the documents and settlement before approving.',
   'سبب الرفض (يظهر لمدير المشروع):':'Reason for rejection (shown to the project manager):',
-  'اعتماد الصرف صلاحية العميل ومدير المشاريع':'Approving disbursement is restricted to the client and projects manager',
+  'اعتماد الصرف صلاحية مالك الشركة أو أدمن النظام فقط':'Approving disbursement is restricted to the company owner or system admin only',
   'صافي':'Net',
   'متبقٍ':'Remaining',
   'اكتب مبلغ الصرف':'Enter the disbursement amount',

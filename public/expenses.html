@@ -115,9 +115,22 @@
   </div>
   <div class="field" id="e-headcount-f"><label>عدد العمالة (اختياري)</label><input type="number" id="e-headcount" min="0"></div>
   <div class="field"><label>تصنيف (اختياري)</label><input id="e-category" placeholder="مثال: حديد / إسمنت / وقود"></div>
-  <div class="field"><label id="e-files-lbl">📎 المرفقات</label>
-    <input type="file" id="e-files" accept="image/*,.pdf,application/pdf" multiple onchange="filesPicked(this)">
-    <div id="e-files-list" style="display:flex;flex-direction:column;gap:4px;margin-top:6px"></div>
+  <!-- مستندات المصروف الثلاثة: عرض السعر عند الإدخال · الفاتورة وكشف الاستلام بعد التحويل -->
+  <div style="border:1px solid var(--line);border-radius:12px;padding:12px;margin:6px 0;background:var(--surface)">
+    <div style="font-weight:800;font-size:13px;margin-bottom:8px">📎 مستندات المصروف</div>
+    <div class="field"><label>📋 عرض السعر <span class="hint" style="font-weight:400">(Quotation)</span></label>
+      <input type="file" id="e-quote-files" accept="image/*,.pdf,application/pdf" multiple onchange="pickDocs(this,'quote')">
+      <div id="e-quote-list" style="display:flex;flex-direction:column;gap:4px;margin-top:6px"></div>
+    </div>
+    <div class="field"><label>🧾 فاتورة المصروف <span class="hint" style="font-weight:400">(Invoice — تُرفع بعد التحويل)</span></label>
+      <input type="file" id="e-inv-files" accept="image/*,.pdf,application/pdf" multiple onchange="pickDocs(this,'inv')">
+      <div id="e-inv-list" style="display:flex;flex-direction:column;gap:4px;margin-top:6px"></div>
+    </div>
+    <div class="field"><label>📦 كشف الاستلام <span class="hint" style="font-weight:400">(Delivery note — يثبت استلام المواد)</span></label>
+      <input type="file" id="e-deliv-files" accept="image/*,.pdf,application/pdf" multiple onchange="pickDocs(this,'deliv')">
+      <div id="e-deliv-list" style="display:flex;flex-direction:column;gap:4px;margin-top:6px"></div>
+    </div>
+    <div class="hint">عرض السعر عند الإدخال، وبعد تحويل المالية يدخل مدير المشروع ويرفع الفاتورة وكشف الاستلام.</div>
   </div>
 
   <label class="hint" style="display:flex;gap:8px;align-items:center;margin:4px 0"><input type="checkbox" id="e-sync" style="width:auto"> مزامنة مع Bassir ERP بعد الحفظ (إن كان التكامل مُفعّلاً)</label>
@@ -160,7 +173,10 @@
 <div class="toast" id="toast"><span></span></div>
 
 <script>
-var TOKEN=localStorage.getItem('azoom_token')||'', ST=null, PID=null, DATA=null, FILTER='all', EDIT=null, pending=[], payPending=[], REV=null;
+var TOKEN=localStorage.getItem('azoom_token')||'', ST=null, PID=null, DATA=null, FILTER='all', EDIT=null, payPending=[], REV=null;
+var quotePending=[], invPending=[], delivPending=[];
+function docBuf(which){ return which==='quote'?quotePending:which==='inv'?invPending:delivPending; }
+function docListId(which){ return which==='quote'?'e-quote-list':which==='inv'?'e-inv-list':'e-deliv-list'; }
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
 function money(n){return Number(n||0).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:2})}
 function toast(m){var t=document.getElementById('toast');t.querySelector('span').textContent=m;t.classList.add('show');setTimeout(function(){t.classList.remove('show')},2600)}
@@ -235,7 +251,7 @@ function renderList(){
   document.getElementById('exp-body').innerHTML=items.map(function(e){
     var tl=typeLabel(e.type);
     var who=e.type==='salary'?(e.month||'—')+(e.headcount?(' · '+e.headcount+' عامل'):''):(e.supplier||'—');
-    var doc=(e.docs||[]).length?('<a href="'+esc(e.docs[0].url)+'" target="_blank" style="color:var(--accent)">'+(String(e.docs[0].url).endsWith('.pdf')?'📄':'🖼')+(e.docs.length>1?(' ×'+e.docs.length):'')+'</a>'):'<span class="hint">—</span>';
+    var doc=docLinks(e);
     var appBtn=DATA.canApprove?('<button class="btn btn-ghost btn-sm" onclick="openReview(\''+e.id+'\')" title="اعتماد ودفع ورفع كشف التحويل">💳</button> '):'';
     var manage=appBtn+(DATA.canManage?('<button class="btn btn-ghost btn-sm" onclick="openEdit(\''+e.id+'\')">✎</button> <button class="btn btn-ghost btn-sm" onclick="delExp(\''+e.id+'\')">🗑</button>'+(DATA.integrationEnabled?(' <button class="btn btn-ghost btn-sm" onclick="syncExp(\''+e.id+'\')" title="مزامنة ERP">'+(e.erpSyncedAt?'✅':'⇅')+'</button>'):'')):'');
     var bearer=e.bearer==='sub'?('<span class="typechip t-sub" title="محمّلة على مقاول الباطن — تُخصم من مستخلصه'+(e.settledMusNo?' (خُصمت في '+esc(e.settledMusNo)+')':'')+'">🧱 '+esc(subName(e.subId))+(e.settledMusNo?' ✓':'')+'</span>'):'<span class="hint">ذاتي</span>';
@@ -244,6 +260,12 @@ function renderList(){
   }).join('')||'<tr><td colspan="11" class="muted center">لا مصاريف</td></tr>';
 }
 function subName(id){var s=(DATA&&DATA.subs||[]).find(function(x){return x.id===id});return s?s.name:('#'+id)}
+function docLinks(e){
+  function grp(icon,title,arr){ if(!arr||!arr.length) return ''; var u=arr[0].url; return '<a href="'+esc(u)+'" target="_blank" title="'+title+(arr.length>1?(' ×'+arr.length):'')+'" style="color:var(--accent);margin-inline-start:4px">'+icon+(arr.length>1?('<sub>'+arr.length+'</sub>'):'')+'</a>'; }
+  var inv=(e.invoiceDocs&&e.invoiceDocs.length)?e.invoiceDocs:(e.docs||[]); // توافق رجعي
+  var out=grp('📋','عرض السعر',e.quoteDocs)+grp('🧾','فاتورة المصروف',inv)+grp('📦','كشف الاستلام',e.deliveryDocs);
+  return out||'<span class="hint">—</span>';
+}
 function paidCell(e){
   var st=e.approvalStatus||'pending';
   var tot=Number(e.total||e.amount||0);
@@ -272,28 +294,30 @@ function fillSubs(){var sel=document.getElementById('e-subid');sel.innerHTML=(DA
 function bearerChanged(){document.getElementById('e-subid-f').style.display=document.getElementById('e-bearer').value==='sub'?'':'none';}
 
 // ---- add/edit ----
-function openAdd(){ EDIT=null; pending=[]; document.getElementById('exp-title').textContent='إضافة مصروف'; resetForm(); document.getElementById('exp-ov').classList.add('open'); }
-function openEdit(id){ EDIT=id; var e=(DATA.items||[]).find(function(x){return x.id===id}); if(!e) return; pending=(e.docs||[]).slice();
+function openAdd(){ EDIT=null; quotePending=[]; invPending=[]; delivPending=[]; document.getElementById('exp-title').textContent='إضافة مصروف'; resetForm(); document.getElementById('exp-ov').classList.add('open'); }
+function openEdit(id){ EDIT=id; var e=(DATA.items||[]).find(function(x){return x.id===id}); if(!e) return;
+  quotePending=(e.quoteDocs||[]).slice();
+  invPending=((e.invoiceDocs&&e.invoiceDocs.length)?e.invoiceDocs:(e.docs||[])).slice(); // توافق رجعي: مرفقات قديمة تُعامَل كفاتورة
+  delivPending=(e.deliveryDocs||[]).slice();
   document.getElementById('exp-title').textContent='تعديل مصروف'; resetForm();
   document.getElementById('e-type').value=e.type; document.getElementById('e-date').value=e.date; document.getElementById('e-month').value=e.month||'';
   document.getElementById('e-desc').value=e.description||''; document.getElementById('e-amount').value=e.amount; document.getElementById('e-vatrate').value=e.vatRate;
   document.getElementById('e-supplier').value=e.supplier||''; document.getElementById('e-invno').value=e.taxInvoiceNo||''; document.getElementById('e-invdate').value=e.taxInvoiceDate||'';
   document.getElementById('e-headcount').value=e.headcount||''; document.getElementById('e-category').value=e.category||'';
   document.getElementById('e-bearer').value=e.bearer||'own'; fillSubs(); if(e.subId)document.getElementById('e-subid').value=String(e.subId); bearerChanged();
-  typeChanged(); recalc(); renderFiles(); document.getElementById('exp-ov').classList.add('open');
+  typeChanged(); recalc(); renderAllDocs(); document.getElementById('exp-ov').classList.add('open');
 }
 function closeAdd(){ document.getElementById('exp-ov').classList.remove('open'); }
 function resetForm(){ ['e-desc','e-amount','e-supplier','e-invno','e-invdate','e-headcount','e-category','e-month'].forEach(function(id){document.getElementById(id).value=''});
   document.getElementById('e-type').value='material'; document.getElementById('e-vatrate').value='15'; document.getElementById('e-date').value=new Date().toISOString().slice(0,10);
   document.getElementById('e-bearer').value='own'; fillSubs(); bearerChanged();
-  document.getElementById('e-sync').checked=false; document.getElementById('exp-err').classList.add('hide'); if(!EDIT){ pending=[]; } typeChanged(); recalc(); renderFiles(); }
+  document.getElementById('e-sync').checked=false; document.getElementById('exp-err').classList.add('hide'); if(!EDIT){ quotePending=[]; invPending=[]; delivPending=[]; } typeChanged(); recalc(); renderAllDocs(); }
 function typeChanged(){
   var t=document.getElementById('e-type').value;
   document.getElementById('e-material-fields').style.display=t==='material'?'':'none';
   document.getElementById('e-vat-f').style.display=t==='material'?'':'none';
   document.getElementById('e-month-f').style.display=t==='salary'?'':'none';
   document.getElementById('e-headcount-f').style.display=t==='salary'?'':'none';
-  document.getElementById('e-files-lbl').innerHTML=t==='material'?'📎 فاتورة المورّد الضريبية <span style="color:var(--red)">* إلزامية</span>':'📎 المرفقات (اختياري)';
   if(t!=='material') document.getElementById('e-vatrate').value='0';
   recalc();
 }
@@ -303,16 +327,29 @@ function recalc(){
   document.getElementById('e-total').innerHTML='الضريبة: <strong>'+money(vat)+'</strong> · الإجمالي: <strong>'+money(tot)+' ر.س</strong>';
 }
 function readFileAsDataURL(f){return new Promise(function(res,rej){var r=new FileReader();r.onload=function(){res(r.result)};r.onerror=rej;r.readAsDataURL(f)})}
-async function filesPicked(input){
-  var files=[].slice.call(input.files||[]).slice(0,15-pending.length);
+async function pickDocs(input, which){
+  var buf=docBuf(which);
+  var files=[].slice.call(input.files||[]).slice(0,15-buf.length);
   for(var i=0;i<files.length;i++){ var f=files[i];
     if(f.size>10*1024*1024){ toast(f.name+': أكبر من 10MB'); continue; }
-    try{ var du=await readFileAsDataURL(f); pending.push({dataUrl:du,name:f.name}); }catch(e){ toast('تعذّر قراءة '+f.name); }
+    try{ var du=await readFileAsDataURL(f); buf.push({dataUrl:du,name:f.name}); }catch(e){ toast('تعذّر قراءة '+f.name); }
   }
-  input.value=''; renderFiles();
+  input.value=''; renderDocs(which);
 }
-function renderFiles(){
-  document.getElementById('e-files-list').innerHTML=pending.map(function(f,i){return '<div class="spread" style="font-size:12px"><span>'+((f.name||'').toLowerCase().endsWith('.pdf')?'📄':'🖼')+' '+esc(f.name||'ملف')+'</span><button class="btn btn-ghost btn-sm" onclick="pending.splice('+i+',1);renderFiles()">✕</button></div>'}).join('');
+function renderDocs(which){
+  var buf=docBuf(which);
+  document.getElementById(docListId(which)).innerHTML=buf.map(function(f,i){return '<div class="spread" style="font-size:12px"><span>'+((f.name||'').toLowerCase().endsWith('.pdf')?'📄':'🖼')+' '+esc(f.name||'ملف')+'</span><button class="btn btn-ghost btn-sm" onclick="removeDoc(\''+which+'\','+i+')">✕</button></div>'}).join('');
+}
+function removeDoc(which,i){ docBuf(which).splice(i,1); renderDocs(which); }
+function renderAllDocs(){ renderDocs('quote'); renderDocs('inv'); renderDocs('deliv'); }
+async function uploadBuf(buf){
+  var out=[];
+  for(var i=0;i<buf.length;i++){ var f=buf[i];
+    if(f.url){ out.push({url:f.url,name:f.name}); continue; }
+    var r=await api('POST','/api/projects/'+PID+'/photos',{dataUrl:f.dataUrl});
+    if(!r.ok) throw new Error(r.d.error||'تعذّر رفع المستند'); out.push({url:r.d.url,name:f.name});
+  }
+  return out;
 }
 async function payFilesPicked(input){
   var files=[].slice.call(input.files||[]).slice(0,15-payPending.length);
@@ -330,24 +367,22 @@ async function saveExp(){
   var type=document.getElementById('e-type').value;
   var amount=Number(document.getElementById('e-amount').value)||0;
   if(amount<=0){ err.textContent='أدخل مبلغاً صحيحاً'; err.classList.remove('hide'); return; }
-  if(type==='material' && !pending.length){ err.textContent='فاتورة المورّد الضريبية إلزامية للمواد'; err.classList.remove('hide'); return; }
   var bearer=document.getElementById('e-bearer').value, subId=Number(document.getElementById('e-subid').value)||null;
   if(bearer==='sub' && !subId){ err.textContent='اختر مقاول الباطن المحمّل عليه المصروف'; err.classList.remove('hide'); return; }
   var btn=document.getElementById('e-save'); btn.disabled=true; btn.innerHTML='<span class="spin"></span> جارٍ…';
-  // ارفع المرفقات الجديدة (التي تحمل dataUrl) عبر نقطة رفع الصور الحالية
-  var docs=[];
+  // ارفع مستندات المصروف الثلاثة (الجديدة منها) عبر نقطة رفع الصور الحالية
+  var quoteDocs=[], invoiceDocs=[], deliveryDocs=[];
   try{
-    for(var i=0;i<pending.length;i++){ var f=pending[i];
-      if(f.url){ docs.push({url:f.url,name:f.name}); continue; }
-      var r=await api('POST','/api/projects/'+PID+'/photos',{dataUrl:f.dataUrl});
-      if(!r.ok) throw new Error(r.d.error||'تعذّر رفع المرفق'); docs.push({url:r.d.url,name:f.name});
-    }
+    quoteDocs=await uploadBuf(quotePending);
+    invoiceDocs=await uploadBuf(invPending);
+    deliveryDocs=await uploadBuf(delivPending);
   }catch(e){ btn.disabled=false; btn.textContent='💾 حفظ'; err.textContent=e.message; err.classList.remove('hide'); return; }
   var body={ type:type, date:document.getElementById('e-date').value, description:document.getElementById('e-desc').value,
     amount:amount, vatRate:Number(document.getElementById('e-vatrate').value)||0,
     supplier:document.getElementById('e-supplier').value, taxInvoiceNo:document.getElementById('e-invno').value, taxInvoiceDate:document.getElementById('e-invdate').value,
     month:document.getElementById('e-month').value, headcount:Number(document.getElementById('e-headcount').value)||0,
-    category:document.getElementById('e-category').value, bearer:bearer, subId:subId, docs:docs,
+    category:document.getElementById('e-category').value, bearer:bearer, subId:subId,
+    quoteDocs:quoteDocs, invoiceDocs:invoiceDocs, deliveryDocs:deliveryDocs, docs:[],
     syncErp:document.getElementById('e-sync').checked };
   var res=await (EDIT?api('PUT','/api/projects/'+PID+'/expenses/'+EDIT,body):api('POST','/api/projects/'+PID+'/expenses',body));
   btn.disabled=false; btn.textContent='💾 حفظ';
@@ -363,7 +398,8 @@ function openReview(id){
   payPending=(REV.paymentDocs||[]).slice();
   document.getElementById('rev-err').classList.add('hide');
   var tot=Number(REV.total||REV.amount||0);
-  document.getElementById('rev-summary').innerHTML='<strong>'+esc(REV.description||typeLabel(REV.type)[0])+'</strong> · الإجمالي: <strong>'+money(tot)+' ر.س</strong>'+(REV.by?(' · أدخله: '+esc(REV.by)):'');
+  document.getElementById('rev-summary').innerHTML='<strong>'+esc(REV.description||typeLabel(REV.type)[0])+'</strong> · الإجمالي: <strong>'+money(tot)+' ر.س</strong>'+(REV.by?(' · أدخله: '+esc(REV.by)):'')+
+    '<div style="margin-top:6px">المستندات: '+docLinks(REV)+'</div>';
   // اعتماد
   var st=REV.approvalStatus||'pending';
   document.getElementById('rev-full').checked=(st==='approved_full');

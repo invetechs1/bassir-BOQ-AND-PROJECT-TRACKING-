@@ -77,7 +77,11 @@ module.exports = function initExpenses(ctx) {
       paidAt: String(body.paidAt || '').slice(0, 10),
       paymentRef: String(body.paymentRef || '').trim(),
       paymentDocs: cleanDocs(body.paymentDocs),
-      docs: cleanDocs(body.docs)
+      // مستندات المصروف (يرفعها مدير المشروع): عرض السعر عند الإدخال، والفاتورة وكشف الاستلام بعد التحويل
+      quoteDocs: cleanDocs(body.quoteDocs),        // عرض السعر (Quotation)
+      invoiceDocs: cleanDocs(body.invoiceDocs),    // فاتورة المصروف (Invoice)
+      deliveryDocs: cleanDocs(body.deliveryDocs),  // كشف الاستلام (Delivery note)
+      docs: cleanDocs(body.docs)                   // مرفقات قديمة (توافق رجعي)
     };
   }
 
@@ -218,7 +222,7 @@ module.exports = function initExpenses(ctx) {
     const b = req.body || {};
     const exp = normalizeExpense(b, req.user);
     if (!(exp.amount >= 0) || exp.amount === 0) return res.status(400).json({ error: 'أدخل مبلغاً صحيحاً أكبر من صفر' });
-    if (exp.type === 'material' && !exp.docs.length) return res.status(400).json({ error: 'فاتورة المورّد الضريبية إلزامية للمواد — أرفقها' });
+    // فاتورة المصروف وكشف الاستلام يُرفعان بعد التحويل (خطوة لاحقة لمدير المشروع) — لا يُشترطان عند الإدخال
     if (!validBearer(p, exp)) return res.status(400).json({ error: 'اختر مقاول باطن صحيحاً للتحميل عليه' });
     // مصروف جديد = بانتظار اعتماد المالك دائماً؛ لا اعتماد/دفع عند الإدخال (خطوة منفصلة للمالك)
     exp.approvalStatus = 'pending'; exp.approvedAmount = 0; exp.approvedBy = ''; exp.approvedAt = '';
@@ -237,7 +241,6 @@ module.exports = function initExpenses(ctx) {
     if (i < 0) return res.status(404).json({ error: 'المصروف غير موجود' });
     const prev = db.items[i];
     const exp = normalizeExpense({ ...prev, ...req.body }, req.user);
-    if (exp.type === 'material' && !exp.docs.length) return res.status(400).json({ error: 'فاتورة المورّد إلزامية للمواد' });
     if (!validBearer(p, exp)) return res.status(400).json({ error: 'اختر مقاول باطن صحيحاً للتحميل عليه' });
     // تعديل بيانات المصروف لا يغيّر الاعتماد ولا الدفع (خطوة المالك المنفصلة) — تُحفظ كما هي من السجل المخزّن
     exp.approvalStatus = prev.approvalStatus || 'pending'; exp.approvedAmount = prev.approvedAmount || 0;

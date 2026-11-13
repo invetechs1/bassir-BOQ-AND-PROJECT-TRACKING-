@@ -2392,14 +2392,14 @@ Object.assign(I18N_EN, {
 // ============================================================
 //  USERS
 // ============================================================
-const ROLE_LABELS = {admin:'أدمن النظام', client:'العميل - مالك الشركة', pmo:'مدير المشاريع', pm:'مدير مشروع'};
+const ROLE_LABELS = {admin:'أدمن النظام', client:'العميل - مالك الشركة', pmo:'مدير المشاريع', pm:'مدير مشروع', finance:'الماليّة (رفع سند الدفع)'};
 
 function openUsersManage(){
   if (!isManagerial()) { alert(T('إدارة المستخدمين صلاحية أدمن النظام أو العميل')); return; }
   // الأدوار المتاحة: الأدمن يضيف أي دور، والعميل يضيف موظفي شركته فقط
   const roleOpts = isAdmin()
-    ? [['pm','مدير مشروع (مشروعه فقط)'],['pmo','مدير المشاريع (كل مشاريع شركته)'],['client','العميل - مالك الشركة (كامل صلاحيات شركته)'],['admin','أدمن النظام (كل شيء)']]
-    : [['pm','مدير مشروع (مشروعه فقط)'],['pmo','مدير المشاريع (كل مشاريع الشركة)']];
+    ? [['pm','مدير مشروع (مشروعه فقط)'],['pmo','مدير المشاريع (كل مشاريع شركته)'],['finance','الماليّة (رفع سند الدفع فقط)'],['client','العميل - مالك الشركة (كامل صلاحيات شركته)'],['admin','أدمن النظام (كل شيء)']]
+    : [['pm','مدير مشروع (مشروعه فقط)'],['pmo','مدير المشاريع (كل مشاريع الشركة)'],['finance','الماليّة (رفع سند الدفع فقط)']];
   $('us-role').innerHTML = roleOpts.map(([v,l]) => '<option value="' + v + '">' + T(l) + '</option>').join('');
   $('us-company').innerHTML = (state.companies||[]).map(c => '<option value="' + c.id + '">' + esc(c.name) + '</option>').join('');
   usRoleChanged();
@@ -2414,9 +2414,9 @@ function usRoleChanged(){
 
 // من أستطيع إدارته؟ الأدمن: الجميع · العميل: موظفو شركته (pmo/pm)
 const canManageUserUI = u => isAdmin() ||
-  (state.me.role === 'client' && ['pmo','pm'].includes(u.role) && u.companyId === state.me.companyId);
+  (state.me.role === 'client' && ['pmo','pm','finance'].includes(u.role) && u.companyId === state.me.companyId);
 
-const ROLE_ICONS = {admin:'★', client:'⭐', pmo:'👔', pm:'👤'};
+const ROLE_ICONS = {admin:'★', client:'⭐', pmo:'👔', pm:'👤', finance:'💳'};
 
 function renderUsersList(){
   $('users-list').innerHTML = state.users.map(u => {
@@ -7240,6 +7240,8 @@ async function boot(){
   if (!API.token) { showLogin(); return; }
   try {
     await refreshState();
+    // موظف الماليّة: مكانه صفحة المصاريف (رفع سند الدفع فقط)
+    if (state && state.me && state.me.role === 'finance') { location.href = '/expenses'; return; }
     hideLogin();
   } catch(e) {
     if (e.status === 401) {

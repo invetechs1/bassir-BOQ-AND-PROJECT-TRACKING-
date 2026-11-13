@@ -145,7 +145,7 @@
   <div id="rev-err" class="note note-err hide"></div>
   <div class="note note-info" id="rev-summary" style="font-size:12.5px"></div>
 
-  <div style="border:1px solid var(--line);border-radius:12px;padding:12px;margin:8px 0;background:var(--surface)">
+  <div id="rev-appr-section" style="border:1px solid var(--line);border-radius:12px;padding:12px;margin:8px 0;background:var(--surface)">
     <div style="font-weight:800;font-size:13px;margin-bottom:8px">١) الاعتماد</div>
     <div class="row" style="gap:16px">
       <label class="hint" style="display:flex;gap:7px;align-items:center"><input type="radio" name="rev-appr" id="rev-full" value="approved_full" style="width:auto" onchange="revApprChanged()"> اعتماد كلي (كامل المبلغ)</label>
@@ -153,18 +153,20 @@
     </div>
     <div class="field" id="rev-partial-f" style="display:none;margin-top:8px"><label>المبلغ المعتمد</label><input type="number" id="rev-appr-amount" min="0" step="0.01" placeholder="المبلغ المعتمد للصرف"></div>
   </div>
+  <!-- حالة الاعتماد للقراءة فقط (تظهر لموظف الماليّة) -->
+  <div id="rev-appr-readonly" class="note note-info" style="display:none;font-size:12.5px"></div>
 
   <div style="border:1px solid var(--line);border-radius:12px;padding:12px;margin:8px 0;background:var(--surface)" id="rev-pay-box">
-    <div style="font-weight:800;font-size:13px;margin-bottom:8px">٢) الدفع ورفع كشف التحويل <span class="hint" style="font-weight:400">(بعد تحويل المالية)</span></div>
+    <div style="font-weight:800;font-size:13px;margin-bottom:8px" id="rev-pay-title">٢) الدفع ورفع سند الدفع <span class="hint" style="font-weight:400">(بعد اعتماد المالك)</span></div>
     <div class="row">
       <div class="field" style="flex:1"><label>المبلغ المدفوع</label><input type="number" id="rev-paid-amount" min="0" step="0.01" placeholder="المبلغ المحوّل فعلاً"></div>
       <div class="field" style="flex:1"><label>تاريخ التحويل</label><input type="date" id="rev-paid-date"></div>
     </div>
     <div class="field"><label>مرجع التحويل (اختياري)</label><input id="rev-pay-ref" placeholder="رقم العملية / البنك / آخر 4 أرقام"></div>
-    <div class="field"><label>📎 كشف التحويل (صورة/PDF)</label>
+    <div class="field"><label>📎 سند الدفع / صورة الحوالة (صورة/PDF)</label>
       <input type="file" id="rev-pay-files" accept="image/*,.pdf,application/pdf" multiple onchange="payFilesPicked(this)">
       <div id="rev-pay-files-list" style="display:flex;flex-direction:column;gap:4px;margin-top:6px"></div>
-      <div class="hint">يبقى مرجعاً لك: كم دُفع فعلاً · متى · وبأي حوالة.</div>
+      <div class="hint">سند تحويل المالية — يبقى مرجعاً: كم دُفع فعلاً · متى · وبأي حوالة.</div>
     </div>
   </div>
   <button class="btn btn-primary btn-block" id="rev-save" onclick="saveReview()">💾 حفظ الاعتماد والدفع</button>
@@ -252,7 +254,7 @@ function renderList(){
     var tl=typeLabel(e.type);
     var who=e.type==='salary'?(e.month||'—')+(e.headcount?(' · '+e.headcount+' عامل'):''):(e.supplier||'—');
     var doc=docLinks(e);
-    var appBtn=DATA.canApprove?('<button class="btn btn-ghost btn-sm" onclick="openReview(\''+e.id+'\')" title="اعتماد ودفع ورفع كشف التحويل">💳</button> '):'';
+    var appBtn=(DATA.canApprove||DATA.canPay)?('<button class="btn btn-ghost btn-sm" onclick="openReview(\''+e.id+'\')" title="'+(DATA.canApprove?'اعتماد ودفع ورفع سند الدفع':'رفع سند الدفع / صورة الحوالة')+'">💳</button> '):'';
     var manage=appBtn+(DATA.canManage?('<button class="btn btn-ghost btn-sm" onclick="openEdit(\''+e.id+'\')">✎</button> <button class="btn btn-ghost btn-sm" onclick="delExp(\''+e.id+'\')">🗑</button>'+(DATA.integrationEnabled?(' <button class="btn btn-ghost btn-sm" onclick="syncExp(\''+e.id+'\')" title="مزامنة ERP">'+(e.erpSyncedAt?'✅':'⇅')+'</button>'):'')):'');
     var bearer=e.bearer==='sub'?('<span class="typechip t-sub" title="محمّلة على مقاول الباطن — تُخصم من مستخلصه'+(e.settledMusNo?' (خُصمت في '+esc(e.settledMusNo)+')':'')+'">🧱 '+esc(subName(e.subId))+(e.settledMusNo?' ✓':'')+'</span>'):'<span class="hint">ذاتي</span>';
     var paid=paidCell(e);
@@ -393,57 +395,67 @@ function delExp(id){ if(!confirm('حذف هذا المصروف؟')) return; api(
 function syncExp(id){ api('POST','/api/projects/'+PID+'/expenses/'+id+'/sync',{}).then(function(r){ if(r.ok&&r.d.ok){toast('✅ تمت المزامنة مع ERP');loadProject();}else toast(r.d.error||'تعذّرت المزامنة'); }); }
 
 // ---- اعتماد ودفع (المالك فقط) ----
+function isApprover(){ return !!(DATA&&DATA.canApprove); }
+function isPayerOnly(){ return !!(DATA&&DATA.canPay&&!DATA.canApprove); } // موظف الماليّة
+function setPayEnabled(on){ var box=document.getElementById('rev-pay-box'); box.style.opacity=on?'1':'.5'; box.style.pointerEvents=on?'':'none'; }
 function openReview(id){
   REV=(DATA.items||[]).find(function(x){return x.id===id}); if(!REV) return;
   payPending=(REV.paymentDocs||[]).slice();
   document.getElementById('rev-err').classList.add('hide');
-  var tot=Number(REV.total||REV.amount||0);
+  var tot=Number(REV.total||REV.amount||0), st=REV.approvalStatus||'pending', appr=isApprover();
   document.getElementById('rev-summary').innerHTML='<strong>'+esc(REV.description||typeLabel(REV.type)[0])+'</strong> · الإجمالي: <strong>'+money(tot)+' ر.س</strong>'+(REV.by?(' · أدخله: '+esc(REV.by)):'')+
     '<div style="margin-top:6px">المستندات: '+docLinks(REV)+'</div>';
-  // اعتماد
-  var st=REV.approvalStatus||'pending';
-  document.getElementById('rev-full').checked=(st==='approved_full');
-  document.getElementById('rev-partial').checked=(st==='approved_partial');
-  document.getElementById('rev-appr-amount').value=(st==='approved_partial')?(REV.approvedAmount||''):'';
-  // دفع
+  document.querySelector('#rev-ov h2').textContent = appr ? 'اعتماد المصروف وتسجيل الدفع' : 'تسجيل الدفع ورفع سند الدفع';
+  document.getElementById('rev-save').textContent = appr ? '💾 حفظ الاعتماد والدفع' : '💾 حفظ الدفع ورفع السند';
+  var apprSec=document.getElementById('rev-appr-section'), apprRO=document.getElementById('rev-appr-readonly');
+  if(appr){
+    apprSec.style.display=''; apprRO.style.display='none';
+    document.getElementById('rev-full').checked=(st==='approved_full');
+    document.getElementById('rev-partial').checked=(st==='approved_partial');
+    document.getElementById('rev-appr-amount').value=(st==='approved_partial')?(REV.approvedAmount||''):'';
+  } else {
+    apprSec.style.display='none'; apprRO.style.display='';
+    apprRO.innerHTML = (st==='pending')
+      ? '⏳ <strong>بانتظار اعتماد المالك</strong> — لا يمكن تسجيل الدفع قبل الاعتماد.'
+      : ((st==='approved_partial' ? '✅ معتمد جزئي: <strong>'+money(REV.approvedAmount)+' ر.س</strong>' : '✅ معتمد كلي: <strong>'+money(tot)+' ر.س</strong>') + (REV.approvedBy?(' · اعتمده: '+esc(REV.approvedBy)):''));
+  }
   document.getElementById('rev-paid-amount').value=REV.paidAmount||'';
-  document.getElementById('rev-paid-date').value=REV.paidAt||'';
+  document.getElementById('rev-paid-date').value=REV.paidAt||new Date().toISOString().slice(0,10);
   document.getElementById('rev-pay-ref').value=REV.paymentRef||'';
-  revApprChanged(); renderPayFiles();
+  renderPayFiles();
+  if(appr) revApprChanged(); else setPayEnabled(st!=='pending');
   document.getElementById('rev-ov').classList.add('open');
 }
 function closeReview(){ document.getElementById('rev-ov').classList.remove('open'); REV=null; payPending=[]; }
 function revApprChanged(){
   var partial=document.getElementById('rev-partial').checked;
   document.getElementById('rev-partial-f').style.display=partial?'':'none';
-  var approved=document.getElementById('rev-full').checked||partial;
-  // لا يمكن تسجيل الدفع قبل الاعتماد
-  var box=document.getElementById('rev-pay-box');
-  box.style.opacity=approved?'1':'.5'; box.style.pointerEvents=approved?'':'none';
+  setPayEnabled(document.getElementById('rev-full').checked||partial);
 }
 async function saveReview(){
   if(!REV) return; var err=document.getElementById('rev-err'); err.classList.add('hide');
-  var full=document.getElementById('rev-full').checked, partial=document.getElementById('rev-partial').checked;
-  if(!full && !partial){ err.textContent='اختر نوع الاعتماد: كلي أو جزئي'; err.classList.remove('hide'); return; }
-  var tot=Number(REV.total||REV.amount||0);
-  var apprAmt=Number(document.getElementById('rev-appr-amount').value)||0;
-  if(partial && (apprAmt<=0 || apprAmt>tot+0.01)){ err.textContent='المبلغ المعتمد يجب أن يكون أكبر من صفر ولا يتجاوز '+money(tot); err.classList.remove('hide'); return; }
-  var btn=document.getElementById('rev-save'); btn.disabled=true; btn.innerHTML='<span class="spin"></span> جارٍ…';
+  var appr=isApprover(), tot=Number(REV.total||REV.amount||0), body={};
+  if(appr){
+    var full=document.getElementById('rev-full').checked, partial=document.getElementById('rev-partial').checked;
+    if(!full && !partial){ err.textContent='اختر نوع الاعتماد: كلي أو جزئي'; err.classList.remove('hide'); return; }
+    var apprAmt=Number(document.getElementById('rev-appr-amount').value)||0;
+    if(partial && (apprAmt<=0 || apprAmt>tot+0.01)){ err.textContent='المبلغ المعتمد يجب أن يكون أكبر من صفر ولا يتجاوز '+money(tot); err.classList.remove('hide'); return; }
+    body.approvalStatus = full?'approved_full':'approved_partial'; body.approvedAmount = partial?apprAmt:tot;
+  } else {
+    // موظف الماليّة: الدفع فقط ويشترط أن يكون معتمداً
+    if((REV.approvalStatus||'pending')==='pending'){ err.textContent='بانتظار اعتماد المالك — لا يمكن تسجيل الدفع'; err.classList.remove('hide'); return; }
+  }
+  var paidAmt=Number(document.getElementById('rev-paid-amount').value)||0;
+  if(!appr && !payPending.length && paidAmt<=0){ err.textContent='أرفق سند الدفع / صورة الحوالة أو أدخل المبلغ المدفوع'; err.classList.remove('hide'); return; }
+  var btn=document.getElementById('rev-save'), btnTxt=btn.textContent; btn.disabled=true; btn.innerHTML='<span class="spin"></span> جارٍ…';
   var payDocs=[];
-  try{
-    for(var k=0;k<payPending.length;k++){ var pf=payPending[k];
-      if(pf.url){ payDocs.push({url:pf.url,name:pf.name}); continue; }
-      var pr=await api('POST','/api/projects/'+PID+'/photos',{dataUrl:pf.dataUrl});
-      if(!pr.ok) throw new Error(pr.d.error||'تعذّر رفع كشف التحويل'); payDocs.push({url:pr.d.url,name:pf.name});
-    }
-  }catch(e){ btn.disabled=false; btn.textContent='💾 حفظ الاعتماد والدفع'; err.textContent=e.message; err.classList.remove('hide'); return; }
-  var body={ approvalStatus: full?'approved_full':'approved_partial', approvedAmount: partial?apprAmt:tot,
-    paidAmount:Number(document.getElementById('rev-paid-amount').value)||0, paidAt:document.getElementById('rev-paid-date').value,
-    paymentRef:document.getElementById('rev-pay-ref').value, paymentDocs:payDocs };
+  try{ payDocs=await uploadBuf(payPending); }
+  catch(e){ btn.disabled=false; btn.textContent=btnTxt; err.textContent=e.message; err.classList.remove('hide'); return; }
+  body.paidAmount=paidAmt; body.paidAt=document.getElementById('rev-paid-date').value; body.paymentRef=document.getElementById('rev-pay-ref').value; body.paymentDocs=payDocs;
   var res=await api('POST','/api/projects/'+PID+'/expenses/'+REV.id+'/review',body);
-  btn.disabled=false; btn.textContent='💾 حفظ الاعتماد والدفع';
+  btn.disabled=false; btn.textContent=btnTxt;
   if(!res.ok){ err.textContent=res.d.error||'تعذّر الحفظ'; err.classList.remove('hide'); return; }
-  closeReview(); toast('✅ تم حفظ الاعتماد والدفع'); loadProject();
+  closeReview(); toast('✅ تم الحفظ'); loadProject();
 }
 boot();
 </script>

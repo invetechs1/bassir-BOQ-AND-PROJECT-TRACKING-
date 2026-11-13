@@ -61,7 +61,7 @@ if (!JWT_SECRET) {
 // ---------- المستخدمون والشركات ----------
 // الأدوار: admin (أدمن النظام - كل شيء) | client (العميل - كل صلاحيات شركته)
 //          pmo (مدير المشاريع - كل مشاريع شركته تشغيلياً) | pm (مدير مشروع - مشروعه المعيّن فقط)
-const ROLES = ['admin', 'client', 'pmo', 'pm'];
+const ROLES = ['admin', 'client', 'pmo', 'pm', 'finance'];
 function loadUsers() { return readJSON(USERS_FILE, []); }
 function saveUsers(users) { writeJSON(USERS_FILE, users); }
 function loadCompanies() { return readJSON(COMPANIES_FILE, []); }
@@ -353,7 +353,8 @@ const adminOnly = (req, res, next) => isAdmin(req.user) ? next() : res.status(40
 // من يرى المشروع؟ الأدمن: الكل · العميل ومدير المشاريع: مشاريع شركتهم · مدير المشروع: المعيّن له فقط
 function canAccessProject(user, p) {
   if (isAdmin(user)) return true;
-  if (user.role === 'client' || user.role === 'pmo') return !!user.companyId && p.companyId === user.companyId;
+  // الماليّة تصل لمشاريع شركتها (لرفع سند الدفع فقط — تُفرض القيود في وحدة المصاريف)
+  if (user.role === 'client' || user.role === 'pmo' || user.role === 'finance') return !!user.companyId && p.companyId === user.companyId;
   if (user.role === 'pm') return p.managerUserId === user.id;
   return false;
 }
@@ -361,7 +362,7 @@ function canAccessProject(user, p) {
 const canAdminCompany = (user, companyId) => isAdmin(user) || (user.role === 'client' && !!user.companyId && user.companyId === companyId);
 // من يدير مستخدمي الشركة؟ الأدمن (أي شركة وأي دور) أو العميل (موظفو شركته بأدوار pmo/pm فقط)
 const canManageUser = (actor, target) => isAdmin(actor) ||
-  (actor.role === 'client' && ['pmo','pm'].includes(target.role) && target.companyId === actor.companyId);
+  (actor.role === 'client' && ['pmo','pm','finance'].includes(target.role) && target.companyId === actor.companyId);
 
 // ---------- طبقة البيع والاشتراكات (SaaS: مستأجرون/باقات/فوترة/دفع Tap/لوحة مالك) ----------
 // تُركّب هنا لتُسجّل مساراتها قبل الملفات الثابتة والمسار الشامل، وتوفّر حُرّاس الصلاحية للمشاريع.
@@ -962,7 +963,7 @@ app.post('/api/users', auth, (req, res) => {
       return res.status(400).json({ error: 'invalid_company_for_user' });
   } else if (req.user.role === 'client') {
     // العميل يضيف موظفي شركته فقط (مدير مشاريع / مدير مشروع)
-    if (!['pmo','pm'].includes(newRole)) return res.status(403).json({ error: 'client_role_restriction' });
+    if (!['pmo','pm','finance'].includes(newRole)) return res.status(403).json({ error: 'client_role_restriction' });
     newCompanyId = req.user.companyId;
   } else {
     return res.status(403).json({ error: 'create_user_denied' });
@@ -990,7 +991,7 @@ app.put('/api/users/:id', auth, (req, res) => {
   if (name) u.name = String(name).trim();
   if (req.body && req.body.phone !== undefined) u.phone = String(req.body.phone || '').trim();
   if (role && ROLES.includes(role)) {
-    const allowed = isAdmin(req.user) ? ROLES : ['pmo','pm'];
+    const allowed = isAdmin(req.user) ? ROLES : ['pmo','pm','finance'];
     if (!allowed.includes(role)) return res.status(403).json({ error: 'cannot_grant_role' });
     if (u.role === 'admin' && role !== 'admin' && users.filter(x => x.role === 'admin').length <= 1)
       return res.status(400).json({ error: 'cannot_demote_last_admin' });

@@ -34,10 +34,14 @@ module.exports = function initExpenses(ctx) {
     return canAccessProject(user, project) && ['admin', 'client', 'pmo', 'pm'].includes(user.role);
   }
 
-  // صلاحية الاعتماد والدفع (المالك/الإدارة فقط — ليس مدير المشروع).
-  // مدير المشروع يُدخل المصروف فقط؛ المالك يعتمده (كلي/جزئي) ويرفع كشف التحويل في خانة المدفوع.
+  // صلاحية الاعتماد (المالك/الإدارة — ليس مدير المشروع ولا الماليّة).
   function canApprove(user, project) {
     return canAccessProject(user, project) && ['admin', 'client', 'pmo'].includes(user.role);
+  }
+  // صلاحية الدفع ورفع سند الدفع/صورة الحوالة: المالك أو الماليّة أو الأدمن.
+  // موظف الماليّة (finance) يرفع سند الدفع فقط على مصروف معتمد — لا يُدخل مصروفاً ولا يعتمد.
+  function canPay(user, project) {
+    return canAccessProject(user, project) && ['admin', 'client', 'finance'].includes(user.role);
   }
 
   function cleanDocs(arr) {
@@ -192,6 +196,8 @@ module.exports = function initExpenses(ctx) {
       subCharges: outstandingSubCharges(db.items),
       canManage: canWrite(req.user, p),
       canApprove: canApprove(req.user, p),
+      canPay: canPay(req.user, p),
+      role: req.user.role,
       integrationEnabled: !!(companyIntegration && (companyIntegration(p.companyId) || {}).enabled)
     });
   });
@@ -252,13 +258,18 @@ module.exports = function initExpenses(ctx) {
     res.json({ ok: true, expense: exp, profitability: profitability(p, db.items) });
   });
 
-  // اعتماد المصروف (كلي/جزئي) وتسجيل الدفع ورفع كشف التحويل — للمالك/الإدارة فقط (ليس مدير المشروع)
+  // اعتماد المصروف (كلي/جزئي) وتسجيل الدفع ورفع سند الدفع — الاعتماد للمالك/الإدارة، والدفع للمالك/الماليّة
   app.post('/api/projects/:id/expenses/:expId/review', auth, (req, res) => {
     const p = getProjectOr(req, res); if (!p) return;
-    if (!canApprove(req.user, p)) return res.status(403).json({ error: 'الاعتماد والدفع صلاحية المالك/الإدارة فقط — إدخال المصروف لمدير المشروع' });
+    const b = req.body || {};
+    const wantsApproval = b.approvalStatus !== undefined;
+    const wantsPayment = (b.paidAmount !== undefined || b.paymentDocs !== undefined || b.paidAt !== undefined || b.paymentRef !== undefined);
+    if (!wantsApproval && !wantsPayment) return res.status(400).json({ error: 'لا يوجد تغيير' });
+    if (wantsApproval && !canApprove(req.user, p)) return res.status(403).json({ error: 'الاعتماد صلاحية المالك/الإدارة فقط — إدخال المصروف لمدير المشروع' });
+    if (wantsPayment && !canPay(req.user, p)) return res.status(403).json({ error: 'تسجيل الدفع ورفع سند الدفع صلاحية المالك أو موظف الماليّة فقط' });
     const db = loadExpenses(p.id); const i = db.items.findIndex(x => x.id === req.params.expId);
     if (i < 0) return res.status(404).json({ error: 'المصروف غير موجود' });
-    const e = db.items[i]; const b = req.body || {};
+    const e = db.items[i];
     const total = round2(e.total || e.amount || 0);
     // ---- الاعتماد ----
     if (b.approvalStatus !== undefined) {

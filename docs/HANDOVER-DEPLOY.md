@@ -32,8 +32,8 @@ npm install                               # no new dependencies, safe to run
 |---|---|
 | `expenses/index.js` | **New module** — Project Costs / Expenses + profitability + approval/payment + expense documents |
 | `public/expenses.html` | **New page** — expenses UI (entry, approve/pay, charge-to, proof, 3 document slots) |
-| `public/index.html` | Expenses menu entry; sub-certificate payments (edit/delete, dates, print); decimal prices |
-| `server.js` | Owner-only guard for sub-certificate approve/pay |
+| `public/index.html` | Expenses menu entry; sub-certificate payments (edit/delete, dates, print); decimal prices; Finance role in user management |
+| `server.js` | Owner-only guard for sub-certificate approve/pay; new `finance` role |
 | `saas/index.js`, `saas/tap.js` | Tap recurring (merchant-initiated) hardening |
 | `public/saas/billing.html`, `public/saas/owner.html` | Gregorian (Miladi) dates |
 | `docs/…` | Handover docs + a demo video |
@@ -82,7 +82,11 @@ Adding an expense now has three separate, labeled upload slots:
 All three are optional at entry and can be added later by editing the expense; the owner sees links to all three in the review dialog before approving/paying. The old "material requires an invoice at creation" rule was removed (the invoice arrives after the transfer). Legacy attachments are kept and shown under the invoice slot.
 *Details: `docs/handover-expense-documents.md`.*
 
-### 8. Tap recurring hardening
+### 8. Finance role (upload payment voucher only)
+A new **Finance (الماليّة)** role with its own username/password. A finance employee logs into the expenses page and can **only** record the payment and upload the **payment voucher / transfer receipt (سند الدفع / صورة الحوالة)** on an **approved** expense — they cannot enter expenses, approve, or edit anything else. Flow: PM enters → owner approves → finance uploads the voucher. The owner creates the finance user from **"👥 إدارة المستخدمين"** → role **الماليّة**. The review endpoint now guards per section (approval = admin/client/pmo; payment = admin/client/finance).
+*Details: `docs/handover-finance-role.md`.*
+
+### 9. Tap recurring hardening
 Tap adapter hardened for real monthly recurring charges (payment agreement + merchant-initiated charges). Keys are entered by you; sim/test/live modes supported.
 
 ---
@@ -96,6 +100,7 @@ Tap adapter hardened for real monthly recurring charges (payment agreement + mer
 5. **Sub-certificate payment**: owner records a payment → edit its amount → it updates; the table/print show the payment date(s); pm/pmo cannot pay.
 6. **Dates** on billing/owner pages show Gregorian; a sub rate of `10.5` shows as `10.50`.
 7. **Expense documents**: add an expense with only a **quotation** (no invoice) → it saves; edit it later to add the **invoice** and **delivery note** → they persist and the quotation is kept; the three links show in the table and the owner review dialog.
+8. **Finance role**: the owner creates a finance user (role الماليّة) in user management; that user logs in → lands on the expenses page → can open an **approved** expense and upload the **payment voucher (سند الدفع)** only; it cannot add/approve/edit expenses, and cannot pay a still-pending one.
 
 ---
 

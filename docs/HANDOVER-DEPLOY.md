@@ -86,7 +86,11 @@ All three are optional at entry and can be added later by editing the expense; t
 A new **Finance (الماليّة)** role with its own username/password. A finance employee logs into the expenses page and can **only** record the payment and upload the **payment voucher / transfer receipt (سند الدفع / صورة الحوالة)** on an **approved** expense — they cannot enter expenses, approve, or edit anything else. Flow: PM enters → owner approves → finance uploads the voucher. The owner creates the finance user from **"👥 إدارة المستخدمين"** → role **الماليّة**. The review endpoint now guards per section (approval = admin/client/pmo; payment = admin/client/finance).
 *Details: `docs/handover-finance-role.md`.*
 
-### 9. Tap recurring hardening
+### 9. Lock an approved expense for the project manager
+Once an expense is **approved**, the project manager can no longer edit its data or delete it — they can only open it and upload documents (invoice / delivery note). Core-field changes from a non-approver are ignored server-side and the stored values kept; deletion of an approved expense is limited to the owner/admin. The PM's row shows a 📎 upload button (no delete), and the edit modal opens in documents-only mode (🔒 notice, core fields disabled).
+*Details: `docs/handover-lock-approved-expense.md`.*
+
+### 10. Tap recurring hardening
 Tap adapter hardened for real monthly recurring charges (payment agreement + merchant-initiated charges). Keys are entered by you; sim/test/live modes supported.
 
 ---
@@ -101,6 +105,7 @@ Tap adapter hardened for real monthly recurring charges (payment agreement + mer
 6. **Dates** on billing/owner pages show Gregorian; a sub rate of `10.5` shows as `10.50`.
 7. **Expense documents**: add an expense with only a **quotation** (no invoice) → it saves; edit it later to add the **invoice** and **delivery note** → they persist and the quotation is kept; the three links show in the table and the owner review dialog.
 8. **Finance role**: the owner creates a finance user (role الماليّة) in user management; that user logs in → lands on the expenses page → can open an **approved** expense and upload the **payment voucher (سند الدفع)** only; it cannot add/approve/edit expenses, and cannot pay a still-pending one.
+9. **Locked approved expense**: as the project manager, approve one of your expenses (as the owner), then as the PM open it → the core fields are disabled and there is no delete button, only document upload; sending an amount change is ignored, uploading an invoice/delivery note works.
 
 ---
 

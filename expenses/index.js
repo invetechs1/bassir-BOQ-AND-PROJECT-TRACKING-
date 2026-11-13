@@ -248,6 +248,13 @@ module.exports = function initExpenses(ctx) {
     const prev = db.items[i];
     const exp = normalizeExpense({ ...prev, ...req.body }, req.user);
     if (!validBearer(p, exp)) return res.status(400).json({ error: 'اختر مقاول باطن صحيحاً للتحميل عليه' });
+    // بعد اعتماد المصروف: مدير المشروع (غير المعتمِد) لا يُعدّل بياناته الأساسية — يرفع المستندات فقط.
+    // تُثبَّت كل الحقول الأساسية من السجل المخزّن، وتبقى المستندات (عرض السعر/الفاتورة/كشف الاستلام) قابلة للرفع.
+    const locked = (prev.approvalStatus && prev.approvalStatus !== 'pending');
+    if (locked && !canApprove(req.user, p)) {
+      ['type', 'date', 'description', 'supplier', 'amount', 'vatRate', 'vat', 'total', 'taxInvoiceNo', 'taxInvoiceDate',
+       'category', 'boqItemId', 'month', 'headcount', 'bearer', 'subId', 'settledMusNo', 'settledAt'].forEach(k => { exp[k] = prev[k]; });
+    }
     // تعديل بيانات المصروف لا يغيّر الاعتماد ولا الدفع (خطوة المالك المنفصلة) — تُحفظ كما هي من السجل المخزّن
     exp.approvalStatus = prev.approvalStatus || 'pending'; exp.approvedAmount = prev.approvedAmount || 0;
     exp.approvedBy = prev.approvedBy || ''; exp.approvedAt = prev.approvedAt || '';
@@ -302,9 +309,14 @@ module.exports = function initExpenses(ctx) {
   app.delete('/api/projects/:id/expenses/:expId', auth, (req, res) => {
     const p = getProjectOr(req, res); if (!p) return;
     if (!canWrite(req.user, p)) return res.status(403).json({ error: 'غير مصرّح' });
-    const db = loadExpenses(p.id); const before = db.items.length;
+    const db = loadExpenses(p.id);
+    const target = db.items.find(x => x.id === req.params.expId);
+    if (!target) return res.status(404).json({ error: 'المصروف غير موجود' });
+    // بعد الاعتماد: لا يحذفه مدير المشروع — الحذف للمالك/الإدارة فقط
+    if (target.approvalStatus && target.approvalStatus !== 'pending' && !canApprove(req.user, p)) {
+      return res.status(403).json({ error: 'لا يمكن حذف مصروف معتمد — راجع صاحب الشركة' });
+    }
     db.items = db.items.filter(x => x.id !== req.params.expId);
-    if (db.items.length === before) return res.status(404).json({ error: 'المصروف غير موجود' });
     saveExpenses(p.id, db);
     res.json({ ok: true, profitability: profitability(p, db.items) });
   });

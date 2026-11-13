@@ -83,6 +83,7 @@
   <span class="modal-x" onclick="closeAdd()">✕</span>
   <h2 id="exp-title">إضافة مصروف</h2>
   <div id="exp-err" class="note note-err hide"></div>
+  <div id="e-lock-note" class="note note-info hide" style="font-size:12.5px">🔒 هذا المصروف <strong>معتمد</strong> — لا يمكن تعديل بياناته أو حذفه. يمكنك فقط رفع المستندات (الفاتورة / كشف الاستلام).</div>
   <div class="field"><label>النوع</label>
     <select id="e-type" onchange="typeChanged()">
       <option value="material">🧱 مواد مشتراة (بفاتورة مورّد)</option>
@@ -175,7 +176,12 @@
 <div class="toast" id="toast"><span></span></div>
 
 <script>
-var TOKEN=localStorage.getItem('azoom_token')||'', ST=null, PID=null, DATA=null, FILTER='all', EDIT=null, payPending=[], REV=null;
+var TOKEN=localStorage.getItem('azoom_token')||'', ST=null, PID=null, DATA=null, FILTER='all', EDIT=null, payPending=[], REV=null, EDIT_DOCS_ONLY=false;
+function setFormDocsOnly(on){
+  EDIT_DOCS_ONLY=on;
+  ['e-type','e-date','e-month','e-desc','e-amount','e-vatrate','e-supplier','e-invno','e-invdate','e-headcount','e-category','e-bearer','e-subid','e-sync'].forEach(function(id){var el=document.getElementById(id);if(el)el.disabled=on;});
+  document.getElementById('e-lock-note').classList[on?'remove':'add']('hide');
+}
 var quotePending=[], invPending=[], delivPending=[];
 function docBuf(which){ return which==='quote'?quotePending:which==='inv'?invPending:delivPending; }
 function docListId(which){ return which==='quote'?'e-quote-list':which==='inv'?'e-inv-list':'e-deliv-list'; }
@@ -255,7 +261,12 @@ function renderList(){
     var who=e.type==='salary'?(e.month||'—')+(e.headcount?(' · '+e.headcount+' عامل'):''):(e.supplier||'—');
     var doc=docLinks(e);
     var appBtn=(DATA.canApprove||DATA.canPay)?('<button class="btn btn-ghost btn-sm" onclick="openReview(\''+e.id+'\')" title="'+(DATA.canApprove?'اعتماد ودفع ورفع سند الدفع':'رفع سند الدفع / صورة الحوالة')+'">💳</button> '):'';
-    var manage=appBtn+(DATA.canManage?('<button class="btn btn-ghost btn-sm" onclick="openEdit(\''+e.id+'\')">✎</button> <button class="btn btn-ghost btn-sm" onclick="delExp(\''+e.id+'\')">🗑</button>'+(DATA.integrationEnabled?(' <button class="btn btn-ghost btn-sm" onclick="syncExp(\''+e.id+'\')" title="مزامنة ERP">'+(e.erpSyncedAt?'✅':'⇅')+'</button>'):'')):'');
+    var locked=(e.approvalStatus && e.approvalStatus!=='pending');
+    var lockedForMe=locked && !DATA.canApprove; // مدير المشروع بعد الاعتماد: رفع مستندات فقط، لا حذف
+    var editBtn=DATA.canManage?('<button class="btn btn-ghost btn-sm" onclick="openEdit(\''+e.id+'\')" title="'+(lockedForMe?'رفع المستندات (معتمد — لا تعديل)':'تعديل')+'">'+(lockedForMe?'📎':'✎')+'</button> '):'';
+    var delBtn=(DATA.canManage && !lockedForMe)?('<button class="btn btn-ghost btn-sm" onclick="delExp(\''+e.id+'\')">🗑</button>'):'';
+    var syncBtn=(DATA.canManage && DATA.integrationEnabled)?(' <button class="btn btn-ghost btn-sm" onclick="syncExp(\''+e.id+'\')" title="مزامنة ERP">'+(e.erpSyncedAt?'✅':'⇅')+'</button>'):'';
+    var manage=appBtn+editBtn+delBtn+syncBtn;
     var bearer=e.bearer==='sub'?('<span class="typechip t-sub" title="محمّلة على مقاول الباطن — تُخصم من مستخلصه'+(e.settledMusNo?' (خُصمت في '+esc(e.settledMusNo)+')':'')+'">🧱 '+esc(subName(e.subId))+(e.settledMusNo?' ✓':'')+'</span>'):'<span class="hint">ذاتي</span>';
     var paid=paidCell(e);
     return '<tr><td><span class="typechip '+tl[1]+'">'+tl[0]+'</span></td><td>'+esc(e.date)+'</td><td>'+esc(e.description||'—')+(e.category?(' <span class="hint">· '+esc(e.category)+'</span>'):'')+'</td><td>'+esc(who)+(e.taxInvoiceNo?(' <span class="hint">· '+esc(e.taxInvoiceNo)+'</span>'):'')+'</td><td>'+bearer+'</td><td class="amount">'+money(e.amount)+'</td><td class="amount" style="color:var(--text3)">'+money(e.vat)+'</td><td class="amount">'+money(e.total)+'</td><td>'+paid+'</td><td>'+doc+'</td><td>'+manage+'</td></tr>';
@@ -307,13 +318,19 @@ function openEdit(id){ EDIT=id; var e=(DATA.items||[]).find(function(x){return x
   document.getElementById('e-supplier').value=e.supplier||''; document.getElementById('e-invno').value=e.taxInvoiceNo||''; document.getElementById('e-invdate').value=e.taxInvoiceDate||'';
   document.getElementById('e-headcount').value=e.headcount||''; document.getElementById('e-category').value=e.category||'';
   document.getElementById('e-bearer').value=e.bearer||'own'; fillSubs(); if(e.subId)document.getElementById('e-subid').value=String(e.subId); bearerChanged();
-  typeChanged(); recalc(); renderAllDocs(); document.getElementById('exp-ov').classList.add('open');
+  typeChanged(); recalc(); renderAllDocs();
+  // بعد الاعتماد: مدير المشروع يرفع المستندات فقط (لا تعديل للبيانات)
+  var locked=(e.approvalStatus && e.approvalStatus!=='pending');
+  setFormDocsOnly(!!(locked && DATA && !DATA.canApprove && DATA.canManage));
+  document.getElementById('exp-title').textContent = EDIT_DOCS_ONLY ? 'رفع مستندات المصروف' : 'تعديل مصروف';
+  document.getElementById('e-save').textContent = EDIT_DOCS_ONLY ? '💾 حفظ المستندات' : '💾 حفظ';
+  document.getElementById('exp-ov').classList.add('open');
 }
 function closeAdd(){ document.getElementById('exp-ov').classList.remove('open'); }
 function resetForm(){ ['e-desc','e-amount','e-supplier','e-invno','e-invdate','e-headcount','e-category','e-month'].forEach(function(id){document.getElementById(id).value=''});
   document.getElementById('e-type').value='material'; document.getElementById('e-vatrate').value='15'; document.getElementById('e-date').value=new Date().toISOString().slice(0,10);
   document.getElementById('e-bearer').value='own'; fillSubs(); bearerChanged();
-  document.getElementById('e-sync').checked=false; document.getElementById('exp-err').classList.add('hide'); if(!EDIT){ quotePending=[]; invPending=[]; delivPending=[]; } typeChanged(); recalc(); renderAllDocs(); }
+  document.getElementById('e-sync').checked=false; document.getElementById('exp-err').classList.add('hide'); setFormDocsOnly(false); document.getElementById('e-save').textContent='💾 حفظ'; if(!EDIT){ quotePending=[]; invPending=[]; delivPending=[]; } typeChanged(); recalc(); renderAllDocs(); }
 function typeChanged(){
   var t=document.getElementById('e-type').value;
   document.getElementById('e-material-fields').style.display=t==='material'?'':'none';

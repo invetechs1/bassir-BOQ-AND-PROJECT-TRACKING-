@@ -1135,6 +1135,11 @@
       <div class="f-field"><label data-i18n="جوال / تواصل">جوال / تواصل</label><input type="text" id="sub-phone" placeholder="05xxxxxxxx" dir="ltr" style="text-align:left"></div>
       <div class="f-field"><label data-i18n="نسبة حجز الجودة الافتراضية %">نسبة حجز الجودة الافتراضية %</label><input type="number" id="sub-ret" min="0" max="100" step="0.5" value="10"></div>
       <div class="f-field full"><label data-i18n="ملاحظات">ملاحظات</label><input type="text" id="sub-note" placeholder="نطاق أعماله / تفاصيل العقد"></div>
+      <div class="f-field full"><label data-i18n="📄 عقد مقاول الباطن (ارفاق)">📄 عقد مقاول الباطن (ارفاق)</label>
+        <input type="file" id="sub-contract-files" accept="image/*,.pdf,application/pdf" multiple onchange="subContractPicked(this)">
+        <div id="sub-contract-list" style="display:flex;flex-direction:column;gap:4px;margin-top:6px"></div>
+        <div class="hint" id="sub-contract-hint" data-i18n="يُرفع العقد ويُرسل للإدارة لاعتماد المقاول قبل مباشرة عمله.">يُرفع العقد ويُرسل للإدارة لاعتماد المقاول قبل مباشرة عمله.</div>
+      </div>
     </div>
     <div class="divider"></div>
     <div class="card-title" style="font-size:13px" data-i18n="📋 بنود مقاول الباطن وأسعاره المتفق عليها">📋 بنود مقاول الباطن وأسعاره المتفق عليها</div>
@@ -1153,7 +1158,7 @@
     <div id="sub-items-list" style="margin-top:8px"></div>
     <div class="divider"></div>
     <div style="display:flex;gap:8px">
-      <button class="btn btn-green" onclick="saveSub()" data-i18n="💾 حفظ مقاول الباطن">💾 حفظ مقاول الباطن</button>
+      <button class="btn btn-green" id="sub-save-btn" onclick="saveSub()" data-i18n="💾 حفظ مقاول الباطن">💾 حفظ مقاول الباطن</button>
       <button class="btn btn-ghost" onclick="closeModal('sub-edit-modal')" data-i18n="إلغاء">إلغاء</button>
     </div>
   </div>
@@ -5902,18 +5907,30 @@ function renderSubs(){
   $('sub-add-btn').style.display = canManage ? '' : 'none';
   const cards = (proj().subcontractors||[]).map(s => {
     const d = subDueSummary(s.id);
+    const approved = subApproved(s);
+    const stBadge = s.status==='pending'
+      ? '<span class="pill" style="background:#3a2a07;color:#ffd27a;border:1px solid #7a5712;font-size:10px">⏳ ' + T('بانتظار اعتماد الإدارة') + '</span>'
+      : (s.status==='approved' ? '<span class="pill" style="background:#0c3324;color:#7ff0bb;border:1px solid #1c6b47;font-size:10px">✅ ' + T('معتمد') + (s.approvedBy?(' · '+esc(s.approvedBy)):'') + '</span>' : '');
+    const contractLink = (s.contractDocs||[]).length
+      ? '<a href="' + esc(s.contractDocs[0].url) + '" target="_blank" style="color:var(--blue)">📄 ' + T('عقد المقاول') + ((s.contractDocs.length>1)?(' ×'+s.contractDocs.length):'') + ' ↗</a>'
+      : (s.status==='pending' ? '<span style="color:var(--red)">⚠ ' + T('لا عقد مرفق') + '</span>' : '<span style="color:var(--text3)">—</span>');
     return '<div class="card" style="cursor:default">' +
       '<div class="sc-header"><div class="sc-icon" style="background:var(--blue-dim,rgba(88,166,255,0.15))">🧱</div>' +
-      '<div><div style="font-weight:700">' + esc(s.name) + '</div>' +
+      '<div><div style="font-weight:700">' + esc(s.name) + (stBadge?' ' + stBadge:'') + '</div>' +
       '<div style="font-size:11px;color:var(--text2)">' + (s.phone?esc(s.phone)+' · ':'') + (s.items||[]).length + ' ' + T('بند') + ' · ' + T('حجز') + ' ' + (s.retentionRate!=null?s.retentionRate:10) + '%</div></div></div>' +
       '<div style="display:flex;flex-direction:column;gap:4px;margin-top:8px;font-size:12px">' +
+      '<div class="sc-item"><span class="sc-item-name">📄 ' + T('العقد') + '</span><span style="font-size:11px">' + contractLink + '</span></div>' +
       '<div class="sc-item"><span class="sc-item-name">' + T('متاح للتعميد الآن') + '</span><span class="sc-item-val" style="color:var(--green-bright)">' + money(d.availValue) + '</span></div>' +
       '<div class="sc-item"><span class="sc-item-name">' + T('صافي مستخلصاته') + '</span><span class="sc-item-val">' + money(d.net) + '</span></div>' +
       '<div class="sc-item"><span class="sc-item-name">' + T('مدفوع') + '</span><span class="sc-item-val" style="color:var(--teal)">' + money(d.paid) + '</span></div>' +
       '<div class="sc-item"><span class="sc-item-name">' + T('متبقٍ للصرف') + '</span><span class="sc-item-val" style="color:var(--red)">' + money(d.remaining) + '</span></div>' +
       '</div>' +
+      (s.status==='pending' ? '<div class="alert warning" style="font-size:11px;margin-top:8px">⏳ ' + T('بانتظار اعتماد صاحب الشركة لعقد المقاول — لا يباشر عمله قبل الاعتماد.') + '</div>' : '') +
       '<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">' +
-      (canManage ? '<button class="mini-btn green" onclick="openSubDetail(' + s.id + ')">📂 ' + T('فتح الصفحة وبناء مستخلص') + '</button>' : '') +
+      (isManagerial() && s.status==='pending' ? '<button class="mini-btn green" onclick="approveSub(' + s.id + ')">✅ ' + T('اعتماد المقاول') + '</button>' : '') +
+      (canManage ? (approved
+        ? '<button class="mini-btn green" onclick="openSubDetail(' + s.id + ')">📂 ' + T('فتح الصفحة وبناء مستخلص') + '</button>'
+        : '<button class="mini-btn" disabled title="' + T('بانتظار اعتماد الإدارة للعقد') + '" style="opacity:.5;cursor:not-allowed">🔒 ' + T('بانتظار الاعتماد') + '</button>') : '') +
       (canManage ? '<button class="mini-btn" onclick="openSubEdit(' + s.id + ')">✏️ ' + T('تعديل') + '</button>' : '') +
       (isManagerial() ? '<button class="mini-btn red" onclick="deleteSub(' + s.id + ')">🗑</button>' : '') +
       '</div></div>';
@@ -5960,19 +5977,50 @@ function renderSubMusTable(){
 }
 
 // ---- إضافة/تعديل مقاول باطن ----
-let editingSubId = null, subDraftItems = [];
+let editingSubId = null, subDraftItems = [], subContractPending = [], subContractExisting = [];
+// القديم بلا حالة = معتمد (توافق رجعي، لا يتغيّر وضع المقاولين الحاليين)
+const subApproved = s => !s || s.status !== 'pending';
+async function subContractPicked(input){
+  const files = [...(input.files||[])].slice(0, 15 - subContractPending.length - subContractExisting.length);
+  for (const f of files) {
+    try {
+      if (f.type === 'application/pdf') { if (f.size > 50*1024*1024) { alert(f.name+': '+T('أكبر من 50MB')); continue; } subContractPending.push({dataUrl: await readFileAsDataURL(f), name:f.name}); }
+      else if (f.type.startsWith('image/')) subContractPending.push({dataUrl: await compressImage(f), name:f.name});
+      else alert(f.name+': '+T('صيغة غير مدعومة'));
+    } catch(e){ alert(e.message); }
+  }
+  input.value = '';
+  renderSubContract();
+}
+function renderSubContract(){
+  const ex = subContractExisting.map((d,i)=>'<div class="sc-item" style="padding:3px 0"><span class="sc-item-name" style="font-size:11px"><a href="'+esc(d.url)+'" target="_blank" style="color:var(--blue)">'+(String(d.url).endsWith('.pdf')?'📄':'🖼')+' '+esc(d.name||T('ملف'))+' ↗</a></span><button class="mini-btn red" onclick="subContractExisting.splice('+i+',1);renderSubContract()">✕</button></div>').join('');
+  const pd = subContractPending.map((f,i)=>'<div class="sc-item" style="padding:3px 0"><span class="sc-item-name" style="font-size:11px">'+(f.name.toLowerCase().endsWith('.pdf')?'📄':'🖼')+' '+esc(f.name)+'</span><button class="mini-btn red" onclick="subContractPending.splice('+i+',1);renderSubContract()">✕</button></div>').join('');
+  $('sub-contract-list').innerHTML = ex + pd;
+}
 function openSubEdit(id){
   const s = id ? getSub(id) : null;
   editingSubId = id;
   subDraftItems = s ? JSON.parse(JSON.stringify(s.items||[])) : [];
+  subContractExisting = s ? JSON.parse(JSON.stringify(s.contractDocs||[])) : [];
+  subContractPending = [];
   $('sub-edit-title').textContent = s ? T('تعديل مقاول باطن') : T('إضافة مقاول باطن');
   $('sub-name').value = s ? s.name : '';
   $('sub-phone').value = s ? (s.phone||'') : '';
   $('sub-ret').value = s ? (s.retentionRate!=null?s.retentionRate:10) : 10;
   $('sub-note').value = s ? (s.note||'') : '';
   $('sub-item-id').value = ''; $('sub-item-search').value = ''; $('sub-item-rate').value = '';
-  renderSubDraftItems();
+  renderSubDraftItems(); renderSubContract();
+  // مدير المشروع/الموظف: الحفظ يرسل للإدارة لاعتماد العقد
+  $('sub-save-btn').textContent = isManagerial() ? T('💾 حفظ مقاول الباطن') : T('💾 حفظ وإرسال للإدارة');
   $('sub-edit-modal').classList.add('open');
+}
+function approveSub(id){
+  if (!isManagerial()) { alert(T('اعتماد مقاول الباطن صلاحية صاحب الشركة أو الأدمن')); return; }
+  const s = getSub(id); if (!s) return;
+  if (!(s.contractDocs||[]).length) { if (!confirm(T('لا عقد مرفق لهذا المقاول — اعتماد بدون عقد؟'))) return; }
+  if (!confirm(T('اعتماد مقاول الباطن «') + s.name + T('» بعد الاطّلاع على عقده؟ سيتمكن من مباشرة عمله.'))) return;
+  s.status = 'approved'; s.approvedBy = currentUser().name; s.approvedAt = todayStr();
+  save(); renderAll();
 }
 function renderSubDraftItems(){
   $('sub-items-list').innerHTML = subDraftItems.length ? subDraftItems.map((r,i) => {
@@ -5998,13 +6046,36 @@ function subAddItemRate(){
   $('sub-item-id').value = ''; $('sub-item-search').value = ''; $('sub-item-rate').value = '';
   renderSubDraftItems();
 }
-function saveSub(){
+async function saveSub(){
   const name = $('sub-name').value.trim();
   if (!name) { alert(T('اكتب اسم مقاول الباطن')); return; }
-  const data = { name, phone:$('sub-phone').value.trim(), retentionRate:clamp($('sub-ret').value,0,100), note:$('sub-note').value.trim(), items:subDraftItems };
-  if (editingSubId) { Object.assign(getSub(editingSubId), data); }
-  else { proj().subcontractors.push(Object.assign({id: nextSeq()}, data)); }
+  // مدير المشروع: ارفاق العقد إلزامي لمقاول جديد قبل الإرسال للإدارة
+  const contractCount = subContractExisting.length + subContractPending.length;
+  if (!isManagerial() && !editingSubId && contractCount === 0) { alert(T('ارفق عقد مقاول الباطن قبل الإرسال للإدارة لاعتماده')); return; }
+  // ارفع ملفات العقد الجديدة
+  let contractDocs = subContractExisting.slice();
+  if (subContractPending.length) {
+    if (offlineMode) { alert(T('📴 لا يمكن رفع العقد بدون اتصال')); return; }
+    try { for (const f of subContractPending) { const r = await API.req('POST', '/api/projects/' + proj().id + '/photos', {dataUrl:f.dataUrl}); contractDocs.push({url:r.url, name:f.name}); } }
+    catch(e){ alert(T('تعذر رفع العقد:') + ' ' + e.message); return; }
+  }
+  const data = { name, phone:$('sub-phone').value.trim(), retentionRate:clamp($('sub-ret').value,0,100), note:$('sub-note').value.trim(), items:subDraftItems, contractDocs };
+  if (editingSubId) {
+    const s = getSub(editingSubId);
+    Object.assign(s, data);
+    if (s.status === undefined) s.status = 'approved'; // توافق رجعي للمقاولين القدامى
+  } else {
+    // مقاول جديد: الإدارة تنشئه معتمداً مباشرة، وغيرها (مدير المشروع) يرسله للإدارة بانتظار الاعتماد
+    const approvedNow = isManagerial();
+    proj().subcontractors.push(Object.assign({id: nextSeq()}, data, {
+      status: approvedNow ? 'approved' : 'pending',
+      submittedBy: currentUser().name, submittedAt: todayStr(),
+      approvedBy: approvedNow ? currentUser().name : '', approvedAt: approvedNow ? todayStr() : ''
+    }));
+  }
+  const wasNewByPm = !editingSubId && !isManagerial();
   closeModal('sub-edit-modal'); save(); renderAll();
+  if (wasNewByPm) setTimeout(()=>alert(T('✅ تم حفظ المقاول وإرساله للإدارة لاعتماد عقده. يبدأ عمله بعد اعتماد صاحب الشركة.')), 200);
 }
 function deleteSub(id){
   if (!isManagerial()) { alert(T('حذف مقاول الباطن صلاحية العميل أو الأدمن')); return; }
@@ -6072,6 +6143,8 @@ function subItemBlur(){ setTimeout(()=>{ $('sub-item-list').style.display = 'non
 let sdSubId = null, sdSel = {}, sdPendingFiles = [], sdSubCharge = null;
 function openSubDetail(id){
   const s = getSub(id); if (!s) return;
+  // لا يباشر المقاول عمله (بناء المستخلص) قبل اعتماد صاحب الشركة لعقده
+  if (!subApproved(s)) { alert(T('⛔ مقاول الباطن بانتظار اعتماد صاحب الشركة لعقده — لا يمكن بناء المستخلص قبل الاعتماد.')); return; }
   sdSubId = id; sdSel = {}; sdPendingFiles = [];
   $('sub-detail-title').textContent = '📂 ' + s.name + ' — ' + T('تعميد الكميات وبناء المستخلص');
   $('sd-ret').value = s.retentionRate!=null?s.retentionRate:10;

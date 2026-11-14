@@ -32,8 +32,8 @@ npm install                               # no new dependencies, safe to run
 |---|---|
 | `expenses/index.js` | **New module** — Project Costs / Expenses + profitability + approval/payment + expense documents |
 | `public/expenses.html` | **New page** — expenses UI (entry, approve/pay, charge-to, proof, 3 document slots) |
-| `public/index.html` | Expenses menu entry; sub-certificate payments (edit/delete, dates, print); decimal prices; Finance role in user management |
-| `server.js` | Owner-only guard for sub-certificate approve/pay; new `finance` role |
+| `public/index.html` | Expenses menu entry; sub-certificate payments (edit/delete, dates, print); decimal prices; Finance role in user management; subcontractor contract + approval |
+| `server.js` | Owner-only guard for sub-certificate approve/pay; new `finance` role; owner-only subcontractor approval |
 | `saas/index.js`, `saas/tap.js` | Tap recurring (merchant-initiated) hardening |
 | `public/saas/billing.html`, `public/saas/owner.html` | Gregorian (Miladi) dates |
 | `docs/…` | Handover docs + a demo video |
@@ -90,7 +90,11 @@ A new **Finance (الماليّة)** role with its own username/password. A fina
 Once an expense is **approved**, the project manager can no longer edit its data or delete it — they can only open it and upload documents (invoice / delivery note). Core-field changes from a non-approver are ignored server-side and the stored values kept; deletion of an approved expense is limited to the owner/admin. The PM's row shows a 📎 upload button (no delete), and the edit modal opens in documents-only mode (🔒 notice, core fields disabled).
 *Details: `docs/handover-lock-approved-expense.md`.*
 
-### 10. Tap recurring hardening
+### 10. Subcontractor contract + owner approval
+When the project manager adds a subcontractor, they **attach the contract** and click **"حفظ وإرسال للإدارة"**; the subcontractor becomes **pending**. The company owner reviews the contract and clicks **"✅ اعتماد المقاول"**. Only after approval can the subcontractor start work (the "build certificate" button is locked until then). Server-side, only the owner/admin can approve a subcontractor. Existing subcontractors have no status and are treated as approved (backward-safe).
+*Details: `docs/handover-subcontractor-approval.md`.*
+
+### 11. Tap recurring hardening
 Tap adapter hardened for real monthly recurring charges (payment agreement + merchant-initiated charges). Keys are entered by you; sim/test/live modes supported.
 
 ---
@@ -106,6 +110,7 @@ Tap adapter hardened for real monthly recurring charges (payment agreement + mer
 7. **Expense documents**: add an expense with only a **quotation** (no invoice) → it saves; edit it later to add the **invoice** and **delivery note** → they persist and the quotation is kept; the three links show in the table and the owner review dialog.
 8. **Finance role**: the owner creates a finance user (role الماليّة) in user management; that user logs in → lands on the expenses page → can open an **approved** expense and upload the **payment voucher (سند الدفع)** only; it cannot add/approve/edit expenses, and cannot pay a still-pending one.
 9. **Locked approved expense**: as the project manager, approve one of your expenses (as the owner), then as the PM open it → the core fields are disabled and there is no delete button, only document upload; sending an amount change is ignored, uploading an invoice/delivery note works.
+10. **Subcontractor approval**: as the PM, add a subcontractor with a contract → "حفظ وإرسال للإدارة" → it shows ⏳ pending and the build button is locked; as the owner, open subcontractors → "✅ اعتماد المقاول" → the build button unlocks. A PM cannot self-approve (server returns 403).
 
 ---
 

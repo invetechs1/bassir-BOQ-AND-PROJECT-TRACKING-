@@ -914,6 +914,16 @@ app.put('/api/projects/:id', auth, (req, res) => {
       // الدفعات (إضافة/تعديل/حذف أي دفعة): صاحب الشركة أو الأدمن فقط
       if (JSON.stringify(s ? (s.payments || []) : []) !== JSON.stringify(m.payments || []) && !isOwner) return deny('subcontractor_payment_owner_only', { id: m.id });
     }
+    // اعتماد عقد مقاول الباطن: صاحب الشركة (العميل) أو الأدمن فقط. مدير المشروع يرفع العقد ويرسله للإدارة.
+    // (المقاول القديم بلا حقل حالة يُعتبر معتمداً — توافق رجعي)
+    const storedSubs = new Map((stored.subcontractors || []).map(s => [s.id, s]));
+    for (const sc of (Array.isArray(data.subcontractors) ? data.subcontractors : [])) {
+      const old = storedSubs.get(sc.id);
+      const oldApproved = old ? (old.status === undefined || old.status === 'approved') : false;
+      const newApproved = (sc.status === undefined || sc.status === 'approved');
+      if (newApproved && !oldApproved && !isOwner) return deny('subcontractor_approval_owner_only', { id: sc.id });
+      if (old && (old.approvedBy || '') !== (sc.approvedBy || '') && !isOwner) return deny('subcontractor_approval_owner_only', { id: sc.id });
+    }
     const storedReqs = new Map((stored.editRequests || []).map(r => [r.id, r]));
     for (const r of (Array.isArray(data.editRequests) ? data.editRequests : [])) {
       const s = storedReqs.get(r.id);

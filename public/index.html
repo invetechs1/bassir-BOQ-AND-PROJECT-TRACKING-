@@ -904,6 +904,19 @@
   </div>
 </div>
 
+<!-- تعهّد مدير المشروع قبل رفع مستخلص مقاول الباطن للمراجعة -->
+<div class="modal-overlay" id="pledge-modal">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-title"><span data-i18n="📝 تعهّد مدير المشروع">📝 تعهّد مدير المشروع</span><span class="modal-close" onclick="closeModal('pledge-modal')">✕</span></div>
+    <div class="alert warning" style="font-size:14px;line-height:2;text-align:center;padding:18px 16px" data-i18n="أتعهّد بصفتي مدير المشروع بصحّة ما ورد في مستخلص مقاول الباطن.">أتعهّد بصفتي مدير المشروع بصحّة ما ورد في مستخلص مقاول الباطن.</div>
+    <div id="pledge-sub-info" style="font-size:12px;color:var(--text2);text-align:center;margin-bottom:6px"></div>
+    <div style="display:flex;gap:10px;margin-top:10px">
+      <button class="btn btn-green" id="pledge-yes" onclick="pledgeConfirm()" data-i18n="✅ نعم، أتعهّد">✅ نعم، أتعهّد</button>
+      <button class="btn btn-ghost" onclick="closeModal('pledge-modal')" data-i18n="إلغاء">إلغاء</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="project-modal">
   <div class="modal">
     <div class="modal-title"><span id="project-modal-title" data-i18n="إضافة مشروع">إضافة مشروع</span><span class="modal-close" onclick="closeModal('project-modal')">✕</span></div>
@@ -1302,6 +1315,11 @@
 let LANG = localStorage.getItem('azoom_lang') || 'ar';
 const I18N_EN = {};
 Object.assign(I18N_EN, {
+  '📝 تعهّد مدير المشروع':'📝 Project manager undertaking',
+  'أتعهّد بصفتي مدير المشروع بصحّة ما ورد في مستخلص مقاول الباطن.':'As the project manager, I attest to the accuracy of the data in this subcontractor claim.',
+  '✅ نعم، أتعهّد':'✅ Yes, I attest',
+  'تعهّد:':'Undertaking:',
+  '✅ تم رفع مستخلص مقاول الباطن للمراجعة من قبل الإدارة.':'✅ The subcontractor claim was submitted for management review.',
   'تغيير كلمة المرور':'Change password',
   '💲 قاعدة الأسعار':'💲 Price database',
   '🔗 ربط Bassir ERP':'🔗 Connect Bassir ERP',
@@ -6388,6 +6406,8 @@ async function sdFilesPicked(input){
   input.value = '';
   $('sd-files-list').innerHTML = sdPendingFiles.map((f,i)=>'<div class="sc-item" style="padding:3px 0"><span class="sc-item-name" style="font-size:11px">' + (f.name.toLowerCase().endsWith('.pdf')?'📄':'🖼') + ' ' + esc(f.name) + '</span><button class="mini-btn red" onclick="sdPendingFiles.splice(' + i + ',1);sdFilesPicked({files:[]})">✕</button></div>').join('');
 }
+let pledgeAction = null;
+function pledgeConfirm(){ const a = pledgeAction; pledgeAction = null; closeModal('pledge-modal'); if (typeof a === 'function') a(); }
 async function buildSubMus(){
   const c = subMusComputeDraft();
   if (!c.lines.length) { alert(T('عمّد كمية بند واحد على الأقل')); return; }
@@ -6397,7 +6417,19 @@ async function buildSubMus(){
     if (l.currQty > subAvailQty(sdSubId, l.itemId) + 0.01) { alert(T('⛔ كمية البند ') + l.itemId + T(' تتجاوز المتاح')); return; }
   }
   if (!sdPendingFiles.length) { alert(T('⛔ المرفقات إلزامية: أرفق المستخلص المعمول من قِبل الشركة واعتمادات الاستشاري قبل الرفع (تُحفظ في أرشيف المشروع).')); return; }
-  if (!confirm(T('بناء مستخلص مقاول الباطن بصافي ') + money(c.net) + T(' ورفعه للاعتماد؟'))) return;
+  // تعهّد مدير المشروع بصحّة المستخلص قبل إرساله للمراجعة من قبل الإدارة
+  const s0 = getSub(sdSubId);
+  $('pledge-sub-info').textContent = (s0?s0.name:'') + ' — ' + T('صافي') + ' ' + money(c.net);
+  pledgeAction = doBuildSubMus;
+  $('pledge-modal').classList.add('open');
+}
+async function doBuildSubMus(){
+  const c = subMusComputeDraft();
+  if (!c.lines.length) { alert(T('عمّد كمية بند واحد على الأقل')); return; }
+  for (const l of c.lines) {
+    if (l.currQty > subAvailQty(sdSubId, l.itemId) + 0.01) { alert(T('⛔ كمية البند ') + l.itemId + T(' تتجاوز المتاح')); return; }
+  }
+  if (!sdPendingFiles.length) { alert(T('⛔ المرفقات إلزامية قبل الرفع.')); return; }
   let docs = [];
   if (sdPendingFiles.length) {
     try { for (const f of sdPendingFiles) { const r = await API.req('POST', '/api/projects/' + proj().id + '/photos', {dataUrl:f.dataUrl}); docs.push({url:r.url, name:f.name}); } }
@@ -6408,7 +6440,9 @@ async function buildSubMus(){
   proj().subMustakhlasat.push({
     id: nextSeq(), no, subId: sdSubId, date: $('sd-date').value || todayStr(), status:'submitted',
     lines:c.lines, gross:c.gross, retRate:c.retRate, retention:c.retention, ded:c.ded, dedTotal:c.dedTotal,
-    prevPaid:c.prevPaid, net:c.net, docs, payments:[], by: currentUser().name, createdAt: new Date().toISOString()
+    prevPaid:c.prevPaid, net:c.net, docs, payments:[], by: currentUser().name,
+    pledge: T('أتعهّد بصفتي مدير المشروع بصحّة ما ورد في مستخلص مقاول الباطن.'), pledgedBy: currentUser().name, pledgedAt: todayStr(),
+    createdAt: new Date().toISOString()
   });
   // تسوية المصاريف المحمّلة على هذا المقاول (تُعلَّم مُسوّاة حتى لا تُخصم مرة أخرى) — مستقلة عن حفظ المشروع
   if (sdSubCharge && sdSubCharge.total > 0) {
@@ -6417,7 +6451,7 @@ async function buildSubMus(){
   }
   sdSubCharge = null;
   closeModal('sub-detail-modal'); save(); renderAll(); switchSubView('mus');
-  setTimeout(()=>alert(T('✅ تم رفع مستخلص مقاول الباطن للاعتماد.')), 200);
+  setTimeout(()=>alert(T('✅ تم رفع مستخلص مقاول الباطن للمراجعة من قبل الإدارة.')), 200);
 }
 
 // ---- عرض/اعتماد/صرف مستخلص مقاول الباطن ----
@@ -6444,6 +6478,7 @@ function subMusDocHtml(m){
       : '<div style="color:var(--text3);font-size:12px;margin-top:4px">' + T('لم تُصرف دفعات بعد — كامل الصافي متبقٍ:') + ' ' + fmtN(remaining) + '</div>') +
     '</div>';
   const docsHtml = (m.docs||[]).length ? '<div style="margin-top:10px"><strong>' + T('المرفقات والتسوية:') + '</strong><br>' + m.docs.map(d=>'<a href="' + esc(d.url) + '" target="_blank" style="color:var(--blue);font-size:12px">' + (String(d.url).endsWith('.pdf')?'📄':'🖼') + ' ' + esc(d.name||T('ملف')) + ' ↗</a>').join('<br>') + '</div>' : '<div style="margin-top:10px;color:var(--red);font-size:12px">⚠ ' + T('لا مرفقات') + '</div>';
+  const pledgeHtml = m.pledgedBy ? '<div style="margin-top:12px;border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:11.5px;color:var(--text2);background:var(--bg2)">📝 <strong>' + T('تعهّد:') + '</strong> ' + T('أتعهّد بصفتي مدير المشروع بصحّة ما ورد في مستخلص مقاول الباطن.') + ' — ' + esc(m.pledgedBy) + (m.pledgedAt?(' · ' + esc(m.pledgedAt)):'') + '</div>' : '';
   return '<div style="font-family:var(--font)"><div style="font-size:14px;font-weight:700;margin-bottom:4px">' + T('مستخلص مقاول باطن') + ' ' + esc(m.no) + '</div>' +
     '<div style="font-size:12px;color:var(--text2);margin-bottom:10px">' + T('المقاول:') + ' ' + esc(sub?sub.name:'—') + ' · ' + T('التاريخ:') + ' ' + esc(m.date) + ' · ' + T('أعدّه:') + ' ' + esc(m.by||'—') + '</div>' +
     '<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:var(--bg2)"><th style="text-align:right;padding:5px">' + T('البند') + '</th><th>' + T('الوحدة') + '</th><th>' + T('السعر') + '</th><th>' + T('الكمية') + '</th><th>' + T('القيمة') + '</th></tr></thead><tbody>' + rows + '</tbody></table>' +
@@ -6452,7 +6487,7 @@ function subMusDocHtml(m){
     dedRows.map(d=>'<tr><td style="text-align:right;padding:4px;color:var(--red)">− ' + esc(d[0]) + '</td><td style="text-align:left;font-family:var(--mono);color:var(--red)">' + fmtN(d[1]) + '</td></tr>').join('') +
     '<tr style="background:var(--green-dim)"><td style="text-align:right;padding:6px"><strong style="color:var(--green-bright)">' + T('صافي المستحق') + '</strong></td><td style="text-align:left;font-family:var(--mono);font-weight:700;color:var(--green-bright)">' + fmtN(m.net) + '</td></tr>' +
     (m.prevPaid?'<tr><td style="text-align:right;padding:4px;font-size:11px;color:var(--text3)">' + T('سبق صرفه تراكمياً') + '</td><td style="text-align:left;font-family:var(--mono);font-size:11px;color:var(--text3)">' + fmtN(m.prevPaid) + '</td></tr>':'') +
-    '</table>' + paysHtml + docsHtml + '</div>';
+    '</table>' + paysHtml + pledgeHtml + docsHtml + '</div>';
 }
 function viewSubMus(id){ const m = (proj().subMustakhlasat||[]).find(x=>x.id===id); if (m) showPrintable(T('مستخلص مقاول باطن') + ' ' + m.no, subMusDocHtml(m)); }
 function approveSubMus(id){

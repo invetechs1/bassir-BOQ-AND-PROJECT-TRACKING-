@@ -94,7 +94,11 @@ Once an expense is **approved**, the project manager can no longer edit its data
 When the project manager adds a subcontractor, they **attach the contract** and click **"حفظ وإرسال للإدارة"**; the subcontractor becomes **pending**. The company owner reviews the contract and clicks **"✅ اعتماد المقاول"**. Only after approval can the subcontractor start work (the "build certificate" button is locked until then). Server-side, only the owner/admin can approve a subcontractor. Existing subcontractors have no status and are treated as approved (backward-safe).
 *Details: `docs/handover-subcontractor-approval.md`.*
 
-### 11. Tap recurring hardening
+### 11. Project-manager pledge on a subcontractor claim
+When the project manager submits a subcontractor claim, a pledge dialog appears — **"أتعهّد بصفتي مدير المشروع بصحّة ما ورد في مستخلص مقاول الباطن."** On **"✅ نعم، أتعهّد"** the claim goes to the subcontractor-claims page for management review, and the pledge (text, author, date) is recorded on the claim and printed on the certificate.
+*Details: `docs/handover-sub-claim-pledge.md`.*
+
+### 12. Tap recurring hardening
 Tap adapter hardened for real monthly recurring charges (payment agreement + merchant-initiated charges). Keys are entered by you; sim/test/live modes supported.
 
 ---

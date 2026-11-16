@@ -103,6 +103,7 @@
   <span class="modal-x" onclick="closeExpModal()">✕</span>
   <h2 id="exp-modal-title" data-i18n="مصروف جديد">مصروف جديد</h2>
   <div id="exp-err" class="note note-err hide" role="alert"></div>
+  <div id="e-lock-note" class="note note-info hide" style="font-size:12.5px">🔒 <span data-i18n="هذا المصروف معتمد — لا يمكن تعديل بياناته أو حذفه. يمكنك فقط رفع المستندات (الفاتورة / كشف الاستلام).">هذا المصروف معتمد — لا يمكن تعديل بياناته أو حذفه. يمكنك فقط رفع المستندات (الفاتورة / كشف الاستلام).</span></div>
   <input type="hidden" id="e-id">
   <div class="row">
     <div class="field" style="flex:1"><label for="e-type" data-i18n="النوع *">النوع *</label><select id="e-type" onchange="onTypeChange()">
@@ -238,7 +239,12 @@
 
 <script src="/saas/shared.js"></script>
 <script>
-var PROJECTS=[], CUR=null, EXP=null, QUOTE_DOCS=[], INVOICE_DOCS=[], DELIVERY_DOCS=[];
+var PROJECTS=[], CUR=null, EXP=null, QUOTE_DOCS=[], INVOICE_DOCS=[], DELIVERY_DOCS=[], EDIT_DOCS_ONLY=false;
+function setFormDocsOnly(on){
+  EDIT_DOCS_ONLY=on;
+  ['e-type','e-date','e-month','e-desc','e-amount','e-vat','e-supplier','e-inv-no','e-inv-date','e-headcount','e-category','e-boq','e-bearer','e-subid','e-sync'].forEach(function(id){var el=document.getElementById(id);if(el)el.disabled=on;});
+  document.getElementById('e-lock-note').classList[on?'remove':'add']('hide');
+}
 Object.assign(I18N_EN, {
   'مصاريف المشروع':'Project Expenses', '→ النظام':'→ System', 'خروج':'Log out', 'تسجيل الدخول':'Log in',
   'مصاريف المشروع — نظام زمام':'Project Expenses — ZIMAM',
@@ -269,6 +275,9 @@ Object.assign(I18N_EN, {
   'المستندات':'Documents', 'مستندات المصروف':'Expense documents', 'فتح':'Open',
   '📎 مستندات المصروف':'📎 Expense documents', '📋 عرض السعر':'📋 Quotation', '🧾 فاتورة المصروف':'🧾 Invoice',
   '(تُرفع بعد التحويل)':'(uploaded after the transfer)', '📦 كشف الاستلام':'📦 Delivery note', 'المستندات:':'Documents:',
+  '💾 حفظ المستندات':'💾 Save documents', 'رفع مستندات المصروف':'Upload expense documents',
+  'رفع المستندات (معتمد — لا تعديل)':'Upload documents (approved — no editing)',
+  'هذا المصروف معتمد — لا يمكن تعديل بياناته أو حذفه. يمكنك فقط رفع المستندات (الفاتورة / كشف الاستلام).':'This expense is approved — its data cannot be edited or deleted. You can only upload documents (invoice / delivery note).',
   'الحالة':'Status', 'اعتماد':'Approve', 'رفض':'Reject',
   'اعتماد المصروف':'Approve expense', 'اعتماد كامل المبلغ':'Approve full amount', 'اعتماد جزئي':'Partial approval',
   'أدخل مبلغاً أقل من قيمة المصروف':'Enter an amount less than the expense value',
@@ -375,6 +384,8 @@ function renderKpis(){
   }).join('') + (p.chargedToSubs ? '<div class="panel" style="padding:12px;text-align:center;grid-column:1/-1" title="'+T('مصاريف محمّلة على مقاولي الباطن — مُستبعدة من تكلفة المشروع وتُخصم تلقائياً من مستخلصاتهم')+'"><div class="muted" style="font-size:12px">🧱 '+T('محمّل على مقاولي الباطن (مُستبعد من التكلفة)')+'</div><div class="k-val" style="font-size:19px;color:var(--text3)">'+money(p.chargedToSubs)+'</div></div>' : '');
 }
 function typeLabel(t){ return {material:T('مواد'),salary:T('رواتب'),other:T('نثريات')}[t]||t; }
+// بعد اعتماد المصروف، من لا يملك صلاحية الاعتماد (مدير المشروع) يفتحه لرفع المستندات فقط — لا تعديل ولا حذف
+function lockedForMe(x){ return (x.status==='approved'||x.status==='partially_approved') && EXP && !EXP.canApprove; }
 function truncateWords(s, maxWords){
   var str = String(s||'').trim();
   if (!str) return '';
@@ -404,9 +415,9 @@ function renderList(){
       '<td>'+statusChip(x)+paymentLine(x)+'</td>'+
       '<td style="white-space:normal;line-height:2">'+
         (EXP.canApprove?('<button class="btn btn-ghost btn-icon" onclick="openApproveModal(\''+x.id+'\')" title="'+T('اعتماد')+'">✅</button> <button class="btn btn-ghost btn-icon" onclick="rejectExpense(\''+x.id+'\')" title="'+T('رفض')+'">❌</button> '):'')+
-        (EXP.canApprove && (x.status==='approved'||x.status==='partially_approved')?('<button class="btn btn-ghost btn-icon" onclick="openPayModal(\''+x.id+'\')" title="'+T('تسجيل الدفع')+'">💰</button> '):'')+
-        (EXP.canManage?('<button class="btn btn-ghost btn-icon" onclick="openExpModal(\''+x.id+'\')" title="'+T('تعديل')+'">✎</button> '):'')+
-        (EXP.canDelete?'<button class="btn btn-danger btn-icon" onclick="deleteExpense(\''+x.id+'\')" title="'+T('حذف')+'">🗑</button>':'')+'</td></tr>';
+        (EXP.canPay && (x.status==='approved'||x.status==='partially_approved')?('<button class="btn btn-ghost btn-icon" onclick="openPayModal(\''+x.id+'\')" title="'+T('تسجيل الدفع')+'">💰</button> '):'')+
+        (EXP.canManage?('<button class="btn btn-ghost btn-icon" onclick="openExpModal(\''+x.id+'\')" title="'+(lockedForMe(x)?T('رفع المستندات (معتمد — لا تعديل)'):T('تعديل'))+'">'+(lockedForMe(x)?'📎':'✎')+'</button> '):'')+
+        (EXP.canDelete && !lockedForMe(x)?'<button class="btn btn-danger btn-icon" onclick="deleteExpense(\''+x.id+'\')" title="'+T('حذف')+'">🗑</button>':'')+'</td></tr>';
   }).join('') || '<tr><td colspan="12"><div class="empty-state"><div class="icon">🧾</div>'+T('لا مصاريف مسجّلة بعد')+'</div></td></tr>';
 }
 function subNameById(id){
@@ -548,7 +559,14 @@ function openExpModal(id){
       note.textContent='🔒 '+T('سُوّي هذا المصروف ضمن مستخلص مقاول الباطن')+' '+x.settledMusNo+' — '+T('لا يمكن تغيير التحميل على مقاول باطن بعد التسوية.');
       note.classList.remove('hide');
     }
+    // بعد الاعتماد: مدير المشروع (ومن لا يملك صلاحية الاعتماد) يفتحه لرفع المستندات فقط
+    var locked=(x.status==='approved'||x.status==='partially_approved');
+    setFormDocsOnly(!!(locked && EXP && !EXP.canApprove && EXP.canManage));
+    document.getElementById('exp-modal-title').textContent = EDIT_DOCS_ONLY ? T('رفع مستندات المصروف') : T('تعديل مصروف');
+    document.getElementById('e-save').textContent = EDIT_DOCS_ONLY ? T('💾 حفظ المستندات') : T('حفظ المصروف');
   } else {
+    setFormDocsOnly(false);
+    document.getElementById('e-save').textContent=T('حفظ المصروف');
     document.getElementById('exp-modal-title').textContent=T('مصروف جديد');
     document.getElementById('e-id').value='';
     document.getElementById('e-type').value='material';
@@ -559,8 +577,8 @@ function openExpModal(id){
     document.getElementById('e-sync').checked=false;
     document.getElementById('e-bearer').value='own';
   }
-  document.getElementById('e-bearer').disabled=settled;
-  document.getElementById('e-subid').disabled=settled;
+  document.getElementById('e-bearer').disabled=settled||EDIT_DOCS_ONLY;
+  document.getElementById('e-subid').disabled=settled||EDIT_DOCS_ONLY;
   onTypeChange();
   onBearerChange();
   updateTotalPreview();
@@ -633,7 +651,7 @@ function saveExpense(){
   var btn=document.getElementById('e-save'); btn.disabled=true; btn.innerHTML='<span class="spin"></span> '+T('جارٍ…');
   var req = id ? api('PUT','/api/projects/'+CUR.id+'/expenses/'+id,body) : api('POST','/api/projects/'+CUR.id+'/expenses',body);
   req.then(function(r){
-    btn.disabled=false; btn.textContent=T('حفظ المصروف');
+    btn.disabled=false; btn.textContent = EDIT_DOCS_ONLY ? T('💾 حفظ المستندات') : T('حفظ المصروف');
     if(!r.ok) return showExpErr((r.d&&r.d.error)||T('تعذّر الحفظ'));
     closeExpModal(); toast('✅ '+T('تم الحفظ')); loadExpenses();
   });

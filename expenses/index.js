@@ -40,9 +40,12 @@ module.exports = function initExpenses(ctx) {
   // الحذف مستثنى عمداً من هذا الفحص (انظر أسفل) — أي مستخدم يملك صلاحية الوصول لهذا المشروع يمكنه الحذف،
   // بصرف النظر عن دوره، لأن هذه وحدة تتبّع تكاليف وليست دفتر محاسبة (انظر التعليق أعلى الملف).
   const canManage = user => isAdmin(user) || ['client', 'pmo', 'pm'].includes(user.role);
-  // من يعتمد/يرفض/يدفع المصروف؟ أدمن النظام والعميل (مالك الشركة) فقط — وليس مدير المشاريع (pmo)
-  // ولا مدير المشروع (pm). مدير المشروع يُدخل المصروف فقط؛ المالك يعتمده ويسجّل دفعه.
+  // من يعتمد/يرفض المصروف؟ أدمن النظام والعميل (مالك الشركة) فقط — وليس مدير المشاريع (pmo) ولا
+  // مدير المشروع (pm) ولا الماليّة (finance). مدير المشروع يُدخل المصروف فقط؛ المالك يعتمده.
   const canApprove = user => isAdmin(user) || user.role === 'client';
+  // من يسجّل الدفع ويرفع سند الدفع/كشف التحويل؟ المالك أو الأدمن أو موظف الماليّة (finance) —
+  // موظف الماليّة يرفع سند الدفع فقط على مصروف معتمد سلفاً؛ لا يُدخل مصروفاً ولا يعتمد.
+  const canPay = user => isAdmin(user) || ['client', 'finance'].includes(user.role);
   // المساهمة الفعلية للمصروف في إجمالي التكلفة/الربحية بعد الاعتماد:
   // مرفوض = صفر، معتمد جزئياً = المبلغ المعتمد فقط، معتمد كامل أو لم يُراجَع بعد = كامل المبلغ
   // (عدم تغيير سلوك المصاريف القديمة التي لا تحمل حالة اعتماد أصلاً — توافق خلفي).
@@ -189,8 +192,10 @@ module.exports = function initExpenses(ctx) {
       subs: (project.subcontractors || []).map(s => ({ id: s.id, name: s.name })),
       subCharges: outstandingSubCharges(store.items || []),
       canManage: canManage(req.user),
-      canDelete: true, // أي دور يملك صلاحية الوصول لهذا المشروع يمكنه الحذف (انظر تعليق DELETE أدناه)
+      canDelete: req.user.role !== 'finance', // أي دور عدا الماليّة (انظر تعليق DELETE أدناه)
       canApprove: canApprove(req.user),
+      canPay: canPay(req.user),
+      role: req.user.role,
       integrationEnabled: !!companyIntegration(project.companyId).enabled
     });
   });
@@ -260,7 +265,16 @@ module.exports = function initExpenses(ctx) {
         return res.status(400).json({ error: 'هذا المصروف سُوّي ضمن مستخلص مقاول الباطن ' + exp.settledMusNo + ' — لا يمكن تغيير التحميل بعد التسوية' });
       }
     }
-    Object.assign(exp, buildExpenseFields(req.body || {}), { updatedAt: now() });
+    const fields = buildExpenseFields(req.body || {});
+    // بعد اعتماد المصروف (كلياً أو جزئياً): مدير المشروع (غير المعتمِد) لا يُعدّل بياناته الأساسية بعد الآن —
+    // يفتحه لرفع المستندات (الفاتورة/كشف الاستلام) فقط. تُثبَّت كل الحقول الأساسية من السجل المخزّن،
+    // وتبقى مستندات الحقول الثلاثة قابلة للتحديث دوماً مهما كانت الحالة.
+    const locked = ['approved', 'partially_approved'].includes(exp.status) && !canApprove(req.user);
+    if (locked) {
+      ['type', 'date', 'description', 'supplier', 'amount', 'vatRate', 'vat', 'total', 'taxInvoiceNo', 'taxInvoiceDate',
+       'category', 'boqItemId', 'month', 'headcount', 'bearer', 'subId'].forEach(k => { fields[k] = exp[k]; });
+    }
+    Object.assign(exp, fields, { updatedAt: now() });
     // توافق مع الاعتماد القائم: إن قلّ المبلغ المعدَّل عن اعتماد سابق (كامل أو جزئي)، نقصّ المعتمد ليطابق
     // الواقع الجديد، ونُنزل الاعتماد الكامل إلى جزئي تلقائياً بدل ترك حالة غير متسقة (معتمد > المبلغ الفعلي).
     if ((exp.approvedAmount || 0) > exp.amount) exp.approvedAmount = exp.amount;
@@ -272,9 +286,11 @@ module.exports = function initExpenses(ctx) {
     res.json({ ok: true, item: exp });
   });
 
-  // ---------- DELETE: حذف مصروف — متاح لأي مستخدم يملك صلاحية الوصول للمشروع (كل الأدوار) ----------
+  // ---------- DELETE: حذف مصروف — متاح لكل الأدوار المُدارة (عدا الماليّة)، إلا بعد الاعتماد فللمعتمِد فقط ----------
   app.delete('/api/projects/:id/expenses/:expId', auth, (req, res) => {
     const project = loadProjectOr404(req, res); if (!project) return;
+    // الماليّة تصل للمشروع لرفع سند الدفع فقط (انظر canAccessProject في server.js) — لا تملك حذفاً
+    if (req.user.role === 'finance') return res.status(403).json({ error: 'حذف المصاريف ليس من صلاحية الماليّة' });
     const store = loadExpenses(project.id);
     const existing = (store.items || []).find(x => x.id === req.params.expId);
     // مُسوّاة بالفعل ضمن مستخلص مقاول باطن مرفوع — حذفها يفقد الأثر المحاسبي لذلك المستخلص
@@ -284,6 +300,10 @@ module.exports = function initExpenses(ctx) {
     // دُفع بالفعل (كشف تحويل مرفوع) — حذفها يفقد أثر دفعة حقيقية فعلاً
     if (existing && existing.paidAmount > 0) {
       return res.status(400).json({ error: 'هذا المصروف سُجِّل دفعه بالفعل — لا يمكن حذفه' });
+    }
+    // بعد الاعتماد: لا يحذفه إلا المعتمِد (المالك/الأدمن) — مدير المشروع يفتحه لرفع المستندات فقط
+    if (existing && ['approved', 'partially_approved'].includes(existing.status) && !canApprove(req.user)) {
+      return res.status(403).json({ error: 'لا يمكن حذف مصروف معتمد — راجع صاحب الشركة' });
     }
     const before = (store.items || []).length;
     store.items = (store.items || []).filter(x => x.id !== req.params.expId);
@@ -332,7 +352,7 @@ module.exports = function initExpenses(ctx) {
   // لا يجوز الدفع قبل الاعتماد، ولا يتجاوز المدفوع المبلغ المعتمد — خطوة منفصلة تماماً عن الاعتماد نفسه.
   app.post('/api/projects/:id/expenses/:expId/pay', auth, (req, res) => {
     const project = loadProjectOr404(req, res); if (!project) return;
-    if (!canApprove(req.user)) return res.status(403).json({ error: 'تسجيل الدفع صلاحية العميل أو أدمن النظام' });
+    if (!canPay(req.user)) return res.status(403).json({ error: 'تسجيل الدفع صلاحية العميل أو الماليّة أو أدمن النظام' });
     const store = loadExpenses(project.id);
     const exp = (store.items || []).find(x => x.id === req.params.expId);
     if (!exp) return res.status(404).json({ error: 'المصروف غير موجود' });

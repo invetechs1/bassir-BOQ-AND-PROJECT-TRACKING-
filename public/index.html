@@ -1263,7 +1263,7 @@
 
     <div class="table-wrap">
       <table>
-        <thead><tr><th data-i18n="البند">البند</th><th data-i18n="الوحدة">الوحدة</th><th data-i18n="سعر المقاول">سعر المقاول</th><th data-i18n="نفّذه">نفّذه</th><th data-i18n="مؤهل (معتمد)">مؤهل (معتمد)</th><th data-i18n="سبق تعميده">سبق تعميده</th><th data-i18n="متاح للتعميد">متاح للتعميد</th><th data-i18n="تعميد الآن">تعميد الآن</th><th data-i18n="القيمة">القيمة</th></tr></thead>
+        <thead><tr><th data-i18n="البند">البند</th><th data-i18n="الوحدة">الوحدة</th><th data-i18n="سعر المقاول">سعر المقاول</th><th data-i18n="نفّذه">نفّذه</th><th data-i18n="مؤهل (معتمد)">مؤهل (معتمد)</th><th data-i18n="سبق تعميده">سبق تعميده</th><th data-i18n="متاح للتعميد">متاح للتعميد</th><th data-i18n="تعميد الآن (كمية هذا المستخلص فقط)">تعميد الآن (كمية هذا المستخلص فقط)</th><th data-i18n="أو: الإجمالي التراكمي الجديد">أو: الإجمالي التراكمي الجديد</th><th data-i18n="القيمة">القيمة</th></tr></thead>
         <tbody id="sub-detail-tbody"></tbody>
       </table>
     </div>
@@ -1611,6 +1611,9 @@ Object.assign(I18N_EN, {
   'نسبة الإنجاز التراكمية:':'Cumulative % complete:',
   'كمية العقد':'Contract qty', 'تراكمي معتمد':'Cum. approved', 'قيمة تراكمية':'Cum. value',
   'قيمة سابقة':'Previous value', 'هذا المستخلص':'This certificate',
+  'سقف الاستشاري (تراكمي)':'Consultant ceiling (cumulative)',
+  'الكمية المطالَب بها (تراكمياً)':'Claimed qty (cumulative)',
+  'سقف الاستشاري (تراكمي) = إجمالي ما اعتمده الاستشاري تنفيذاً لهذا البند حتى الآن (سقف أعلى، مستقل عن المطالبات). الكمية المطالَب بها (تراكمياً) = ما طالب به المقاول فعلياً عبر كل مستخلصاته حتى هذا المستخلص.':'Consultant ceiling (cumulative) = the total quantity the consultant has approved as executed for this item so far (an upper limit, independent of invoicing). Claimed qty (cumulative) = what the subcontractor has actually claimed across all their certificates up to and including this one.',
   'قيمة الأعمال هذا المستخلص':'Value of work this certificate',
   'المبلغ كتابة:':'Amount in words:',
   'الموقف المالي التراكمي':'Running financial position',
@@ -1630,6 +1633,9 @@ Object.assign(I18N_EN, {
   'سبق تعميده':'Previously certified',
   'متاح للتعميد':'Available to certify',
   'تعميد الآن':'Certify now',
+  'تعميد الآن (كمية هذا المستخلص فقط)':'Certify now (this claim\'s quantity only)',
+  'أو: الإجمالي التراكمي الجديد':'Or: new cumulative total',
+  'اكتب هنا الإجمالي التراكمي الجديد لهذا البند بدلاً من الفرق — سيُحتسب الفرق تلقائياً':'Type the new cumulative total for this item here instead of the difference — the difference will be calculated automatically',
   'الخصومات (يضعها مدير المشروع أو يصفّرها)':'Deductions (set or zeroed by the projects manager)',
   'حجز جودة أعمال %':'Quality retention %',
   'خصم مواد (ر.س)':'Materials deduction (SAR)',
@@ -6636,9 +6642,15 @@ function renderSubDetail(){
         (lockedNoApproval ? ' disabled data-tip="' + T('بانتظار اعتماد الاستشاري — لا يمكن التعميد قبل اعتماد الكمية (أدمن النظام أو العميل فقط يملكان استثناءً هنا)') + '"' : '') +
         (canOverride ? ' data-tip="' + T('استثناء: لم يُعتمد البند من الاستشاري بعد — يُسمح لك بالتعميد بحد أقصى الكمية المنفذة فعلياً') + '"' : '') +
         ' oninput="sdLiveWarn(\'' + esc(id) + '\', this.value, ' + maxQ + ')" onchange="sdSetQty(\'' + esc(id) + '\', this.value)" style="width:90px' + (canOverride ? ';border-color:var(--amber)' : '') + '"></td>' +
+      // حقل بديل: الإجمالي التراكمي الجديد (سبق تعميده + هذا المستخلص) — لمن يفكّر بالأرقام التراكمية بدل الفرق.
+      // عند التغيير يُحتسب الفرق تلقائياً (الإجمالي الجديد − سبق تعميده) ويُمرَّر لنفس sdSetQty ففيه كل ضوابط القصّ/التنبيه الحالية بلا تغيير.
+      '<td><input type="number" class="qty-input" id="sd-cum-' + esc(id) + '" min="' + claimed + '" max="' + round2(claimed + maxQ) + '" step="any" value="' + round2(claimed + (val!==''?(Number(val)||0):0)) + '" placeholder="0"' +
+        (lockedNoApproval ? ' disabled' : '') +
+        ' data-tip="' + T('اكتب هنا الإجمالي التراكمي الجديد لهذا البند بدلاً من الفرق — سيُحتسب الفرق تلقائياً') + '"' +
+        ' onchange="sdSetCumulative(\'' + esc(id) + '\', this.value)" style="width:90px;color:var(--text2)"></td>' +
       '<td class="amount" id="sd-val-' + esc(id) + '">' + fmtN(round2((Number(val)||0)*rate)) + '</td>' +
       '</tr>';
-  }).join('') || '<tr><td colspan="9"><div class="empty-state"><p>' + T('لا بنود لهذا المقاول — أضف بنوده وأسعاره من «تعديل»') + '</p></div></td></tr>';
+  }).join('') || '<tr><td colspan="10"><div class="empty-state"><p>' + T('لا بنود لهذا المقاول — أضف بنوده وأسعاره من «تعديل»') + '</p></div></td></tr>';
   renderSubMusTotals();
 }
 // تحذير فوري أثناء الكتابة (بلا إعادة رسم ولا alert) — لون الحقل + رسالة صغيرة تحت الحقل + تحديث عمود القيمة حياً.
@@ -6647,10 +6659,11 @@ function sdLiveWarn(id, val, avail){
   const s = getSub(sdSubId); if (!s) return;
   const rate = subRate(s, id);
   const q = Number(val) || 0;
-  const inputEl = $('sd-qty-' + id), valEl = $('sd-val-' + id);
+  const inputEl = $('sd-qty-' + id), valEl = $('sd-val-' + id), cumEl = $('sd-cum-' + id);
   // حدّ أحمر فوري فقط — لا رسالة نصية هنا؛ رسالة الخطأ الكاملة تظهر في alert عند الخروج من الحقل (sdSetQty) فقط
   if (inputEl) inputEl.style.borderColor = q > avail + 0.001 ? 'var(--red)' : '';
   if (valEl) valEl.textContent = fmtN(round2(q * rate)); // القيمة حسب ما هو مكتوب حالياً — القصّ الفعلي يحدث عند الخروج من الحقل (sdSetQty)
+  if (cumEl) cumEl.value = round2(subClaimedQty(sdSubId, id) + Math.max(0, q)); // تحديث حقل الإجمالي التراكمي البديل حيّاً أثناء الكتابة في الحقل الأساسي
 }
 function sdSetQty(id, val){
   const s = getSub(sdSubId); const avail = sdMaxFor(id);
@@ -6663,6 +6676,14 @@ function sdSetQty(id, val){
   }
   if (q <= 0) delete sdSel[id]; else sdSel[id] = q;
   renderSubDetail();
+}
+// حقل بديل: يستقبل الإجمالي التراكمي الجديد (سبق تعميده + هذا المستخلص) بدلاً من الفرق، ويحوّله للفرق
+// ثم يمرّره لـ sdSetQty — فتبقى كل ضوابط القصّ/التنبيه/التسجيل في مكان واحد بلا تكرار.
+function sdSetCumulative(id, val){
+  const claimed = subClaimedQty(sdSubId, id);
+  const total = Math.max(0, Math.round((Number(val)||0)*100)/100);
+  const delta = Math.max(0, round2(total - claimed));
+  sdSetQty(id, delta);
 }
 function recordSubAlert(subId, itemId, attempted, max){
   const s = getSub(subId);
@@ -6915,10 +6936,11 @@ function subMusDocHtml(m){
     '<td style="padding:5px;border:1px solid var(--border);text-align:center;font-family:var(--mono)">' + fmtRate(l.rate) + '</td>' +
     '<td style="padding:5px;border:1px solid var(--border);text-align:center;font-family:var(--mono);color:var(--text3)">' + fmtQ(l.contractQty||0) + '</td>' +
     '<td style="padding:5px;border:1px solid var(--border);text-align:center;font-family:var(--mono)">' + fmtQ(l.cumApprovedQty!=null?l.cumApprovedQty:l.cumQty) + '</td>' +
+    '<td style="padding:5px;border:1px solid var(--border);text-align:center;font-family:var(--mono);font-weight:700">' + fmtQ(l.cumQty) + '</td>' +
     '<td style="padding:5px;border:1px solid var(--border);text-align:center;font-family:var(--mono)">' + fmtN(l.cumValue!=null?l.cumValue:l.cumQty*l.rate) + '</td>' +
     '<td style="padding:5px;border:1px solid var(--border);text-align:center;font-family:var(--mono);color:var(--text3)">' + fmtN(l.prevValue!=null?l.prevValue:l.prevQty*l.rate) + '</td>' +
     '<td style="padding:5px;border:1px solid var(--border);text-align:center;font-family:var(--mono);font-weight:700;color:var(--green-bright)">' + fmtN(l.amount) + '</td></tr>').join('') +
-    (m.lines && m.lines.length > 1 ? '<tr style="background:var(--bg2);font-weight:700"><td colspan="5" style="padding:5px;border:1px solid var(--border)">' + T('الإجمالي') + '</td>' +
+    (m.lines && m.lines.length > 1 ? '<tr style="background:var(--bg2);font-weight:700"><td colspan="6" style="padding:5px;border:1px solid var(--border)">' + T('الإجمالي') + '</td>' +
       '<td style="padding:5px;border:1px solid var(--border);text-align:center;font-family:var(--mono)">' + fmtN(m.lines.reduce((s,l)=>s+(l.cumValue!=null?l.cumValue:l.cumQty*l.rate),0)) + '</td>' +
       '<td style="padding:5px;border:1px solid var(--border);text-align:center;font-family:var(--mono)">' + fmtN(m.lines.reduce((s,l)=>s+(l.prevValue!=null?l.prevValue:l.prevQty*l.rate),0)) + '</td>' +
       '<td style="padding:5px;border:1px solid var(--border);text-align:center;font-family:var(--mono);color:var(--green-bright)">' + fmtN(m.lines.reduce((s,l)=>s+l.amount,0)) + '</td></tr>' : '');
@@ -6970,9 +6992,10 @@ function subMusDocHtml(m){
         '<div><span style="color:var(--text2)">' + T('نسبة الإنجاز التراكمية:') + '</span> <strong>' + fmtN(contract.cumulativePercent) + '%</strong></div>' +
       '</div>' : '') +
     '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px">' +
-    '<thead><tr style="background:var(--bg3)">' + [T('البند'),T('الوحدة'),T('السعر'),T('كمية العقد'),T('تراكمي معتمد'),T('قيمة تراكمية'),T('قيمة سابقة'),T('هذا المستخلص')]
+    '<thead><tr style="background:var(--bg3)">' + [T('البند'),T('الوحدة'),T('السعر'),T('كمية العقد'),T('سقف الاستشاري (تراكمي)'),T('الكمية المطالَب بها (تراكمياً)'),T('قيمة تراكمية'),T('قيمة سابقة'),T('هذا المستخلص')]
       .map(h=>'<th style="padding:6px;border:1px solid var(--border);color:var(--amber);text-align:center">' + h + '</th>').join('') +
     '</tr></thead><tbody>' + rows + '</tbody></table></div>' +
+    '<div style="font-size:10px;color:var(--text3);margin:4px 0 10px">* ' + T('سقف الاستشاري (تراكمي) = إجمالي ما اعتمده الاستشاري تنفيذاً لهذا البند حتى الآن (سقف أعلى، مستقل عن المطالبات). الكمية المطالَب بها (تراكمياً) = ما طالب به المقاول فعلياً عبر كل مستخلصاته حتى هذا المستخلص.') + '</div>' +
     (additions.materialsOnSite || additions.extraWorks ?
       '<table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:10px">' +
       '<tr><td colspan="2" style="padding:5px;border:1px solid var(--border);font-weight:700">' + T('الإضافات') + '</td></tr>' +

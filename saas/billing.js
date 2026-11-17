@@ -27,8 +27,14 @@ module.exports = function createBilling(store) {
 
   const activeProjects = tenant => (tenant.projects || []).filter(p => p.status === 'active');
 
-  // المبلغ الشهري (صافي، قبل الضريبة) = مجموع أسعار المشاريع الفعّالة
+  // باقات (bundles): موديل جديد بسعر شهري ثابت يغطي حتى N مشروع وسعة مجمّعة — tenant.billing.plan
+  // لقطة محفوظة من الباقة وقت الاشتراك/الترقية (لا تتأثر بتغيير أسعار الباقات لاحقاً، كما في tierPrice).
+  function bundleOf(config, bundleId) { return (config.bundles || {})[bundleId] || null; }
+  const isBundleTenant = tenant => !!(tenant && tenant.billing && tenant.billing.plan);
+
+  // المبلغ الشهري (صافي، قبل الضريبة) = سعر الباقة الثابت لمستأجري bundle، أو مجموع أسعار المشاريع الفعّالة
   function subscriptionNet(config, tenant) {
+    if (isBundleTenant(tenant)) return money(tenant.billing.plan.price);
     return money(activeProjects(tenant).reduce((s, p) => s + tierPrice(config, p.tier), 0));
   }
 
@@ -53,7 +59,7 @@ module.exports = function createBilling(store) {
   }
 
   // بناء فاتورة من بنود صافية. كل سطر: {projectId,name,tier,desc,qty,unit,amount(صافٍ)}
-  function buildInvoice(config, tenant, { kind, lines, periodStart, periodEnd, issuedAt }) {
+  function buildInvoice(config, tenant, { kind, lines, periodStart, periodEnd, issuedAt, gateway }) {
     const now = issuedAt || new Date().toISOString();
     const net = money(lines.reduce((s, l) => s + (Number(l.amount) || 0), 0));
     const { subtotal, vat, total } = applyVat(config, net);
@@ -74,13 +80,23 @@ module.exports = function createBilling(store) {
       subtotal, vatRate: Number(config.vatRate) || 0, vat, total,
       currency: config.currency || 'SAR',
       status: 'unpaid',                       // unpaid | paid | failed | void | refunded
+      gateway: gateway || 'tap',                // 'tap' | 'moyasar' — يحدّد أي محوّل يُستخدم للتأكيد/التجديد
       tapChargeId: null, paidAt: null, cardLast4: null, cardBrand: null,
       attempts: 0, lastError: null
     };
   }
 
-  // بنود اشتراك دورة كاملة (كل المشاريع الفعّالة)
+  // بنود اشتراك دورة كاملة: سعر الباقة الثابت لمستأجري bundle، أو مجموع المشاريع الفعّالة (الموديل القديم)
   function subscriptionLines(config, tenant) {
+    if (isBundleTenant(tenant)) {
+      const p = tenant.billing.plan;
+      const used = activeProjects(tenant).length;
+      return [{
+        projectId: null, name: p.name, tier: null,
+        desc: 'اشتراك شهري — باقة «' + (p.nameAr || p.name) + '» (' + used + '/' + p.maxProjects + ' مشاريع، ' + p.storageGB + ' جيجابايت مجمّعة)',
+        qty: 1, unit: p.price, amount: p.price
+      }];
+    }
     return activeProjects(tenant).map(p => ({
       projectId: p.projectId, name: p.name, tier: p.tier,
       desc: 'اشتراك شهري — مشروع «' + (p.name || p.projectId) + '» (' + tierCapacityGB(p.tier) + ' جيجابايت)',
@@ -91,6 +107,7 @@ module.exports = function createBilling(store) {
   return {
     money, addMonths, daysBetween,
     tierPrice, tierCapacityGB, activeProjects, subscriptionNet,
+    bundleOf, isBundleTenant,
     applyVat, prorationFactor, buildInvoice, subscriptionLines
   };
 };

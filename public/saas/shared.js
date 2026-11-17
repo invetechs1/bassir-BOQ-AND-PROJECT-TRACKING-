@@ -77,7 +77,7 @@ function doLogin(opts){
     })
     .catch(function(){ fail('تعذّر الاتصال بالخادم'); });
 }
-function logout(){ localStorage.removeItem('azoom_token'); location.href='/app'; }
+function logout(){ localStorage.removeItem('azoom_token'); location.href='/'; }
 
 // حالة تحميل/خطأ قابلة لإعادة المحاولة — تُستخدم أثناء جلب البيانات الأولى لصفحة كاملة
 function renderLoading(containerEl){

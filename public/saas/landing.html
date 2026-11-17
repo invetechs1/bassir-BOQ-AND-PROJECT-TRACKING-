@@ -65,6 +65,7 @@ footer{border-top:1px solid var(--line);padding:26px 0;color:var(--text3);font-s
   </div>
   <div class="row">
     <button class="btn btn-ghost btn-sm" id="lang-switch" onclick="toggleLang()">🌐 English</button>
+    <a class="btn btn-ghost btn-sm" href="/plans" data-i18n="الباقات">الباقات</a>
     <a class="btn btn-ghost btn-sm hide" id="admin-btn" href="/owner" data-i18n="🛡️ دخول الإدارة">🛡️ دخول الإدارة</a>
     <a class="btn btn-ghost btn-sm" id="client-login-btn" href="/app" data-i18n="دخول العملاء">دخول العملاء</a>
     <a class="btn btn-ghost btn-sm hide" id="system-btn" href="/app" data-i18n="→ النظام">→ النظام</a>
@@ -81,7 +82,7 @@ footer{border-top:1px solid var(--line);padding:26px 0;color:var(--text3);font-s
     <p class="sub" data-i18n="جداول الكميات، الإنتاجية اليومية، اعتمادات الاستشاري، مستخلصات الشركة ومقاولي الباطن، والأرشيف الكامل — في نظام واحد آمن. اشترك أونلاين وابدأ خلال دقائق.">جداول الكميات، الإنتاجية اليومية، اعتمادات الاستشاري، مستخلصات الشركة ومقاولي الباطن، والأرشيف الكامل — في نظام واحد آمن. اشترك أونلاين وابدأ خلال دقائق.</p>
     <div class="cta">
       <button class="btn btn-primary" onclick="openSignup()" data-i18n="🚀 اشترك الآن">🚀 اشترك الآن</button>
-      <a class="btn btn-ghost" href="#pricing" data-i18n="عرض الأسعار">عرض الأسعار</a>
+      <a class="btn btn-ghost" href="/plans" data-i18n="عرض الأسعار">عرض الأسعار</a>
     </div>
   </div>
 
@@ -219,7 +220,7 @@ footer{border-top:1px solid var(--line);padding:26px 0;color:var(--text3);font-s
 <script>
 var CFG = null, selTier = '15';
 Object.assign(I18N_EN, {
-  'نظام زمام':'ZIMAM', 'دخول العملاء':'Client login', 'ابدأ الآن':'Start now',
+  'نظام زمام':'ZIMAM', 'دخول العملاء':'Client login', 'ابدأ الآن':'Start now', 'الباقات':'Plans',
   'إدارة المشاريع والمستخلصات':'Projects & Claims Management',
   'وضوح للكميات. تحكّم كامل في مشاريعك.':'Clarity for quantities. Control for projects.',
   '☁️ نظام سحابي — بدون تثبيت · يعمل على الجوال والحاسب':'☁️ Cloud system — no install · works on mobile and desktop',

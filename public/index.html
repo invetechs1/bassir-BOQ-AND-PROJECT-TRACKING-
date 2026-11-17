@@ -1984,7 +1984,7 @@ function logout(){
   localStorage.removeItem('azoom_cache');
   localStorage.removeItem('azoom_proj');
   API.token = '';
-  location.reload();
+  location.href = '/';
 }
 async function changeMyPassword(){
   const oldPassword = prompt(T('كلمة المرور الحالية:'));

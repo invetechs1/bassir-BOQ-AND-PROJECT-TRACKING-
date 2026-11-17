@@ -1,0 +1,324 @@
+<!doctype html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>الباقات والتسعير — نظام زمام</title>
+<meta name="description" content="باقات اشتراك شهرية لنظام زمام — من مشروع واحد حتى باقات الشركات الكبرى، بسعة تخزين مجمّعة ودفع آمن عبر Moyasar.">
+<link rel="stylesheet" href="/saas/saas.css">
+<style>
+.hero{padding:54px 0 10px;text-align:center}
+.hero h1{font-size:38px;font-weight:800;letter-spacing:-.5px}
+.hero p{color:var(--text2);font-size:16.5px;max-width:620px;margin:10px auto 0}
+.billtoggle{display:inline-flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:5px;margin:22px auto 6px}
+.billtoggle span{font-size:13px;color:var(--text3);padding:7px 14px;border-radius:999px;cursor:default}
+.plans-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:30px 0 10px;align-items:stretch}
+@media(max-width:1020px){.plans-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){.plans-grid{grid-template-columns:1fr}}
+.plan{display:flex;flex-direction:column;background:linear-gradient(180deg,var(--card),#111d35);border:1px solid var(--line);border-radius:20px;padding:26px 22px;transition:.2s;position:relative}
+.plan:hover{border-color:var(--brand);transform:translateY(-3px)}
+.plan.feat{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold)}
+.plan .tag{position:absolute;top:-13px;inset-inline-start:22px;background:var(--gold);color:#241a02;font-size:12px;font-weight:800;padding:4px 12px;border-radius:999px}
+.plan h3{font-size:19px;margin:0 0 2px}
+.plan .desc{color:var(--text3);font-size:12.5px;min-height:34px}
+.plan .amt{font-size:36px;font-weight:800;margin:10px 0 2px}
+.plan .amt small{font-size:14px;color:var(--text3);font-weight:600}
+.plan .vat{font-size:12px;color:var(--text3);margin-bottom:14px}
+.plan ul{list-style:none;padding:0;margin:0 0 18px;flex:1}
+.plan li{padding:6px 0;color:var(--text2);font-size:13.5px;display:flex;gap:8px;align-items:flex-start}
+.plan li::before{content:"✓";color:var(--green);font-weight:800}
+.plan.enterprise{background:linear-gradient(180deg,#152338,#0e1a2d);border-color:var(--line2)}
+.plan.enterprise .amt{font-size:22px}
+.cur-badge{display:inline-block;margin-bottom:10px;background:#0e2b4e55;border:1px solid #245089;color:#bcd6ff;font-size:11.5px;font-weight:700;padding:3px 10px;border-radius:999px}
+.compare{margin:50px 0}
+.compare table{font-size:13.5px}
+.compare th{text-align:center}
+.compare td{text-align:center}
+.compare td:first-child,.compare th:first-child{text-align:right;color:var(--text2);font-weight:600}
+.faq{max-width:760px;margin:40px auto}
+.faq details{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 18px;margin-bottom:10px}
+.faq summary{cursor:pointer;font-weight:700;font-size:14.5px}
+.faq p{color:var(--text3);font-size:13.5px;margin:10px 0 0}
+.gateway-note{display:flex;align-items:center;justify-content:center;gap:8px;color:var(--text3);font-size:12.5px;margin-top:8px}
+#mysr-ov .modal{max-width:460px}
+.mysr-form{min-height:60px}
+.upgrade-note{background:#0e2b4e40;border:1px solid #245089;color:#bcd6ff;border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:14px}
+</style>
+</head>
+<body>
+<div class="topbar"><div class="wrap">
+  <div class="logo">
+    <svg class="mark" viewBox="0 0 100 100" width="36" height="36" aria-hidden="true" focusable="false"><path d="M22 28 H72 L34 72 H66" fill="none" stroke="#00C6A7" stroke-width="11" stroke-linecap="square" stroke-linejoin="miter"/><rect x="60" y="58" width="7" height="18" fill="#3ED6E3"/><rect x="71" y="46" width="7" height="30" fill="#00C6A7"/><rect x="82" y="34" width="7" height="42" fill="#00C6A7"/></svg>
+    <div class="lockup"><span style="font-weight:800;font-size:19px">ZIMAM</span><span class="tag" data-i18n="الباقات والتسعير">الباقات والتسعير</span></div>
+  </div>
+  <div class="row">
+    <button class="btn btn-ghost btn-sm" id="lang-switch" onclick="toggleLang()">🌐 English</button>
+    <a class="btn btn-ghost btn-sm" href="/landing" data-i18n="← الرئيسية">← الرئيسية</a>
+    <a class="btn btn-ghost btn-sm" id="billing-btn" href="/billing" data-i18n="اشتراكي">اشتراكي</a>
+  </div>
+</div></div>
+
+<div class="wrap">
+  <div class="hero">
+    <h1 data-i18n="باقة تناسب كل مرحلة من مشروعك">باقة تناسب كل مرحلة من مشروعك</h1>
+    <p data-i18n="سعر شهري ثابت يشمل عدد مشاريع وسعة تخزين مجمّعة — كل مزايا النظام في كل الباقات. رقِّ أو خفِّض في أي وقت.">سعر شهري ثابت يشمل عدد مشاريع وسعة تخزين مجمّعة — كل مزايا النظام في كل الباقات. رقِّ أو خفِّض في أي وقت.</p>
+  </div>
+
+  <div id="upgrade-banner"></div>
+
+  <div class="plans-grid" id="plans-grid"></div>
+  <p class="center gateway-note">🔒 <span data-i18n="الدفع عبر بوابة Moyasar الآمنة والمرخّصة — بيانات بطاقتك لا تمر عبر خوادمنا أبداً.">الدفع عبر بوابة Moyasar الآمنة والمرخّصة — بيانات بطاقتك لا تمر عبر خوادمنا أبداً.</span></p>
+  <p class="center muted" id="vat-note" style="font-size:13px;margin-top:4px"></p>
+
+  <section class="compare">
+    <div class="sec-title center" style="margin-bottom:18px"><h2 style="font-size:24px" data-i18n="مقارنة سريعة">مقارنة سريعة</h2></div>
+    <div class="panel" style="overflow:auto">
+      <table>
+        <thead><tr><th data-i18n="الميزة">الميزة</th><th>Starter</th><th>Growth</th><th>Team</th><th>Enterprise</th></tr></thead>
+        <tbody>
+          <tr><td data-i18n="عدد المشاريع">عدد المشاريع</td><td>1</td><td>2</td><td data-i18n="حتى 5">حتى 5</td><td data-i18n="مخصّص">مخصّص</td></tr>
+          <tr><td data-i18n="سعة التخزين المجمّعة">سعة التخزين المجمّعة</td><td>5 <span data-i18n="ج.ب">ج.ب</span></td><td>10 <span data-i18n="ج.ب">ج.ب</span></td><td>20 <span data-i18n="ج.ب">ج.ب</span></td><td data-i18n="مخصّصة">مخصّصة</td></tr>
+          <tr><td data-i18n="جداول الكميات والمستخلصات">جداول الكميات والمستخلصات</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td></tr>
+          <tr><td data-i18n="مقاولو الباطن">مقاولو الباطن</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td></tr>
+          <tr><td data-i18n="المستخدمون">المستخدمون</td><td data-i18n="غير محدود">غير محدود</td><td data-i18n="غير محدود">غير محدود</td><td data-i18n="غير محدود">غير محدود</td><td data-i18n="غير محدود">غير محدود</td></tr>
+          <tr><td data-i18n="دعم مخصّص">دعم مخصّص</td><td>—</td><td>—</td><td data-i18n="أولوية">أولوية</td><td data-i18n="مدير حساب">مدير حساب</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="faq">
+    <div class="sec-title center" style="margin-bottom:12px"><h2 style="font-size:24px" data-i18n="أسئلة شائعة">أسئلة شائعة</h2></div>
+    <details><summary data-i18n="ماذا يحدث إذا تجاوزت عدد المشاريع المسموح؟">ماذا يحدث إذا تجاوزت عدد المشاريع المسموح؟</summary><p data-i18n="لا يمكنك إضافة مشروع جديد يتجاوز حدّ باقتك — رقِّ باقتك من هذه الصفحة وسيُحتسب لك فرق السعر تناسبياً لبقية الشهر الحالي فقط.">لا يمكنك إضافة مشروع جديد يتجاوز حدّ باقتك — رقِّ باقتك من هذه الصفحة وسيُحتسب لك فرق السعر تناسبياً لبقية الشهر الحالي فقط.</p></details>
+        <details><summary data-i18n="هل يمكنني تخفيض باقتي لاحقاً؟">هل يمكنني تخفيض باقتي لاحقاً؟</summary><p data-i18n="نعم، تواصل مع الدعم لتخفيض باقتك مع بداية دورة الفوترة القادمة.">نعم، تواصل مع الدعم لتخفيض باقتك مع بداية دورة الفوترة القادمة.</p></details>
+    <details><summary data-i18n="هل بيانات بطاقتي آمنة؟">هل بيانات بطاقتي آمنة؟</summary><p data-i18n="بيانات بطاقتك تُدخَل مباشرة في نافذة Moyasar المرخّصة (متوافقة مع PCI-DSS) ولا تصل خوادمنا في أي وقت.">بيانات بطاقتك تُدخَل مباشرة في نافذة Moyasar المرخّصة (متوافقة مع PCI-DSS) ولا تصل خوادمنا في أي وقت.</p></details>
+    <details><summary data-i18n="ماذا عن باقة Enterprise؟">ماذا عن باقة Enterprise؟</summary><p data-i18n="لاحتياجات أكبر من 5 مشاريع أو سعة مخصّصة، تواصل مع فريق المبيعات لعرض سعر يناسب حجم أعمالك.">لاحتياجات أكبر من 5 مشاريع أو سعة مخصّصة، تواصل مع فريق المبيعات لعرض سعر يناسب حجم أعمالك.</p></details>
+  </section>
+</div>
+
+<footer><div class="wrap">ZIMAM · <span id="footer-brand">مُقدَّم من شركة بصير التقنية</span></div></footer>
+
+<!-- نافذة التسجيل الجديد -->
+<div class="overlay" id="signup-ov"><div class="modal">
+  <span class="modal-x" onclick="closeSignup()">✕</span>
+  <h2 style="margin-bottom:2px" data-i18n="إنشاء حساب جديد">إنشاء حساب جديد</h2>
+  <p class="muted" style="margin-top:0;font-size:13.5px" id="signup-plan-line"></p>
+  <div id="signup-err" class="note note-err hide" role="alert"></div>
+  <div class="field"><label for="su-company" data-i18n="اسم الشركة *">اسم الشركة *</label><input id="su-company" placeholder="مثال: شركة البناء الحديثة"></div>
+  <div class="formgrid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+    <div class="field"><label for="su-owner" data-i18n="اسم المالك *">اسم المالك *</label><input id="su-owner" placeholder="الاسم الكامل"></div>
+    <div class="field"><label for="su-phone" data-i18n="الجوال">الجوال</label><input id="su-phone" placeholder="05xxxxxxxx" inputmode="tel"></div>
+  </div>
+  <div class="formgrid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+    <div class="field"><label for="su-username" data-i18n="اسم المستخدم للدخول *">اسم المستخدم للدخول *</label><input id="su-username" placeholder="بالإنجليزية" autocomplete="username"></div>
+    <div class="field"><label for="su-email" data-i18n="البريد الإلكتروني">البريد الإلكتروني</label><input id="su-email" placeholder="للإيصالات" inputmode="email"></div>
+  </div>
+  <div class="field"><label for="su-pass" data-i18n="كلمة المرور * (6 أحرف فأكثر)">كلمة المرور * (6 أحرف فأكثر)</label><input id="su-pass" type="password" autocomplete="new-password"></div>
+  <hr style="border:0;border-top:1px solid var(--line);margin:14px 0">
+  <div class="field"><label for="su-proj" data-i18n="اسم أول مشروع *">اسم أول مشروع *</label><input id="su-proj" placeholder="مثال: برج الرياض"></div>
+  <div class="note note-info" id="su-summary"></div>
+  <button class="btn btn-primary btn-block" id="su-go" style="font-size:15px" onclick="submitBundleSignup()" data-i18n="متابعة للدفع الآمن ←">متابعة للدفع الآمن ←</button>
+</div></div>
+
+<!-- نافذة Moyasar (الدفع المباشر من المتصفح) -->
+<div class="overlay" id="mysr-ov"><div class="modal">
+  <span class="modal-x" onclick="closeMysr()">✕</span>
+  <h2 style="margin-bottom:4px" data-i18n="الدفع الآمن">الدفع الآمن</h2>
+  <p class="muted" style="margin-top:0;font-size:13px" id="mysr-amt"></p>
+  <div id="mysr-mount" class="mysr-form"></div>
+</div></div>
+
+<!-- تواصل المبيعات (Enterprise) -->
+<div class="overlay" id="ent-ov"><div class="modal">
+  <span class="modal-x" onclick="document.getElementById('ent-ov').classList.remove('open')">✕</span>
+  <h2 data-i18n="تواصل مع المبيعات">تواصل مع المبيعات</h2>
+  <p class="muted" data-i18n="باقة Enterprise مخصّصة حسب عدد مشاريعك وسعتك. تواصل معنا وسنُجهّز لك عرضاً مناسباً خلال يوم عمل.">باقة Enterprise مخصّصة حسب عدد مشاريعك وسعتك. تواصل معنا وسنُجهّز لك عرضاً مناسباً خلال يوم عمل.</p>
+  <div class="note note-info" id="ent-contact"></div>
+</div></div>
+
+<div class="toast" id="toast"><span></span></div>
+
+<script src="/saas/shared.js"></script>
+<script>
+var CFG=null, ME=null, selBundle='growth', PLAN_ORDER=['starter','growth','team'];
+Object.assign(I18N_EN, {
+  'الباقات والتسعير':'Plans & Pricing', '← الرئيسية':'← Home', 'اشتراكي':'My subscription',
+  'الباقات والتسعير — نظام زمام':'Plans & Pricing — ZIMAM',
+  'باقة تناسب كل مرحلة من مشروعك':'A plan for every stage of your project',
+  'سعر شهري ثابت يشمل عدد مشاريع وسعة تخزين مجمّعة — كل مزايا النظام في كل الباقات. رقِّ أو خفِّض في أي وقت.':'A fixed monthly price covering a number of projects and pooled storage — all system features on every plan. Upgrade or downgrade any time.',
+  'الدفع عبر بوابة Moyasar الآمنة والمرخّصة — بيانات بطاقتك لا تمر عبر خوادمنا أبداً.':'Payment via the secure, licensed Moyasar gateway — your card details never pass through our servers.',
+  'مقارنة سريعة':'Quick comparison', 'الميزة':'Feature', 'عدد المشاريع':'Number of projects', 'حتى 5':'Up to 5', 'مخصّص':'Custom',
+  'سعة التخزين المجمّعة':'Pooled storage', 'ج.ب':'GB', 'مخصّصة':'Custom',
+  'جداول الكميات والمستخلصات':'BOQ & claims', 'مقاولو الباطن':'Subcontractors', 'المستخدمون':'Users', 'غير محدود':'Unlimited',
+  'دعم مخصّص':'Dedicated support', 'أولوية':'Priority', 'مدير حساب':'Account manager',
+  'أسئلة شائعة':'FAQ',
+  'ماذا يحدث إذا تجاوزت عدد المشاريع المسموح؟':'What happens if I exceed my allowed project count?',
+  'لا يمكنك إضافة مشروع جديد يتجاوز حدّ باقتك — رقِّ باقتك من هذه الصفحة وسيُحتسب لك فرق السعر تناسبياً لبقية الشهر الحالي فقط.':'You can\'t add a new project beyond your plan\'s limit — upgrade your plan from this page and only the prorated price difference for the rest of the current month is charged.',
+  'هل يمكنني تخفيض باقتي لاحقاً؟':'Can I downgrade my plan later?',
+  'نعم، تواصل مع الدعم لتخفيض باقتك مع بداية دورة الفوترة القادمة.':'Yes, contact support to downgrade your plan starting from the next billing cycle.',
+  'هل بيانات بطاقتي آمنة؟':'Is my card data safe?',
+  'بيانات بطاقتك تُدخَل مباشرة في نافذة Moyasar المرخّصة (متوافقة مع PCI-DSS) ولا تصل خوادمنا في أي وقت.':'Your card details are entered directly into the licensed Moyasar widget (PCI-DSS compliant) and never reach our servers.',
+  'ماذا عن باقة Enterprise؟':'What about the Enterprise plan?',
+  'لاحتياجات أكبر من 5 مشاريع أو سعة مخصّصة، تواصل مع فريق المبيعات لعرض سعر يناسب حجم أعمالك.':'For needs beyond 5 projects or custom storage, contact our sales team for a quote that fits the size of your business.',
+  'مُقدَّم من شركة بصير التقنية':'Powered by Bassir Technology',
+  'إنشاء حساب جديد':'Create a new account', 'اسم الشركة *':'Company name *', 'اسم المالك *':'Owner name *', 'الجوال':'Mobile',
+  'اسم المستخدم للدخول *':'Login username *', 'البريد الإلكتروني':'Email',
+  'كلمة المرور * (6 أحرف فأكثر)':'Password * (6+ characters)', 'اسم أول مشروع *':'First project name *',
+  'متابعة للدفع الآمن ←':'Continue to secure payment ←', 'الدفع الآمن':'Secure payment', 'تواصل مع المبيعات':'Contact sales',
+  'باقة Enterprise مخصّصة حسب عدد مشاريعك وسعتك. تواصل معنا وسنُجهّز لك عرضاً مناسباً خلال يوم عمل.':'The Enterprise plan is tailored to your project count and storage needs. Contact us and we\'ll prepare a suitable quote within one business day.',
+  'تعذّر تحميل الباقات':'Could not load plans', 'الأكثر طلباً':'Most popular', 'شهرياً':'Monthly',
+  'يشمل':'Includes', 'مشروع واحد':'1 project', 'مشاريع':'projects', 'سعة':'capacity', 'مجمّعة لكل مشاريعك':'pooled across all your projects',
+  'كل مزايا النظام':'All system features', 'تجديد شهري تلقائي':'Automatic monthly renewal', 'ابدأ الآن':'Get started', 'رقِّ إلى هذه الباقة':'Upgrade to this plan',
+  'باقتك الحالية':'Your current plan', 'سعر مخصّص حسب حجم أعمالك':'Custom pricing based on your scale', 'تواصل معنا':'Contact us',
+  'الأسعار شاملة ضريبة القيمة المضافة':'Prices are VAT-inclusive at', 'تُضاف ضريبة القيمة المضافة':'VAT of', 'على الأسعار أعلاه.':'is added to the prices above.',
+  'أكمل الحقول المطلوبة (*)':'Complete the required fields (*)', 'كلمة المرور 6 أحرف على الأقل':'Password must be at least 6 characters',
+  'جارٍ التحويل للدفع…':'Redirecting to payment…', 'تعذّر التسجيل':'Could not sign up', 'تعذّر الاتصال بالخادم':'Could not connect to the server',
+  'الإجمالي الآن:':'Total now:', 'ر.س':'SAR', '(شامل الضريبة)':'(VAT inclusive)', '(شامل ضريبة ':'(plus VAT ',
+  'عن أول شهر، ثم يتجدد تلقائياً شهرياً.':'for the first month, then it renews automatically every month.',
+  'التسجيل في باقة «':'Signing up for the "', '»':'" plan',
+  'لتحديث باقتك، سجّل الدخول من صفحة الاشتراك أولاً.':'To change your plan, please log in from the subscription page first.',
+  'تمّت الترقية بنجاح':'Upgrade successful', 'جارٍ تجهيز نافذة الدفع…':'Preparing the payment window…', 'تعذّر بدء الترقية':'Could not start the upgrade',
+  'للتواصل: ':'Contact: '
+});
+applyDir(); translateStaticDOM();
+window.onLangChange = function(){ if(CFG) renderPlans(); updateVatNote(); };
+
+function load(){
+  Promise.all([
+    fetch('/api/saas/public/config').then(r=>r.json()),
+    TOKEN ? api('GET','/api/saas/me') : Promise.resolve(null)
+  ]).then(function(res){
+    CFG = res[0];
+    if (res[1] && res[1].ok && res[1].d.saasManaged) ME = res[1].d;
+    renderPlans(); updateVatNote(); renderUpgradeBanner();
+    document.getElementById('footer-brand').textContent = (CFG.brand&&CFG.brand.name)||'';
+  }).catch(function(){ toast(T('تعذّر تحميل الباقات')); });
+}
+function priceWithVat(net){ if(!CFG) return net; if(CFG.priceInclusiveVat) return net; return Math.round((net*(1+(CFG.vatRate||0)/100))*100)/100; }
+function updateVatNote(){
+  var vr=(CFG&&CFG.vatRate)||0;
+  document.getElementById('vat-note').textContent = CFG&&CFG.priceInclusiveVat
+    ? (T('الأسعار شاملة ضريبة القيمة المضافة')+' '+vr+'%.')
+    : (T('تُضاف ضريبة القيمة المضافة')+' '+vr+'% '+T('على الأسعار أعلاه.'));
+}
+function renderUpgradeBanner(){
+  var el=document.getElementById('upgrade-banner');
+  if (ME && ME.plan) el.innerHTML = '<div class="upgrade-note">'+T('باقتك الحالية')+': <strong>'+esc(ME.plan.nameAr||ME.plan.name)+'</strong> — '+ME.plan.usedProjects+'/'+ME.plan.maxProjects+' '+T('مشاريع')+'</div>';
+  else el.innerHTML = '';
+}
+function planFeatures(b){
+  var f = [ (b.maxProjects===1?T('مشروع واحد'):(b.maxProjects+' '+T('مشاريع'))), b.storageGB+' '+T('ج.ب')+' '+T('مجمّعة لكل مشاريعك'), T('كل مزايا النظام'), T('تجديد شهري تلقائي') ];
+  return f.map(function(x){return '<li>'+x+'</li>'}).join('');
+}
+function planCard(id, feat){
+  var b = CFG.bundles[id]; if(!b) return '';
+  var net=b.price, total=priceWithVat(net);
+  var isCurrent = ME && ME.plan && ME.plan.id===id;
+  var btn = isCurrent
+    ? '<button class="btn btn-ghost btn-block" disabled>'+T('باقتك الحالية')+'</button>'
+    : (ME && ME.plan
+        ? '<button class="btn '+(feat?'btn-primary':'btn-ghost')+' btn-block" onclick="startUpgrade(\''+id+'\')">'+T('رقِّ إلى هذه الباقة')+'</button>'
+        : '<button class="btn '+(feat?'btn-primary':'btn-ghost')+' btn-block" onclick="openSignup(\''+id+'\')">'+T('ابدأ الآن')+'</button>');
+  return '<div class="plan'+(feat?' feat':'')+'">'+(feat?'<span class="tag">'+T('الأكثر طلباً')+'</span>':'')+
+    '<h3>'+esc(b.nameAr||b.name)+'</h3><div class="desc"></div>'+
+    '<div class="amt">'+money(net)+' <small>'+T('ر.س')+' / '+T('شهرياً')+'</small></div>'+
+    '<div class="vat">'+(CFG.priceInclusiveVat?T('شامل'):'+ ')+' '+T('ضريبة القيمة المضافة')+' '+(CFG.vatRate||0)+'% = '+money(total)+' '+T('ر.س')+'</div>'+
+    '<ul>'+planFeatures(b)+'</ul>'+btn+'</div>';
+}
+function entCard(){
+  return '<div class="plan enterprise"><h3>Enterprise</h3><div class="desc"></div>'+
+    '<div class="amt">'+T('سعر مخصّص حسب حجم أعمالك')+'</div><div class="vat">&nbsp;</div>'+
+    '<ul><li>'+T('مخصّص')+'</li><li>'+T('كل مزايا النظام')+'</li><li>'+T('دعم مخصّص')+' — '+T('مدير حساب')+'</li></ul>'+
+    '<button class="btn btn-ghost btn-block" onclick="openEnterprise()">'+T('تواصل معنا')+'</button></div>';
+}
+function renderPlans(){
+  document.getElementById('plans-grid').innerHTML =
+    planCard('starter',false) + planCard('growth',true) + planCard('team',false) + entCard();
+}
+
+// ---------- تسجيل جديد ----------
+function openSignup(id){
+  selBundle = id;
+  var b = CFG.bundles[id];
+  document.getElementById('signup-plan-line').textContent = T('التسجيل في باقة «')+(b.nameAr||b.name)+T('»');
+  updateSignupSummary();
+  document.getElementById('signup-ov').classList.add('open');
+}
+function closeSignup(){ document.getElementById('signup-ov').classList.remove('open'); }
+function updateSignupSummary(){
+  var b=CFG.bundles[selBundle], total=priceWithVat(b.price);
+  document.getElementById('su-summary').innerHTML = T('الإجمالي الآن:')+' <strong>'+money(total)+' '+T('ر.س')+'</strong> '+
+    (CFG.priceInclusiveVat?T('(شامل الضريبة)'):(T('(شامل ضريبة ')+(CFG.vatRate||0)+'%)'))+' — '+T('عن أول شهر، ثم يتجدد تلقائياً شهرياً.');
+}
+function val(id){return (document.getElementById(id).value||'').trim()}
+function showErr(id,m){ var e=document.getElementById(id); e.textContent=m; e.classList.remove('hide'); }
+
+function submitBundleSignup(){
+  document.getElementById('signup-err').classList.add('hide');
+  var body={
+    company:val('su-company'), ownerName:val('su-owner'), phone:val('su-phone'),
+    username:val('su-username'), email:val('su-email'), password:val('su-pass'),
+    project:{ name:val('su-proj') }, bundleId:selBundle
+  };
+  if(!body.company||!body.ownerName||!body.username||!body.password||!body.project.name) return showErr('signup-err',T('أكمل الحقول المطلوبة (*)'));
+  if(body.password.length<6) return showErr('signup-err',T('كلمة المرور 6 أحرف على الأقل'));
+  var btn=document.getElementById('su-go'); btn.disabled=true; btn.innerHTML='<span class="spin"></span> '+T('جارٍ التحويل للدفع…');
+  fetch('/api/saas/public/bundle-signup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+    .then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d}})})
+    .then(function(res){
+      btn.disabled=false; btn.textContent=T('متابعة للدفع الآمن ←');
+      if(!res.ok) return showErr('signup-err', res.d.error||T('تعذّر التسجيل'));
+      if(res.d.redirectUrl){ window.location = res.d.redirectUrl; return; } // sim
+      closeSignup();
+      openMoyasarWidget(res.d.checkout);
+    }).catch(function(){ btn.disabled=false; btn.textContent=T('متابعة للدفع الآمن ←'); showErr('signup-err',T('تعذّر الاتصال بالخادم')); });
+}
+
+// ---------- ترقية باقة لمستأجر حالي ----------
+function startUpgrade(id){
+  if (!ME) return toast(T('لتحديث باقتك، سجّل الدخول من صفحة الاشتراك أولاً.'));
+  toast(T('جارٍ تجهيز نافذة الدفع…'));
+  api('POST','/api/saas/bundle/upgrade',{bundleId:id}).then(function(r){
+    if(!r.ok) return toast(r.d.error||T('تعذّر بدء الترقية'));
+    if(r.d.upgraded && !r.d.needsPayment){ toast('✅ '+T('تمّت الترقية بنجاح')); ME=null; load(); return; }
+    if(r.d.needsPayment) openMoyasarWidget(r.d.checkout);
+  });
+}
+
+// ---------- نافذة Moyasar (moyasar.js) ----------
+var MYSR_LOADED=false;
+function loadMysrScript(cb){
+  if(MYSR_LOADED) return cb();
+  var l=document.createElement('link'); l.rel='stylesheet'; l.href='https://cdn.moyasar.com/mpf/1.15.0/moyasar.css'; document.head.appendChild(l);
+  var s=document.createElement('script'); s.src='https://cdn.moyasar.com/mpf/1.15.0/moyasar.js';
+  s.onload=function(){ MYSR_LOADED=true; cb(); };
+  document.head.appendChild(s);
+}
+function openMoyasarWidget(checkout){
+  document.getElementById('mysr-amt').textContent = money(checkout.amount/100)+' '+T('ر.س');
+  document.getElementById('mysr-mount').innerHTML='';
+  document.getElementById('mysr-ov').classList.add('open');
+  loadMysrScript(function(){
+    Moyasar.init({
+      element: '.mysr-form',
+      amount: checkout.amount,
+      currency: checkout.currency || 'SAR',
+      description: checkout.description || 'ZIMAM subscription',
+      publishable_api_key: checkout.publishableKey,
+      callback_url: checkout.callbackUrl,
+      credit_card: { save_card: true },
+      methods: ['creditcard']
+    });
+  });
+}
+function closeMysr(){ document.getElementById('mysr-ov').classList.remove('open'); document.getElementById('mysr-mount').innerHTML=''; }
+
+function openEnterprise(){
+  var phone=(CFG.brand&&CFG.brand.supportPhone)||'', email=(CFG.brand&&CFG.brand.supportEmail)||'';
+  document.getElementById('ent-contact').textContent = T('للتواصل: ')+[phone,email].filter(Boolean).join(' · ');
+  document.getElementById('ent-ov').classList.add('open');
+}
+load();
+</script>
+</body>
+</html>

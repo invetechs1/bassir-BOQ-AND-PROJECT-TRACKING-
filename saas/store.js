@@ -19,7 +19,7 @@ module.exports = function createStore(ctx) {
     currency: 'SAR',
     vatRate: 15,               // ضريبة القيمة المضافة %
     priceInclusiveVat: false,  // هل السعر شامل الضريبة؟ (false = تُضاف فوقه)
-    tiers: { '15': 750, '20': 900 }, // سعة (جيجابايت) → السعر الشهري للمشروع
+    tiers: { '15': 750, '20': 900 }, // سعة (جيجابايت) → السعر الشهري للمشروع (الموديل القديم لكل مشروع — يبقى كما هو لعملاء Tap الحاليين)
     graceDays: 3,              // مهلة بعد فشل الدفع قبل الإيقاف
     trialDays: 0,              // أيام تجربة مجانية (0 = لا تجربة، الدفع يفعّل مباشرة)
     brand: { name: 'إدارة المشاريع والمستخلصات', supportPhone: '0558338548', supportEmail: '' },
@@ -29,6 +29,20 @@ module.exports = function createStore(ctx) {
       secretKey: '',           // سرّي — لا يُرسل للواجهة أبداً
       publicKey: '',           // عام — يُستخدم في الواجهة لترميز البطاقة
       webhookSecret: ''        // لتوقيع إشعارات tap (hashstring)
+    },
+    // باقات جديدة (حزم) مبنية على عدد المشاريع + سعة مجمّعة — موديل جديد يعمل جنباً إلى جنب مع tiers
+    // القديم؛ المستأجرون الحاليون على tiers لا يتأثرون، والتسجيل الجديد عبر صفحة /plans فقط يستخدمها.
+    bundles: {
+      starter: { id: 'starter', name: 'Starter', nameAr: 'الأساسية', maxProjects: 1, storageGB: 5, price: 750 },
+      growth: { id: 'growth', name: 'Growth', nameAr: 'النمو', maxProjects: 2, storageGB: 10, price: 1200 },
+      team: { id: 'team', name: 'Team', nameAr: 'الفريق', maxProjects: 5, storageGB: 20, price: 2000 }
+      // Enterprise: بلا تسعير ذاتي ثابت — "تواصل مع المبيعات" فقط (معروضة في الواجهة من كود الصفحة لا من هنا)
+    },
+    moyasar: {
+      mode: 'sim',             // 'sim' (محاكاة للتجربة) | 'test' | 'live'
+      secretKey: '',           // سرّي (sk_live_/sk_test_) — Basic Auth، لا يُرسل للواجهة أبداً
+      publishableKey: '',      // عام (pk_live_/pk_test_) — يُستخدم في نافذة moyasar.js بالواجهة
+      webhookSecret: ''        // secret_token نقارنه مع حقل secret_token في كل إشعار Webhook
     },
     // تكامل مستوى المنصّة مع Bassir ERP — لتغذية إيرادات الاشتراكات (SaaS) في حساباتكم الخاصة،
     // منفصل تماماً عن تكامل كل شركة بحساباتها الخاصة (companyIntegration في server.js)
@@ -44,6 +58,8 @@ module.exports = function createStore(ctx) {
       tiers: { ...DEFAULT_CONFIG.tiers, ...(c.tiers || {}) },
       brand: { ...DEFAULT_CONFIG.brand, ...(c.brand || {}) },
       tap: { ...DEFAULT_CONFIG.tap, ...(c.tap || {}) },
+      bundles: { ...DEFAULT_CONFIG.bundles, ...(c.bundles || {}) },
+      moyasar: { ...DEFAULT_CONFIG.moyasar, ...(c.moyasar || {}) },
       erpWebhook: { ...DEFAULT_CONFIG.erpWebhook, ...(c.erpWebhook || {}) }
     };
   }
@@ -53,8 +69,9 @@ module.exports = function createStore(ctx) {
     const c = loadConfig();
     return {
       currency: c.currency, vatRate: c.vatRate, priceInclusiveVat: c.priceInclusiveVat,
-      tiers: c.tiers, graceDays: c.graceDays, trialDays: c.trialDays, brand: c.brand,
-      tap: { mode: c.tap.mode, publicKey: c.tap.publicKey || '', secretKeySet: !!c.tap.secretKey, webhookSecretSet: !!c.tap.webhookSecret }
+      tiers: c.tiers, bundles: c.bundles, graceDays: c.graceDays, trialDays: c.trialDays, brand: c.brand,
+      tap: { mode: c.tap.mode, publicKey: c.tap.publicKey || '', secretKeySet: !!c.tap.secretKey, webhookSecretSet: !!c.tap.webhookSecret },
+      moyasar: { mode: c.moyasar.mode, publishableKey: c.moyasar.publishableKey || '', secretKeySet: !!c.moyasar.secretKey, webhookSecretSet: !!c.moyasar.webhookSecret }
     };
   }
 

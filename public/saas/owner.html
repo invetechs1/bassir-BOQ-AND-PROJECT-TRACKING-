@@ -103,6 +103,22 @@
           <button class="btn btn-primary" onclick="saveConfig()" data-i18n="حفظ إعدادات الدفع">حفظ إعدادات الدفع</button>
         </div>
         <div class="panel">
+          <h3 style="margin:0 0 12px" data-i18n="💳 بوابة الدفع (Moyasar — باقات /plans)">💳 بوابة الدفع (Moyasar — باقات /plans)</h3>
+          <div class="note note-warn" id="mysr-hint"></div>
+          <div class="field"><label for="sm-mode" data-i18n="وضع التشغيل">وضع التشغيل</label><select id="sm-mode"><option value="sim" data-i18n="محاكاة (تجربة بلا أموال)">محاكاة (تجربة بلا أموال)</option><option value="test" data-i18n="اختبار Moyasar (مفاتيح test)">اختبار Moyasar (مفاتيح test)</option><option value="live" data-i18n="تشغيل فعلي (مفاتيح live)">تشغيل فعلي (مفاتيح live)</option></select></div>
+          <div class="field"><label for="sm-pub">Publishable Key <span data-i18n="(يُستخدم في نافذة الدفع)">(يُستخدم في نافذة الدفع)</span></label><input id="sm-pub" placeholder="pk_live_... أو pk_test_..."></div>
+          <div class="field"><label for="sm-sec">Secret Key <span data-i18n="(سرّي — لا يُعرض بعد الحفظ)">(سرّي — لا يُعرض بعد الحفظ)</span></label><input id="sm-sec" data-i18n-ph="اتركه فارغاً للإبقاء على الحالي" placeholder="اتركه فارغاً للإبقاء على الحالي"></div>
+          <div class="field"><label for="sm-wh">Webhook Secret Token</label><input id="sm-wh" data-i18n-ph="اتركه فارغاً للإبقاء على الحالي" placeholder="اتركه فارغاً للإبقاء على الحالي"></div>
+          <button class="btn btn-primary" onclick="saveMoyasarConfig()" data-i18n="حفظ إعدادات Moyasar">حفظ إعدادات Moyasar</button>
+        </div>
+        <div class="panel">
+          <h3 style="margin:0 0 12px" data-i18n="📦 أسعار باقات /plans">📦 أسعار باقات /plans</h3>
+          <div class="row"><div class="field" style="flex:1"><label for="sb-starter" data-i18n="Starter — شهرياً">Starter — شهرياً</label><input id="sb-starter" type="number"></div>
+          <div class="field" style="flex:1"><label for="sb-growth" data-i18n="Growth — شهرياً">Growth — شهرياً</label><input id="sb-growth" type="number"></div></div>
+          <div class="field"><label for="sb-team" data-i18n="Team — شهرياً">Team — شهرياً</label><input id="sb-team" type="number"></div>
+          <button class="btn btn-primary" onclick="saveBundlePricing()" data-i18n="حفظ أسعار الباقات">حفظ أسعار الباقات</button>
+        </div>
+        <div class="panel">
           <h3 style="margin:0 0 12px" data-i18n="💵 التسعير والضريبة">💵 التسعير والضريبة</h3>
           <div class="row"><div class="field" style="flex:1"><label for="st-t15" data-i18n="سعر باقة 15 ج.ب / شهر">سعر باقة 15 ج.ب / شهر</label><input id="st-t15" type="number"></div>
           <div class="field" style="flex:1"><label for="st-t20" data-i18n="سعر باقة 20 ج.ب / شهر">سعر باقة 20 ج.ب / شهر</label><input id="st-t20" type="number"></div></div>
@@ -191,7 +207,13 @@ Object.assign(I18N_EN, {
   'للتجربة فقط. أدخل مفاتيح Tap وبدّل الوضع إلى «تشغيل فعلي» لقبول مدفوعات حقيقية.':'For testing only. Enter Tap keys and switch the mode to "Live" to accept real payments.',
   'مفاتيح Tap محفوظة.':'Tap keys are saved.', '⚠️ لم تُحفظ مفاتيح Tap بعد — لن تنجح المدفوعات.':'⚠️ Tap keys not saved yet — payments will fail.',
   'غير مضبوط (اختياري)':'Not set (optional)', 'آخر محاولة:':'Last attempt:', 'لم تُرسَل بيانات بعد.':'No data sent yet.',
-  'حُفظت الإعدادات':'Settings saved', 'حُفظت إعدادات ERP':'ERP settings saved'
+  'حُفظت الإعدادات':'Settings saved', 'حُفظت إعدادات ERP':'ERP settings saved',
+  '💳 بوابة الدفع (Moyasar — باقات /plans)':'💳 Payment gateway (Moyasar — /plans bundles)', 'اختبار Moyasar (مفاتيح test)':'Moyasar test (test keys)',
+  '(يُستخدم في نافذة الدفع)':'(used in the payment widget)', 'حفظ إعدادات Moyasar':'Save Moyasar settings',
+  '📦 أسعار باقات /plans':'📦 /plans bundle prices', 'Starter — شهرياً':'Starter — monthly', 'Growth — شهرياً':'Growth — monthly', 'Team — شهرياً':'Team — monthly',
+  'حفظ أسعار الباقات':'Save bundle prices', 'محفوظة — اتركها فارغة للإبقاء':'Saved — leave blank to keep',
+  'مفاتيح Moyasar محفوظة.':'Moyasar keys are saved.', '⚠️ لم تُحفظ مفاتيح Moyasar بعد — لن تنجح مدفوعات /plans.':'⚠️ Moyasar keys not saved yet — /plans payments will fail.',
+  'حُفظت إعدادات Moyasar':'Moyasar settings saved', 'حُفظت أسعار الباقات':'Bundle prices saved'
 });
 applyDir(); translateStaticDOM();
 window.onLangChange = function(){
@@ -328,6 +350,16 @@ function loadConfig(){
     document.getElementById('tap-hint').innerHTML = r.d.tap.mode==='sim'
       ? T('الوضع الحالي:')+' <strong>'+T('محاكاة')+'</strong> — '+T('للتجربة فقط. أدخل مفاتيح Tap وبدّل الوضع إلى «تشغيل فعلي» لقبول مدفوعات حقيقية.')
       : (r.d.tap.secretKeySet?T('مفاتيح Tap محفوظة.'):T('⚠️ لم تُحفظ مفاتيح Tap بعد — لن تنجح المدفوعات.'));
+    document.getElementById('sm-mode').value=r.d.moyasar.mode;
+    document.getElementById('sm-pub').value=r.d.moyasar.publishableKey||'';
+    document.getElementById('sm-sec').placeholder=r.d.moyasar.secretKeySet?T('محفوظة — اتركها فارغة للإبقاء'):T('غير مضبوط');
+    document.getElementById('sm-wh').placeholder=r.d.moyasar.webhookSecretSet?T('محفوظة — اتركها فارغة للإبقاء'):T('غير مضبوط (اختياري)');
+    document.getElementById('mysr-hint').innerHTML = r.d.moyasar.mode==='sim'
+      ? T('الوضع الحالي:')+' <strong>'+T('محاكاة')+'</strong> — '+T('للتجربة فقط. أدخل مفاتيح Tap وبدّل الوضع إلى «تشغيل فعلي» لقبول مدفوعات حقيقية.')
+      : (r.d.moyasar.secretKeySet?T('مفاتيح Moyasar محفوظة.'):T('⚠️ لم تُحفظ مفاتيح Moyasar بعد — لن تنجح مدفوعات /plans.'));
+    document.getElementById('sb-starter').value=r.d.bundles.starter.price;
+    document.getElementById('sb-growth').value=r.d.bundles.growth.price;
+    document.getElementById('sb-team').value=r.d.bundles.team.price;
     document.getElementById('erp-enabled').checked=!!r.d.erpWebhook.enabled;
     document.getElementById('erp-url').value=r.d.erpWebhook.url||'';
     document.getElementById('erp-key').placeholder=r.d.erpWebhook.apiKeySet?T('محفوظ — اتركه فارغاً للإبقاء'):T('غير مضبوط (اختياري)');
@@ -347,6 +379,24 @@ function saveConfig(){
   var sec=document.getElementById('st-sec').value.trim(), wh=document.getElementById('st-wh').value.trim();
   if(sec) body.tap.secretKey=sec; if(wh) body.tap.webhookSecret=wh;
   api('PUT','/api/saas/admin/config',body).then(function(r){ if(r.ok){ toast('✅ '+T('حُفظت الإعدادات')); document.getElementById('st-sec').value=''; document.getElementById('st-wh').value=''; loadConfig(); boot(); } else toast(r.d.error||T('تعذّر')); });
+}
+function saveMoyasarConfig(){
+  var body={ moyasar:{ mode:document.getElementById('sm-mode').value, publishableKey:document.getElementById('sm-pub').value.trim() } };
+  var sec=document.getElementById('sm-sec').value.trim(), wh=document.getElementById('sm-wh').value.trim();
+  if(sec) body.moyasar.secretKey=sec; if(wh) body.moyasar.webhookSecret=wh;
+  api('PUT','/api/saas/admin/config',body).then(function(r){
+    if(r.ok){ toast('✅ '+T('حُفظت إعدادات Moyasar')); document.getElementById('sm-sec').value=''; document.getElementById('sm-wh').value=''; loadConfig(); } else toast(r.d.error||T('تعذّر'));
+  });
+}
+function saveBundlePricing(){
+  var body={ bundles:{
+    starter:{ price:Number(document.getElementById('sb-starter').value) },
+    growth:{ price:Number(document.getElementById('sb-growth').value) },
+    team:{ price:Number(document.getElementById('sb-team').value) }
+  } };
+  api('PUT','/api/saas/admin/config',body).then(function(r){
+    if(r.ok){ toast('✅ '+T('حُفظت أسعار الباقات')); loadConfig(); } else toast(r.d.error||T('تعذّر'));
+  });
 }
 function saveErpConfig(){
   var body={ erpWebhook:{ enabled:document.getElementById('erp-enabled').checked, url:document.getElementById('erp-url').value.trim() } };

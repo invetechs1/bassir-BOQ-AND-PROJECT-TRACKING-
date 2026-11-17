@@ -18,6 +18,7 @@
   <div class="logo"><svg class="mark" viewBox="0 0 100 100" width="36" height="36" aria-hidden="true" focusable="false"><path d="M22 28 H72 L34 72 H66" fill="none" stroke="#00C6A7" stroke-width="11" stroke-linecap="square" stroke-linejoin="miter"/><rect x="60" y="58" width="7" height="18" fill="#3ED6E3"/><rect x="71" y="46" width="7" height="30" fill="#00C6A7"/><rect x="82" y="34" width="7" height="42" fill="#00C6A7"/></svg><span data-i18n="الاشتراك والفواتير">الاشتراك والفواتير</span></div>
   <div class="row">
     <button class="btn btn-ghost btn-sm" id="lang-switch" onclick="toggleLang()">🌐 English</button>
+    <a class="btn btn-ghost btn-sm" href="/plans" data-i18n="الباقات">الباقات</a>
     <a class="btn btn-ghost btn-sm" href="/app" data-i18n="→ النظام">→ النظام</a>
     <button class="btn btn-ghost btn-sm" id="logout-b" onclick="logout()" data-i18n="خروج">خروج</button>
   </div>
@@ -39,6 +40,7 @@
   <!-- المحتوى -->
   <div id="content" class="hide">
     <div id="status-banner"></div>
+    <div id="plan-banner"></div>
 
     <div class="spread" style="margin-bottom:18px">
       <div><h2 id="company-name" style="margin:0"></h2><div class="muted" id="status-line"></div></div>
@@ -92,7 +94,10 @@
 <script>
 var ME=null, selTier='15';
 Object.assign(I18N_EN, {
-  'الاشتراك والفواتير':'Subscription & Invoices', '→ النظام':'→ System', 'خروج':'Log out',
+  'الاشتراك والفواتير':'Subscription & Invoices', '→ النظام':'→ System', 'خروج':'Log out', 'الباقات':'Plans',
+  'باقتك':'Your plan', 'مشاريع':'projects', 'سعة مستخدمة':'Storage used', 'رقِّ باقتك':'Upgrade your plan',
+  'بلغت الحدّ الأقصى لمشاريع باقتك':'You\'ve reached your plan\'s project limit', 'ضمن الباقة':'Included in plan',
+  'ضمن باقتك الحالية':'Included in your current plan', 'بلا فاتورة إضافية ما دمت ضمن الحدّ.':'No extra invoice as long as you stay within the limit.',
   'الاشتراك والفواتير — نظام زمام':'Subscription & Invoices — ZIMAM',
   'دخول مالك الحساب':'Account owner login', 'اسم المستخدم':'Username', 'كلمة المرور':'Password', 'دخول':'Log in',
   '➕ إضافة مشروع':'➕ Add project', '💳 الاشتراك الشهري':'💳 Monthly subscription', '📅 التجديد القادم':'📅 Next renewal',
@@ -152,6 +157,12 @@ function render(){
   else if(ME.status==='past_due') b.innerHTML='<div class="note note-warn">'+T('تعذّر تجديد اشتراكك — سنعيد المحاولة، وإلا يُوقَف بعد انتهاء المهلة')+(ME.billing.graceUntil?(' ('+fmtDate(ME.billing.graceUntil)+')'):'')+'. <button class="btn btn-sm btn-primary" style="margin-inline-start:8px" onclick="payNow()">'+T('سدّد الآن')+'</button></div>';
   else if(ME.status==='pending') b.innerHTML='<div class="note note-warn">'+T('لم يكتمل دفع اشتراكك الأول بعد.')+' <button class="btn btn-sm btn-primary" style="margin-inline-start:8px" onclick="payNow()">'+T('أكمل الدفع')+'</button></div>';
 
+  var pb=document.getElementById('plan-banner');
+  if(ME.plan){
+    var usedGBp=(ME.plan.usedBytes||0)/(1024*1024*1024), pctp=Math.min(100,usedGBp/ME.plan.storageGB*100);
+    pb.innerHTML='<div class="note note-info"><div class="spread"><span><strong>'+T('باقتك')+':</strong> '+esc(ME.plan.nameAr||ME.plan.name)+' — '+ME.plan.usedProjects+'/'+ME.plan.maxProjects+' '+T('مشاريع')+' · '+usedGBp.toFixed(2)+'/'+ME.plan.storageGB+' '+T('ج.ب')+'</span><a class="btn btn-ghost btn-sm" href="/plans">'+T('رقِّ باقتك')+'</a></div><div class="progress" style="margin-top:8px"><i style="width:'+pctp.toFixed(0)+'%"></i></div></div>';
+  } else pb.innerHTML='';
+
   var net=ME.monthlyNet, total=ME.priceInclusiveVat?net:Math.round(net*(1+(ME.vatRate||0)/100)*100)/100;
   document.getElementById('k-monthly').textContent=money(total)+' '+T('ر.س');
   document.getElementById('k-monthly-sub').textContent=ME.priceInclusiveVat?T('شامل الضريبة'):(T('شامل ضريبة ')+(ME.vatRate||0)+'%');
@@ -161,14 +172,21 @@ function render(){
   document.getElementById('add-proj-b').style.display = ME.canManage?'':'none';
 
   document.getElementById('projects-body').innerHTML = ME.projects.map(function(p){
-    var usedGB=(p.usedBytes||0)/(1024*1024*1024); var pct=Math.min(100,usedGB/p.capacityGB*100);
+    var usedGB=(p.usedBytes||0)/(1024*1024*1024);
     var net=p.price, tot=ME.priceInclusiveVat?net:Math.round(net*(1+(ME.vatRate||0)/100)*100)/100;
-    return '<tr><td><strong>'+esc(p.name)+'</strong></td>'+
-      '<td><span class="badge b-blue">'+p.capacityGB+' '+T('ج.ب')+'</span></td>'+
-      '<td class="proj-cap"><div class="muted" style="font-size:12px;margin-bottom:3px">'+usedGB.toFixed(2)+' / '+p.capacityGB+' '+T('ج.ب')+'</div><div class="progress"><i style="width:'+pct.toFixed(0)+'%"></i></div></td>'+
-      '<td class="amount">'+money(tot)+'</td>'+
+    var capCell;
+    if(p.capacityGB){
+      var pct=Math.min(100,usedGB/p.capacityGB*100);
+      capCell='<td><span class="badge b-blue">'+p.capacityGB+' '+T('ج.ب')+'</span></td>'+
+        '<td class="proj-cap"><div class="muted" style="font-size:12px;margin-bottom:3px">'+usedGB.toFixed(2)+' / '+p.capacityGB+' '+T('ج.ب')+'</div><div class="progress"><i style="width:'+pct.toFixed(0)+'%"></i></div></td>';
+    } else {
+      capCell='<td><span class="badge b-gray">'+T('ضمن الباقة')+'</span></td>'+
+        '<td class="proj-cap"><div class="muted" style="font-size:12px">'+usedGB.toFixed(2)+' '+T('ج.ب')+'</div></td>';
+    }
+    return '<tr><td><strong>'+esc(p.name)+'</strong></td>'+capCell+
+      '<td class="amount">'+(p.price?money(tot):'—')+'</td>'+
       '<td>'+statusBadge(p.status)+'</td>'+
-      '<td>'+(p.status==='pending'?'<button class="btn btn-primary btn-sm" onclick="payProject('+p.projectId+')">'+T('أكمل الدفع')+'</button>':'')+'</td></tr>';
+      '<td>'+(p.status==='pending'&&p.price?'<button class="btn btn-primary btn-sm" onclick="payProject('+p.projectId+')">'+T('أكمل الدفع')+'</button>':'')+'</td></tr>';
   }).join('') || '<tr><td colspan="6" class="muted center">'+T('لا مشاريع')+'</td></tr>';
 
   api('GET','/api/saas/invoices').then(function(r){
@@ -186,7 +204,18 @@ function render(){
 }
 
 // إضافة مشروع
-function openAdd(){ selTier='15'; renderTiers(); document.getElementById('add-err').classList.add('hide'); document.getElementById('ad-name').value=''; document.getElementById('add-ov').classList.add('open'); }
+function openAdd(){
+  selTier='15'; document.getElementById('add-err').classList.add('hide'); document.getElementById('ad-name').value='';
+  if(ME.plan){
+    document.getElementById('ad-tiers').innerHTML='';
+    document.getElementById('ad-tiers-label').classList.add('hide');
+    document.getElementById('add-summary').innerHTML = T('ضمن باقتك الحالية')+' ('+ME.plan.usedProjects+'/'+ME.plan.maxProjects+') — '+T('بلا فاتورة إضافية ما دمت ضمن الحدّ.');
+  } else {
+    document.getElementById('ad-tiers-label').classList.remove('hide');
+    renderTiers();
+  }
+  document.getElementById('add-ov').classList.add('open');
+}
 function closeAdd(){ document.getElementById('add-ov').classList.remove('open'); }
 function renderTiers(){
   document.getElementById('ad-tiers').innerHTML=['15','20'].map(function(gb){
@@ -199,9 +228,10 @@ function submitAdd(){
   var name=document.getElementById('ad-name').value.trim();
   if(!name){ var e=document.getElementById('add-err'); e.textContent=T('اكتب اسم المشروع'); e.classList.remove('hide'); return; }
   var btn=document.getElementById('add-go'); btn.disabled=true; btn.innerHTML='<span class="spin"></span> '+T('جارٍ…');
-  api('POST','/api/saas/projects',{name:name,tier:selTier}).then(function(r){
+  var req = ME.plan ? api('POST','/api/saas/bundle/projects',{name:name}) : api('POST','/api/saas/projects',{name:name,tier:selTier});
+  req.then(function(r){
     btn.disabled=false; btn.textContent=T('إضافة ودفع');
-    if(!r.ok){ var e=document.getElementById('add-err'); e.textContent=r.d.error||T('تعذّر'); e.classList.remove('hide'); return; }
+    if(!r.ok){ var e=document.getElementById('add-err'); e.textContent=r.d.error||T('تعذّر'); e.classList.remove('hide'); if(r.d.billing) e.innerHTML+=' <a href="'+r.d.billing+'">'+T('رقِّ باقتك')+'</a>'; return; }
     if(r.d.redirectUrl){ window.location=r.d.redirectUrl; return; }
     closeAdd(); toast('✅ '+T('تمت إضافة المشروع ودفعه')); boot();
   });

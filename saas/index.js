@@ -21,6 +21,8 @@ module.exports = function initSaas(ctx) {
   const store = require('./store')({ dataDir: DATA_DIR, readJSON, writeJSON });
   const B = require('./billing')(store);
   const tap = require('./tap')(store);
+  const moyasar = require('./moyasar')(store);
+  const gatewayOf = tenant => (tenant.billing && tenant.billing.gateway === 'moyasar') ? moyasar : tap;
 
   const now = () => new Date().toISOString();
   const adminOnly = (req, res, nx) => isAdmin(req.user) ? nx() : res.status(403).json({ error: 'صلاحية مالك المنصّة فقط' });
@@ -282,22 +284,129 @@ module.exports = function initSaas(ctx) {
     return { code: 200, ok: true, projectId: project.id, redirectUrl: s.redirectUrl, invoiceId: inv.id };
   }
 
+  // ---------- تسجيل جديد عبر باقة (bundle) — موديل جديد، مدفوع بـMoyasar ----------
+  function doBundleSignup(body, req) {
+    const cfg = store.loadConfig();
+    const company = String(body.company || '').trim();
+    const ownerName = String(body.ownerName || '').trim();
+    const username = String(body.username || '').trim().toLowerCase();
+    const email = String(body.email || '').trim();
+    const phone = String(body.phone || '').trim();
+    const password = String(body.password || '');
+    const projName = String((body.project && body.project.name) || '').trim();
+    const bundleId = String(body.bundleId || '');
+    const bundle = B.bundleOf(cfg, bundleId);
+
+    if (!company || !ownerName || !username || !password || !projName)
+      return { code: 400, error: 'أكمل: اسم الشركة، اسم المالك، اسم المستخدم، كلمة المرور، اسم المشروع' };
+    if (password.length < 6) return { code: 400, error: 'كلمة المرور 6 أحرف على الأقل' };
+    if (!bundle) return { code: 400, error: 'باقة غير معروفة' };
+    const users = loadUsers();
+    if (users.some(u => u.username === username)) return { code: 400, error: 'اسم المستخدم محجوز، اختر غيره' };
+
+    const companies = loadCompanies();
+    const comp = { id: nextId(), name: company };
+    companies.push(comp); saveCompanies(companies);
+
+    const owner = { id: nextId(), username, name: ownerName, role: 'client', companyId: comp.id, phone, email, hash: bcrypt.hashSync(password, 10) };
+    users.push(owner); saveUsers(users);
+
+    const project = emptyProject(comp.id, projName);
+    saveProject(project);
+
+    const plan = { id: bundle.id, name: bundle.name, nameAr: bundle.nameAr, maxProjects: bundle.maxProjects, storageGB: bundle.storageGB, price: bundle.price };
+    const tenant = {
+      companyId: comp.id, ownerUserId: owner.id, saasManaged: true, status: 'pending', createdAt: now(),
+      billing: { gateway: 'moyasar', plan, customerId: null, paymentAgreementId: null, card: { id: null, last4: null, brand: null }, cycleStart: null, cycleEnd: null, nextRenewalAt: null, graceUntil: null, lastPaymentAt: null },
+      projects: [{ projectId: project.id, name: projName, tier: null, price: 0, status: 'pending', addedAt: now() }],
+      contact: { name: ownerName, email, phone }, note: ''
+    };
+    store.upsertTenant(tenant);
+
+    const inv = B.buildInvoice(cfg, tenant, {
+      kind: 'signup', gateway: 'moyasar',
+      lines: [{ projectId: null, name: bundle.name, tier: null, desc: 'اشتراك باقة «' + bundle.nameAr + '» — حتى ' + bundle.maxProjects + ' مشروع، ' + bundle.storageGB + ' جيجابايت — شهر', qty: 1, unit: bundle.price, amount: bundle.price }]
+    });
+    store.addInvoice(inv);
+
+    return { code: 200, ok: true, tenant, invoice: inv, owner, req };
+  }
+
+  // ---------- إضافة مشروع لمستأجر باقة (bundle) — مجّاناً حتى حدّ الباقة، بلا فاتورة إضافية ----------
+  function addProjectForBundleTenant(tenant, { name }) {
+    name = String(name || '').trim();
+    if (!name) return { code: 400, error: 'اكتب اسم المشروع' };
+    const plan = tenant.billing.plan;
+    const current = (tenant.projects || []).filter(p => p.status !== 'cancelled').length;
+    if (current >= plan.maxProjects)
+      return { code: 402, error: 'بلغت الحدّ الأقصى لعدد المشاريع في باقة «' + (plan.nameAr || plan.name) + '» (' + plan.maxProjects + '). رقِّ باقتك لإضافة مشاريع أكثر.', billing: '/plans' };
+    const project = emptyProject(tenant.companyId, name);
+    saveProject(project);
+    const status = tenant.status === 'active' ? 'active' : 'pending';
+    tenant.projects.push({ projectId: project.id, name, tier: null, price: 0, status, addedAt: now() });
+    store.upsertTenant(tenant);
+    return { code: 200, ok: true, projectId: project.id };
+  }
+
+  // ---------- ترقية باقة مستأجر حالي — خصم تناسبي لبقية الدورة الحالية ثم السعر الكامل مع التجديد ----------
+  async function upgradeBundleForTenant(tenant, { bundleId, req }) {
+    const cfg = store.loadConfig();
+    const bundle = B.bundleOf(cfg, bundleId);
+    if (!bundle) return { code: 400, error: 'باقة غير معروفة' };
+    const currentPrice = tenant.billing.plan ? tenant.billing.plan.price : 0;
+    if (bundle.price <= currentPrice && tenant.billing.plan && bundle.id === tenant.billing.plan.id)
+      return { code: 400, error: 'هذه باقتك الحالية بالفعل' };
+    const activeCount = (tenant.projects || []).filter(p => p.status === 'active').length;
+    if (activeCount > bundle.maxProjects)
+      return { code: 400, error: 'لديك ' + activeCount + ' مشروعاً فعّالاً — أكثر من حدّ باقة «' + bundle.nameAr + '» (' + bundle.maxProjects + '). أوقف مشاريع أولاً أو اختر باقة أكبر.' };
+
+    const plan = { id: bundle.id, name: bundle.name, nameAr: bundle.nameAr, maxProjects: bundle.maxProjects, storageGB: bundle.storageGB, price: bundle.price };
+    const priceDiff = B.money(Math.max(0, bundle.price - currentPrice));
+    let proratedNet = priceDiff;
+    if (priceDiff > 0 && tenant.billing.cycleStart && tenant.billing.cycleEnd) {
+      proratedNet = B.money(priceDiff * B.prorationFactor(now(), tenant.billing.cycleStart, tenant.billing.cycleEnd));
+    }
+    tenant.billing.gateway = 'moyasar';
+    tenant.billing.plan = plan;
+    store.upsertTenant(tenant);
+
+    if (proratedNet <= 0.5) return { code: 200, ok: true, upgraded: true, free: true };
+
+    const inv = B.buildInvoice(cfg, tenant, {
+      kind: 'bundle_upgrade', gateway: 'moyasar',
+      periodStart: tenant.billing.cycleStart, periodEnd: tenant.billing.cycleEnd,
+      lines: [{ projectId: null, name: bundle.name, tier: null, desc: 'ترقية إلى باقة «' + bundle.nameAr + '» — حصّة بقية الدورة', qty: 1, unit: proratedNet, amount: proratedNet }]
+    });
+    store.addInvoice(inv);
+
+    // بطاقة محفوظة وفعّال → خصم فوري (MIT)؛ غير ذلك يحتاج العميل دفعاً عبر نافذة moyasar.js
+    if (tenant.status === 'active' && tenant.billing.card && tenant.billing.card.id) {
+      const r = await moyasar.createRecurringCharge({ amount: inv.total, currency: inv.currency, cardId: tenant.billing.card.id, description: 'ترقية باقة — ' + companyName(tenant.companyId), metadata: { invoiceId: inv.id, companyId: tenant.companyId, kind: 'bundle_upgrade' } });
+      const applied = applyChargeResult(inv.id, { ...r, cardLast4: tenant.billing.card.last4, cardBrand: tenant.billing.card.brand });
+      if (applied.ok) return { code: 200, ok: true, upgraded: true, invoice: applied.invoice };
+      return { code: 402, error: 'تعذّر الخصم من البطاقة المحفوظة: ' + (r.error || 'مرفوضة'), invoiceId: inv.id };
+    }
+    return { code: 200, ok: true, upgraded: true, needsPayment: true, invoiceId: inv.id, amount: inv.total, currency: inv.currency };
+  }
+
   // ---------- التجديد والمرور الدوري ----------
   async function renewTenant(tenant) {
     const cfg = store.loadConfig();
     const lines = B.subscriptionLines(cfg, tenant);
     if (!lines.length) return { ok: false, error: 'no active projects' };
+    const gw = gatewayOf(tenant);
     const inv = B.buildInvoice(cfg, tenant, {
-      kind: 'renewal',
+      kind: 'renewal', gateway: gw === moyasar ? 'moyasar' : 'tap',
       periodStart: tenant.billing.cycleEnd, periodEnd: B.addMonths(tenant.billing.cycleEnd, 1),
       lines
     });
     store.addInvoice(inv);
-    if (!tenant.billing.customerId || !tenant.billing.card || !tenant.billing.card.id) {
+    const needsCustomer = gw === tap; // Tap يحتاج customerId محفوظ؛ Moyasar يحتاج فقط التوكن (card.id)
+    if (!tenant.billing.card || !tenant.billing.card.id || (needsCustomer && !tenant.billing.customerId)) {
       // لا بطاقة محفوظة → فشل منطقي يؤدي لمهلة ثم إيقاف
       return applyChargeResult(inv.id, { status: 'failed', error: 'لا توجد بطاقة محفوظة' });
     }
-    const r = await tap.createRecurringCharge({
+    const r = await gw.createRecurringCharge({
       amount: inv.total, currency: inv.currency, customerId: tenant.billing.customerId, cardId: tenant.billing.card.id,
       paymentAgreementId: tenant.billing.paymentAgreementId,
       description: 'تجديد اشتراك — ' + companyName(tenant.companyId), metadata: { invoiceId: inv.id, companyId: tenant.companyId, kind: 'renewal' },
@@ -365,10 +474,17 @@ module.exports = function initSaas(ctx) {
       }
       return { ok: true };
     },
-    // حدّ السعة لكل مشروع حسب الباقة
+    // حدّ السعة: مجمّعة عبر كل مشاريع المستأجر لباقات bundle، أو لكل مشروع حسب tier في الموديل القديم
     upload(project, incomingBytes) {
       const t = store.getTenant(project.companyId);
       if (!t || !t.saasManaged) return { ok: true };
+      if (B.isBundleTenant(t)) {
+        const capBytes = t.billing.plan.storageGB * GB;
+        const used = (t.projects || []).reduce((s, p) => s + projectStorageBytes(p.projectId), 0);
+        if (used + (incomingBytes || 0) > capBytes)
+          return { ok: false, code: 413, error: 'تجاوزت السعة المجمّعة لباقتك (' + t.billing.plan.storageGB + ' جيجابايت لكل مشاريعك معاً). رقِّ الباقة من صفحة الاشتراك.' };
+        return { ok: true };
+      }
       const rec = (t.projects || []).find(p => p.projectId === project.id);
       const tier = rec ? rec.tier : '15';
       const capBytes = B.tierCapacityGB(tier) * GB;
@@ -394,6 +510,86 @@ module.exports = function initSaas(ctx) {
     res.json({ ok: true, redirectUrl: start.redirectUrl, invoiceId: s.invoice.id, username: s.owner.username, companyId: s.tenant.companyId });
   });
 
+  // ---- عام: تسجيل جديد عبر باقة (bundle) — الدفعة الأولى تتم من المتصفح عبر moyasar.js ----
+  app.post('/api/saas/public/bundle-signup', async (req, res) => {
+    const s = doBundleSignup(req.body || {}, req);
+    if (!s.ok) return res.status(s.code).json({ error: s.error });
+    const cfgM = store.loadConfig().moyasar;
+    if (moyasar.isSim()) {
+      const base = publicBaseUrl(req);
+      const chk = moyasar.simCheckoutUrl({ amount: s.invoice.total, redirectUrl: base + '/saas/return?inv=' + s.invoice.id });
+      store.updateInvoice(s.invoice.id, { tapChargeId: chk.id });
+      return res.json({ ok: true, redirectUrl: chk.redirectUrl, invoiceId: s.invoice.id, username: s.owner.username, companyId: s.tenant.companyId });
+    }
+    // test/live: الواجهة تفتح نافذة moyasar.js بهذه البيانات وتُنشئ الدفعة من المتصفح مباشرة
+    res.json({
+      ok: true, invoiceId: s.invoice.id, username: s.owner.username, companyId: s.tenant.companyId,
+      checkout: {
+        amount: moyasar.halalas(s.invoice.total), currency: s.invoice.currency,
+        publishableKey: cfgM.publishableKey, description: 'اشتراك جديد — ' + companyName(s.tenant.companyId),
+        callbackUrl: publicBaseUrl(req) + '/saas/return?inv=' + s.invoice.id
+      }
+    });
+  });
+
+  // ---- مستأجر (client): ترقية باقة ----
+  app.post('/api/saas/bundle/upgrade', auth, async (req, res) => {
+    if (req.user.role !== 'client') return res.status(403).json({ error: 'ترقية الباقة صلاحية مالك الحساب' });
+    const t = tenantOfUser(req.user);
+    if (!t || !t.saasManaged) return res.status(400).json({ error: 'لا يوجد اشتراك مُدار لهذه الشركة' });
+    const out = await upgradeBundleForTenant(t, { bundleId: (req.body || {}).bundleId, req });
+    if (out.code !== 200) return res.status(out.code).json({ error: out.error });
+    if (out.needsPayment) {
+      const cfgM = store.loadConfig().moyasar;
+      return res.json({
+        ok: true, needsPayment: true, invoiceId: out.invoiceId,
+        checkout: { amount: moyasar.halalas(out.amount), currency: out.currency, publishableKey: cfgM.publishableKey, description: 'ترقية باقة', callbackUrl: publicBaseUrl(req) + '/saas/return?inv=' + out.invoiceId }
+      });
+    }
+    res.json({ ok: true, upgraded: true });
+  });
+
+  // ---- مستأجر (client): إضافة مشروع ضمن حدّ الباقة الحالية (بلا فاتورة إضافية) ----
+  app.post('/api/saas/bundle/projects', auth, (req, res) => {
+    if (req.user.role !== 'client') return res.status(403).json({ error: 'إضافة المشاريع صلاحية مالك الحساب' });
+    const t = tenantOfUser(req.user);
+    if (!t || !t.saasManaged || !B.isBundleTenant(t)) return res.status(400).json({ error: 'لا توجد باقة bundle لهذه الشركة' });
+    const out = addProjectForBundleTenant(t, { name: (req.body || {}).name });
+    res.status(out.code).json(out.code === 200 ? out : { error: out.error, billing: out.billing });
+  });
+
+  // ---- تأكيد دفعة Moyasar عند عودة العميل من نافذة الدفع (قبل الاعتماد على الـwebhook) ----
+  // نُعيد جلب العملية من Moyasar بمفتاحنا السرّي دائماً — لا نُصدّق حالة يرسلها المتصفح أبداً.
+  app.post('/api/saas/moyasar/confirm', async (req, res) => {
+    const invoiceId = String((req.body || {}).invoiceId || '');
+    const paymentId = String((req.body || {}).paymentId || '');
+    const inv = store.getInvoice(invoiceId);
+    if (!inv) return res.status(404).json({ error: 'فاتورة غير معروفة' });
+    if (inv.status === 'paid') return res.json({ ok: true, already: true });
+    if (!paymentId) return res.json({ ok: true, pending: true });
+    try {
+      const fetched = await moyasar.retrieveCharge(paymentId);
+      if (fetched.ok) { store.updateInvoice(inv.id, { tapChargeId: paymentId }); applyChargeResult(inv.id, fetched); }
+    } catch (e) {}
+    res.json({ ok: true });
+  });
+
+  // ---- Webhook من Moyasar (تأكيد احتياطي غير متزامن — نفس نمط ويبهوك Tap) ----
+  app.post('/api/saas/moyasar/webhook', async (req, res) => {
+    const payload = req.body || {};
+    try {
+      const data = payload.data || {};
+      const paymentId = data.id;
+      if (!paymentId || !String(payload.type || '').startsWith('payment_')) return res.json({ ok: true, ignored: true });
+      if (!moyasar.verifyWebhook(req.headers, payload)) return res.json({ ok: true, ignored: true });
+      const invoiceId = (data.metadata && data.metadata.invoiceId) || (store.loadInvoices().find(v => v.tapChargeId === paymentId) || {}).id;
+      if (!invoiceId) return res.json({ ok: true, ignored: true });
+      const fetched = await moyasar.retrieveCharge(paymentId);
+      if (fetched.ok) applyChargeResult(invoiceId, fetched);
+    } catch (e) { /* لا نكسر الـwebhook */ }
+    res.json({ ok: true });
+  });
+
   // ---- عام: حالة فاتورة (لصفحة العودة) ----
   app.get('/api/saas/public/invoice/:id', (req, res) => {
     const inv = store.getInvoice(req.params.id);
@@ -401,16 +597,16 @@ module.exports = function initSaas(ctx) {
     res.json({ id: inv.id, no: inv.no, status: inv.status, total: inv.total, currency: inv.currency, kind: inv.kind, companyId: inv.tenantCompanyId });
   });
 
-  // ---- محاكاة الدفع (sim فقط): صفحة دفع وهمية ----
+  // ---- محاكاة الدفع (sim فقط): صفحة دفع وهمية — مشتركة بين Tap و Moyasar حسب وضع كلٍّ منهما ----
   app.get('/saas/sim/pay', (req, res) => {
-    if (!tap.isSim()) return res.status(404).send('غير متاح');
+    if (!tap.isSim() && !moyasar.isSim()) return res.status(404).send('غير متاح');
     const chg = String(req.query.chg || ''); const amount = String(req.query.amount || '');
     const back = String(req.query.back || '/billing');
     res.set('Content-Type', 'text/html; charset=utf-8').send(simPayPage(chg, amount, back));
   });
   // إتمام المحاكاة
   app.post('/api/saas/pay/sim-complete', express.urlencoded ? express.urlencoded({ extended: false }) : (q, s, n) => n(), (req, res) => {
-    if (!tap.isSim()) return res.status(404).json({ error: 'غير متاح' });
+    if (!tap.isSim() && !moyasar.isSim()) return res.status(404).json({ error: 'غير متاح' });
     const chg = (req.body && req.body.chg) || req.query.chg;
     const result = (req.body && req.body.result) || req.query.result;
     const inv = store.loadInvoices().find(v => v.tapChargeId === chg);
@@ -446,11 +642,14 @@ module.exports = function initSaas(ctx) {
     const t = tenantOfUser(req.user);
     if (!t) return res.json({ saasManaged: false });
     const cfg = store.loadConfig();
+    const isBundle = B.isBundleTenant(t);
+    const pooledUsed = isBundle ? (t.projects || []).reduce((s, p) => s + projectStorageBytes(p.projectId), 0) : null;
     res.json({
       saasManaged: true, status: t.status, company: companyName(t.companyId), companyId: t.companyId,
-      billing: { cycleStart: t.billing.cycleStart, cycleEnd: t.billing.cycleEnd, nextRenewalAt: t.billing.nextRenewalAt, graceUntil: t.billing.graceUntil, card: t.billing.card, customerSaved: !!t.billing.customerId },
-      projects: (t.projects || []).map(p => ({ ...p, capacityGB: B.tierCapacityGB(p.tier), usedBytes: projectStorageBytes(p.projectId) })),
-      monthlyNet: B.subscriptionNet(cfg, t), currency: cfg.currency, vatRate: cfg.vatRate, priceInclusiveVat: cfg.priceInclusiveVat, tiers: cfg.tiers,
+      billing: { gateway: t.billing.gateway || 'tap', cycleStart: t.billing.cycleStart, cycleEnd: t.billing.cycleEnd, nextRenewalAt: t.billing.nextRenewalAt, graceUntil: t.billing.graceUntil, card: t.billing.card, customerSaved: !!(t.billing.customerId || t.billing.card && t.billing.card.id) },
+      projects: (t.projects || []).map(p => ({ ...p, capacityGB: p.tier ? B.tierCapacityGB(p.tier) : null, usedBytes: projectStorageBytes(p.projectId) })),
+      plan: isBundle ? { ...t.billing.plan, usedProjects: (t.projects || []).filter(p => p.status !== 'cancelled').length, usedBytes: pooledUsed, capBytes: t.billing.plan.storageGB * GB } : null,
+      monthlyNet: B.subscriptionNet(cfg, t), currency: cfg.currency, vatRate: cfg.vatRate, priceInclusiveVat: cfg.priceInclusiveVat, tiers: cfg.tiers, bundles: cfg.bundles,
       canManage: req.user.role === 'client'
     });
   });
@@ -580,7 +779,8 @@ module.exports = function initSaas(ctx) {
 
   app.get('/api/saas/admin/config', auth, adminOnly, (req, res) => {
     const c = store.loadConfig();
-    res.json({ currency: c.currency, vatRate: c.vatRate, priceInclusiveVat: c.priceInclusiveVat, tiers: c.tiers, graceDays: c.graceDays, trialDays: c.trialDays, brand: c.brand, tap: { mode: c.tap.mode, baseUrl: c.tap.baseUrl, publicKey: c.tap.publicKey, secretKeySet: !!c.tap.secretKey, webhookSecretSet: !!c.tap.webhookSecret },
+    res.json({ currency: c.currency, vatRate: c.vatRate, priceInclusiveVat: c.priceInclusiveVat, tiers: c.tiers, bundles: c.bundles, graceDays: c.graceDays, trialDays: c.trialDays, brand: c.brand, tap: { mode: c.tap.mode, baseUrl: c.tap.baseUrl, publicKey: c.tap.publicKey, secretKeySet: !!c.tap.secretKey, webhookSecretSet: !!c.tap.webhookSecret },
+      moyasar: { mode: c.moyasar.mode, publishableKey: c.moyasar.publishableKey, secretKeySet: !!c.moyasar.secretKey, webhookSecretSet: !!c.moyasar.webhookSecret },
       erpWebhook: { enabled: c.erpWebhook.enabled, url: c.erpWebhook.url, apiKeySet: !!c.erpWebhook.apiKey, lastStatus: c.erpWebhook.lastStatus, lastAt: c.erpWebhook.lastAt } });
   });
   app.put('/api/saas/admin/config', auth, adminOnly, (req, res) => {
@@ -589,6 +789,9 @@ module.exports = function initSaas(ctx) {
     if (b.vatRate !== undefined) c.vatRate = Math.max(0, Number(b.vatRate) || 0);
     if (b.priceInclusiveVat !== undefined) c.priceInclusiveVat = !!b.priceInclusiveVat;
     if (b.tiers && typeof b.tiers === 'object') { ['15', '20'].forEach(k => { if (b.tiers[k] !== undefined) c.tiers[k] = Math.max(0, Number(b.tiers[k]) || 0); }); }
+    if (b.bundles && typeof b.bundles === 'object') {
+      ['starter', 'growth', 'team'].forEach(k => { if (b.bundles[k] && b.bundles[k].price !== undefined) c.bundles[k].price = Math.max(0, Number(b.bundles[k].price) || 0); });
+    }
     if (b.graceDays !== undefined) c.graceDays = Math.max(0, Number(b.graceDays) || 0);
     if (b.trialDays !== undefined) c.trialDays = Math.max(0, Number(b.trialDays) || 0);
     if (b.brand && typeof b.brand === 'object') c.brand = { ...c.brand, ...b.brand };
@@ -599,6 +802,13 @@ module.exports = function initSaas(ctx) {
       if (typeof b.tap.secretKey === 'string' && b.tap.secretKey.length) c.tap.secretKey = b.tap.secretKey;
       if (typeof b.tap.webhookSecret === 'string' && b.tap.webhookSecret.length) c.tap.webhookSecret = b.tap.webhookSecret;
       if (b.tap.clearSecret) c.tap.secretKey = '';
+    }
+    if (b.moyasar && typeof b.moyasar === 'object') {
+      if (b.moyasar.mode && ['sim', 'test', 'live'].includes(b.moyasar.mode)) c.moyasar.mode = b.moyasar.mode;
+      if (b.moyasar.publishableKey !== undefined) c.moyasar.publishableKey = String(b.moyasar.publishableKey || '');
+      if (typeof b.moyasar.secretKey === 'string' && b.moyasar.secretKey.length) c.moyasar.secretKey = b.moyasar.secretKey;
+      if (typeof b.moyasar.webhookSecret === 'string' && b.moyasar.webhookSecret.length) c.moyasar.webhookSecret = b.moyasar.webhookSecret;
+      if (b.moyasar.clearSecret) c.moyasar.secretKey = '';
     }
     if (b.erpWebhook && typeof b.erpWebhook === 'object') {
       if (b.erpWebhook.enabled !== undefined) c.erpWebhook.enabled = !!b.erpWebhook.enabled;
@@ -615,6 +825,7 @@ module.exports = function initSaas(ctx) {
   app.get('/landing', page('landing.html'));
   app.get('/billing', page('billing.html'));
   app.get('/owner', page('owner.html'));
+  app.get('/plans', page('plans.html'));
   // الصفحة الرئيسية للموقع أصبحت صفحة التسويق/الاشتراك بدلاً من التطبيق مباشرة؛
   // التطبيق نفسه متاح الآن على /app (رابط "دخول العملاء" يوجّه إليه)، مع الحفاظ على
   // رابط الفتح المباشر /?project=<id> (مستخدم من لوحة "كل المشاريع") ليستمر بفتح التطبيق
@@ -646,9 +857,14 @@ module.exports = function initSaas(ctx) {
       '<title>نتيجة الدفع</title><style>body{font-family:system-ui,"Segoe UI",Tahoma,sans-serif;background:#0f172a;color:#e2e8f0;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}' +
       '.card{background:#1e293b;border:1px solid #334155;border-radius:16px;padding:32px;max-width:420px;width:92%;text-align:center}.big{font-size:48px;margin-bottom:8px}a.btn{display:inline-block;margin-top:18px;background:#38bdf8;color:#042f17;text-decoration:none;font-weight:700;padding:11px 20px;border-radius:10px}</style></head>' +
       '<body><div class="card" id="box"><div class="big">⏳</div><h2>جارٍ تأكيد الدفع…</h2><p id="msg" style="color:#94a3b8">لحظة من فضلك</p></div>' +
-      '<script>var inv=' + JSON.stringify(invId) + ';var tries=0;function poll(){fetch("/api/saas/public/invoice/"+inv).then(r=>r.json()).then(d=>{tries++;var box=document.getElementById("box");if(d.status==="paid"){box.innerHTML=\'<div class=big>✅</div><h2>تم الدفع بنجاح</h2><p style="color:#94a3b8">تم تفعيل اشتراكك. يمكنك الدخول الآن.</p><a class=btn href="/">دخول النظام</a>\';return;}if(d.status==="failed"){box.innerHTML=\'<div class=big>✖</div><h2>تعذّر الدفع</h2><p style="color:#94a3b8">لم تُكمل العملية. حاول مجدداً.</p><a class=btn href="/billing">إعادة المحاولة</a>\';return;}if(tries<40)setTimeout(poll,1500);else{document.getElementById("msg").textContent="يستغرق التأكيد وقتاً أطول — حدّث الصفحة لاحقاً.";}});}poll();</script></body></html>';
+      '<script>var inv=' + JSON.stringify(invId) + ';var tries=0;' +
+      // Moyasar (نافذة moyasar.js) يُعيد المتصفح لهذا الرابط مضيفاً id/status خاصّتها — نُؤكّد
+      // الدفعة بجلبها من الخادم بمفتاحنا السرّي قبل البدء بالاستعلام (لا نُصدّق حالة المتصفح أبداً).
+      'var qp=new URLSearchParams(location.search);var payId=qp.get("id");' +
+      'function confirmThenPoll(){if(payId){fetch("/api/saas/moyasar/confirm",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({invoiceId:inv,paymentId:payId})}).then(poll).catch(poll);}else poll();}' +
+      'function poll(){fetch("/api/saas/public/invoice/"+inv).then(r=>r.json()).then(d=>{tries++;var box=document.getElementById("box");if(d.status==="paid"){box.innerHTML=\'<div class=big>✅</div><h2>تم الدفع بنجاح</h2><p style="color:#94a3b8">تم تفعيل اشتراكك. يمكنك الدخول الآن.</p><a class=btn href="/">دخول النظام</a>\';return;}if(d.status==="failed"){box.innerHTML=\'<div class=big>✖</div><h2>تعذّر الدفع</h2><p style="color:#94a3b8">لم تُكمل العملية. حاول مجدداً.</p><a class=btn href="/billing">إعادة المحاولة</a>\';return;}if(tries<40)setTimeout(poll,1500);else{document.getElementById("msg").textContent="يستغرق التأكيد وقتاً أطول — حدّث الصفحة لاحقاً.";}});}confirmThenPoll();</script></body></html>';
   }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
-  return { store, billing: B, tap, guards, runBillingPass, renewTenant, addProjectForTenant, _internal: { applyChargeResult, doSignup, tenantOfUser } };
+  return { store, billing: B, tap, moyasar, guards, runBillingPass, renewTenant, addProjectForTenant, _internal: { applyChargeResult, doSignup, doBundleSignup, tenantOfUser } };
 };

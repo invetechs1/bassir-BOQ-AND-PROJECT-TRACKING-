@@ -49,6 +49,7 @@
 
     <div class="seg" id="view-seg" style="margin-bottom:14px">
       <button class="on" data-v="stock" onclick="setView('stock')">📊 الرصيد الحالي</button>
+      <button data-v="movement" onclick="setView('movement')">🔀 حركة المواد</button>
       <button data-v="receipts" onclick="setView('receipts')">📥 توريد للمستودع</button>
       <button data-v="issues" onclick="setView('issues')">📤 صرف من المستودع</button>
       <button data-v="recipient" onclick="setView('recipient')">🏷 حسب الجهة (من سحب)</button>
@@ -62,6 +63,18 @@
         <thead><tr><th>المادة</th><th>الوحدة</th><th>وارد (توريد)</th><th>منصرف (صرف)</th><th>الرصيد المتاح</th></tr></thead>
         <tbody id="stock-body"></tbody>
       </table></div>
+    </div>
+
+    <!-- حركة المواد -->
+    <div id="v-movement" class="hide">
+      <div class="panel">
+        <div class="spread" style="margin-bottom:6px"><strong>🔀 حركة المواد — من الشراء إلى الموقع</strong><span class="hint">المشتراة = في المستودع + في الموقع</span></div>
+        <div class="note" style="margin-bottom:10px;font-size:12px">كل مادة: كم اشتريتها (وردت للمستودع)، كم باقٍ بالمستودع، وكم خرجت للموقع ومع أي مقاول أو ذاتي. لو ظهرت حالة <span class="chip bal-neg" style="padding:1px 6px">فرق</span> فمعناه فيه نقص غير مُسجَّل بين الشراء والمستودع.</div>
+        <div style="overflow:auto"><table>
+          <thead><tr><th>المادة</th><th>الوحدة</th><th>المشتراة (الواردة)</th><th>في المستودع</th><th>في الموقع (مصروفة)</th><th>مع مَن؟ (الجهات)</th><th>التطابق</th></tr></thead>
+          <tbody id="mov-body"></tbody>
+        </table></div>
+      </div>
     </div>
 
     <!-- توريد -->
@@ -187,7 +200,7 @@ function loadProject(){
 function setView(v){
   VIEW=v;
   [].forEach.call(document.querySelectorAll('#view-seg button'),function(b){b.classList.toggle('on',b.dataset.v===v)});
-  ['stock','receipts','issues','recipient','materials'].forEach(function(x){ document.getElementById('v-'+x).classList.toggle('hide', x!==v); });
+  ['stock','movement','receipts','issues','recipient','materials'].forEach(function(x){ document.getElementById('v-'+x).classList.toggle('hide', x!==v); });
 }
 function fillMaterialSelects(){
   var opts='<option value="">— اختر المادة —</option>'+(DATA.materials||[]).map(function(m){return '<option value="'+m.id+'">'+esc(m.name)+(m.unit?(' ('+esc(m.unit)+')'):'')+'</option>'}).join('');
@@ -211,6 +224,26 @@ function renderAll(){
     var bal=s.balance; var cls=bal<=0?'bal-neg':(bal<5?'':'bal-ok');
     return '<tr><td><strong>'+esc(s.name)+'</strong></td><td>'+esc(s.unit||'—')+'</td><td class="amount" style="color:var(--green)">'+num(s.received)+'</td><td class="amount" style="color:var(--teal)">'+num(s.issued)+'</td><td class="amount '+cls+'">'+num(bal)+'</td></tr>';
   }).join(''):'<tr><td colspan="5" class="muted center">لا مواد بعد — أضف صنفاً ثم ورّده</td></tr>';
+  // حركة المواد
+  var movByMat={};
+  (DATA.issues||[]).forEach(function(x){
+    var key=x.bearer==='own'?'own':('sub:'+x.subId);
+    var m=movByMat[x.materialId]||(movByMat[x.materialId]={});
+    if(!m[key]) m[key]={bearer:x.bearer,name:x.bearer==='own'?'ذاتي':x.recipient,qty:0};
+    m[key].qty+=Number(x.qty)||0;
+  });
+  document.getElementById('mov-body').innerHTML=(DATA.stock||[]).length?(DATA.stock||[]).map(function(s){
+    var parts=movByMat[s.materialId]||{};
+    var chips=Object.keys(parts).map(function(k){var p=parts[k];return '<span class="chip '+(p.bearer==='own'?'c-own':'c-sub')+'" style="margin:2px 3px 2px 0;display:inline-block">'+(p.bearer==='own'?'🏢 ':'🧱 ')+esc(p.name)+': '+num(p.qty)+' '+esc(s.unit||'')+'</span>';}).join('')||'<span class="hint">لم تُصرف بعد</span>';
+    var bal=s.balance, cls=bal<=0?'bal-neg':(bal<5?'':'bal-ok');
+    var diff=Number((s.received-s.issued-bal).toFixed(4));
+    var okTag=diff===0?'<span class="chip bal-ok" style="padding:1px 7px">✓ مطابق</span>':'<span class="chip bal-neg" style="padding:1px 7px">فرق '+num(diff)+'</span>';
+    return '<tr><td><strong>'+esc(s.name)+'</strong></td><td>'+esc(s.unit||'—')+'</td>'+
+      '<td class="amount" style="color:var(--green);font-weight:700">'+num(s.received)+'</td>'+
+      '<td class="amount '+cls+'">'+num(bal)+'</td>'+
+      '<td class="amount" style="color:var(--teal);font-weight:700">'+num(s.issued)+'</td>'+
+      '<td style="line-height:2">'+chips+'</td><td>'+okTag+'</td></tr>';
+  }).join(''):'<tr><td colspan="7" class="muted center">لا مواد بعد — أضف صنفاً ثم ورّده</td></tr>';
   // التوريد
   document.getElementById('rc-count').textContent=(DATA.receipts||[]).length+' حركة';
   document.getElementById('rc-body').innerHTML=(DATA.receipts||[]).length?(DATA.receipts||[]).map(function(r){

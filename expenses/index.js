@@ -63,7 +63,8 @@ module.exports = function initExpenses(ctx) {
       taxInvoiceNo: String(body.taxInvoiceNo || '').trim(),
       taxInvoiceDate: String(body.taxInvoiceDate || '').slice(0, 10),
       category: String(body.category || '').trim(),
-      boqItemId: body.boqItemId || null,
+      boqItemId: body.boqItemId || null,                 // البند المستفيد من المواد (لتوزيع المواد ومراقبة التكلفة)
+      materialQty: type === 'material' ? (Number(body.materialQty) || 0) : 0, // الكمية التي تغطيها هذه المواد (اختياري)
       month: type === 'salary' ? String(body.month || '').slice(0, 7) : '',
       headcount: type === 'salary' ? (Number(body.headcount) || 0) : 0,
       // التحميل: 'own' = ذاتي (على الشركة، تكلفة مشروع) | 'sub' = على مقاول باطن (تُسترد بالخصم من مستخلصه)
@@ -145,6 +146,55 @@ module.exports = function initExpenses(ctx) {
     };
   }
 
+  // ------- توزيع المواد ومراقبة التكلفة (المواد راحت وين؟ وكم كلّفت الوحدة مقابل المستهدف؟) -------
+  function materialReport(project, items, targets) {
+    const boq = project.boqItems || [];
+    const boqById = new Map(boq.map(it => [it.id, it]));
+    const subName = id => { const s = (project.subcontractors || []).find(x => x.id === id); return s ? s.name : ('#' + id); };
+    const mats = items.filter(e => e.type === 'material');
+    const byItem = {};       // itemId -> { spent, own, subs:{subId:amt}, qty, count }
+    const bySink = {};       // 'own' | 'sub:<id>' -> amount  (المواد راحت لمن)
+    let totalMaterial = 0, unassigned = 0, toSubs = 0, toOwn = 0;
+    mats.forEach(e => {
+      const amt = Number(e.amount) || 0; // قبل الضريبة (اتساقاً مع الربحية)
+      totalMaterial = round2(totalMaterial + amt);
+      const isSub = e.bearer === 'sub' && e.subId;
+      const sinkKey = isSub ? ('sub:' + e.subId) : 'own';
+      bySink[sinkKey] = round2((bySink[sinkKey] || 0) + amt);
+      if (isSub) toSubs = round2(toSubs + amt); else toOwn = round2(toOwn + amt);
+      const iid = e.boqItemId && boqById.has(e.boqItemId) ? e.boqItemId : null;
+      if (!iid) { unassigned = round2(unassigned + amt); return; }
+      if (!byItem[iid]) byItem[iid] = { spent: 0, own: 0, subs: {}, qty: 0, count: 0 };
+      const g = byItem[iid];
+      g.spent = round2(g.spent + amt); g.qty = round2(g.qty + (Number(e.materialQty) || 0)); g.count++;
+      if (isSub) g.subs[e.subId] = round2((g.subs[e.subId] || 0) + amt);
+      else g.own = round2(g.own + amt);
+    });
+    const rows = boq.filter(it => byItem[it.id] || targets[it.id] != null).map(it => {
+      const g = byItem[it.id] || { spent: 0, own: 0, subs: {}, qty: 0, count: 0 };
+      const executed = Number(it.executedQty) || 0;
+      const actualRate = executed > 0 ? round2(g.spent / executed) : 0;
+      const target = targets[it.id] != null ? round2(targets[it.id]) : null;
+      const targetBudget = target != null ? round2(executed * target) : null;
+      const variance = target != null ? round2(g.spent - targetBudget) : null;
+      return {
+        itemId: it.id, desc: it.desc, unit: it.unit, executed, contractRate: Number(it.unitRate) || 0,
+        spent: g.spent, coveredQty: g.qty, count: g.count, own: g.own,
+        subs: Object.entries(g.subs).map(([sid, a]) => ({ subId: Number(sid), name: subName(Number(sid)), amount: a })),
+        actualRate, target, targetBudget, variance,
+        variancePct: (targetBudget > 0 ? round2(variance / targetBudget * 100) : null),
+        over: variance != null && variance > 0.5
+      };
+    }).sort((a, b) => (b.variance || 0) - (a.variance || 0));
+    const distribution = Object.entries(bySink).map(([k, a]) => ({
+      key: k, name: k === 'own' ? 'ذاتي (على الشركة)' : subName(Number(k.split(':')[1])), amount: a,
+      pct: totalMaterial > 0 ? round2(a / totalMaterial * 100) : 0
+    })).sort((a, b) => b.amount - a.amount);
+    const overCount = rows.filter(r => r.over).length;
+    const overTotal = round2(rows.reduce((s, r) => s + (r.over ? r.variance : 0), 0));
+    return { totalMaterial, assigned: round2(totalMaterial - unassigned), unassigned, toSubs, toOwn, rows, distribution, overCount, overTotal };
+  }
+
   // ------- دفع مصروف إلى Bassir ERP (اختياري، غير معطِّل) -------
   async function pushExpenseToBassir(companyId, project, exp) {
     if (!companyIntegration || !setIntegrationStatus) return { ok: false, skipped: true };
@@ -193,6 +243,8 @@ module.exports = function initExpenses(ctx) {
       version: db.version, items: db.items,
       profitability: profitability(p, db.items),
       subs: (p.subcontractors || []).map(s => ({ id: s.id, name: s.name })),
+      boqItems: (p.boqItems || []).map(it => ({ id: it.id, desc: it.desc, unit: it.unit, executedQty: Number(it.executedQty) || 0, unitRate: Number(it.unitRate) || 0 })),
+      materialTargets: db.materialTargets || {},
       subCharges: outstandingSubCharges(db.items),
       canManage: canWrite(req.user, p),
       canApprove: canApprove(req.user, p),
@@ -200,6 +252,28 @@ module.exports = function initExpenses(ctx) {
       role: req.user.role,
       integrationEnabled: !!(companyIntegration && (companyIntegration(p.companyId) || {}).enabled)
     });
+  });
+
+  // تقرير توزيع المواد ومراقبة التكلفة (المواد راحت وين + تكلفة الوحدة مقابل المستهدف)
+  app.get('/api/projects/:id/material-report', auth, (req, res) => {
+    const p = getProjectOr(req, res); if (!p) return;
+    const db = loadExpenses(p.id);
+    res.json({ report: materialReport(p, db.items, db.materialTargets || {}), materialTargets: db.materialTargets || {}, canApprove: canApprove(req.user, p) });
+  });
+
+  // تعيين تكلفة المواد المستهدفة لكل وحدة من بند (مرجع المقارنة) — صلاحية الإدارة/المالك
+  app.post('/api/projects/:id/material-targets', auth, (req, res) => {
+    const p = getProjectOr(req, res); if (!p) return;
+    if (!canApprove(req.user, p)) return res.status(403).json({ error: 'تعيين المستهدف صلاحية الإدارة/المالك' });
+    const b = req.body || {};
+    const itemId = String(b.boqItemId || '').trim();
+    if (!itemId || !(p.boqItems || []).some(it => it.id === itemId)) return res.status(400).json({ error: 'بند غير صحيح' });
+    const db = loadExpenses(p.id);
+    db.materialTargets = db.materialTargets || {};
+    if (b.rate === null || b.rate === '' || Number(b.rate) <= 0) delete db.materialTargets[itemId];
+    else db.materialTargets[itemId] = round2(b.rate);
+    saveExpenses(p.id, db);
+    res.json({ ok: true, materialTargets: db.materialTargets, report: materialReport(p, db.items, db.materialTargets) });
   });
 
   // المصاريف غير المخصومة المحمّلة على كل مقاول باطن (يستدعيها بنّاء مستخلص الباطن)

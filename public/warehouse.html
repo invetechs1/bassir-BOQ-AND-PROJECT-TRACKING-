@@ -1,0 +1,273 @@
+<!doctype html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>المستودع — نظام بصير</title>
+<link rel="stylesheet" href="/saas/saas.css">
+<style>
+  .pbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+  .seg{display:flex;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:4px;flex-wrap:wrap}
+  .seg button{background:transparent;border:0;color:var(--text3);font-weight:700;padding:7px 13px;border-radius:7px;cursor:pointer;font-family:var(--font);font-size:13px}
+  .seg button.on{background:#0e2e3340;color:var(--text)}
+  .hint{font-size:11.5px;color:var(--text3)}
+  .chip{display:inline-block;border-radius:6px;padding:1px 8px;font-size:11px;font-weight:700}
+  .c-own{background:#1a2740;color:#9dc0ff;border:1px solid #27508c}
+  .c-sub{background:#0c3324;color:#7ff0bb;border:1px solid #1c6b47}
+  .wform{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+  @media(max-width:680px){.wform{grid-template-columns:1fr}}
+  .bal-neg{color:var(--red);font-weight:800}
+  .bal-ok{color:var(--green);font-weight:800}
+</style>
+</head>
+<body>
+<div class="topbar"><div class="wrap">
+  <div class="logo"><span class="mark">ب</span><span>📦 المستودع</span></div>
+  <div class="row"><a class="btn btn-ghost btn-sm" href="/">→ النظام</a><a class="btn btn-ghost btn-sm" href="/expenses">💵 المصاريف</a><button class="btn btn-ghost btn-sm" onclick="logout()">خروج</button></div>
+</div></div>
+
+<div class="wrap" style="padding:24px 20px">
+  <div id="login-gate" class="card hide" style="max-width:420px;margin:40px auto">
+    <h2>تسجيل الدخول</h2>
+    <div id="login-err" class="note note-err hide"></div>
+    <div class="field"><label>اسم المستخدم</label><input id="lg-user" autocomplete="username"></div>
+    <div class="field"><label>كلمة المرور</label><input id="lg-pass" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <button class="btn btn-primary btn-block" onclick="doLogin()">دخول</button>
+  </div>
+
+  <div id="content" class="hide">
+    <div class="pbar">
+      <div style="flex:1;min-width:220px"><label style="margin-bottom:4px">المشروع</label><select id="proj-sel" onchange="loadProject()"></select></div>
+    </div>
+
+    <div class="grid g4" style="margin-bottom:12px">
+      <div class="kpi"><div class="k-label">🏷 أصناف المواد</div><div class="k-val" id="k-mats">—</div></div>
+      <div class="kpi"><div class="k-label">📥 حركات التوريد</div><div class="k-val" id="k-rc" style="color:var(--green)">—</div></div>
+      <div class="kpi"><div class="k-label">📤 حركات الصرف</div><div class="k-val" id="k-is" style="color:var(--teal)">—</div></div>
+      <div class="kpi"><div class="k-label">⚠ مواد بحاجة توريد</div><div class="k-val" id="k-low" style="color:var(--red)">—</div><div class="k-sub">رصيد صفر أو أقل</div></div>
+    </div>
+
+    <div class="seg" id="view-seg" style="margin-bottom:14px">
+      <button class="on" data-v="stock" onclick="setView('stock')">📊 الرصيد الحالي</button>
+      <button data-v="receipts" onclick="setView('receipts')">📥 توريد للمستودع</button>
+      <button data-v="issues" onclick="setView('issues')">📤 صرف من المستودع</button>
+      <button data-v="recipient" onclick="setView('recipient')">🏷 حسب الجهة (من سحب)</button>
+      <button data-v="materials" onclick="setView('materials')">🧾 الأصناف</button>
+    </div>
+
+    <!-- الرصيد -->
+    <div id="v-stock" class="panel">
+      <div class="spread" style="margin-bottom:8px"><strong>📊 رصيد المواد في المستودع</strong><span class="hint">الرصيد = الوارد − المنصرف</span></div>
+      <div style="overflow:auto"><table>
+        <thead><tr><th>المادة</th><th>الوحدة</th><th>وارد (توريد)</th><th>منصرف (صرف)</th><th>الرصيد المتاح</th></tr></thead>
+        <tbody id="stock-body"></tbody>
+      </table></div>
+    </div>
+
+    <!-- توريد -->
+    <div id="v-receipts" class="hide">
+      <div class="panel" id="rc-form-panel" style="margin-bottom:12px">
+        <div class="spread" style="margin-bottom:8px"><strong>📥 توريد مادة للمستودع</strong><span class="hint">بعد شراء المواد سجّل استلامها في المستودع</span></div>
+        <div class="wform">
+          <div class="field"><label>المادة</label><select id="rc-mat"></select></div>
+          <div class="field"><label>الكمية الواردة</label><input type="number" id="rc-qty" min="0" step="0.01"></div>
+          <div class="field"><label>المورّد (اختياري)</label><input id="rc-supplier" placeholder="اسم المورّد"></div>
+          <div class="field"><label>التاريخ</label><input type="date" id="rc-date"></div>
+          <div class="field full"><label>ملاحظات (اختياري)</label><input id="rc-note" placeholder="رقم الفاتورة / تفاصيل"></div>
+        </div>
+        <button class="btn btn-primary" style="margin-top:10px" onclick="addReceipt()">📥 توريد</button>
+      </div>
+      <div class="panel">
+        <div class="spread" style="margin-bottom:8px"><strong>سجل التوريد</strong><span class="hint" id="rc-count"></span></div>
+        <div style="overflow:auto"><table>
+          <thead><tr><th>التاريخ</th><th>المادة</th><th>الكمية</th><th>المورّد</th><th>ملاحظات</th><th>بواسطة</th><th></th></tr></thead>
+          <tbody id="rc-body"></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- صرف -->
+    <div id="v-issues" class="hide">
+      <div class="panel" id="is-form-panel" style="margin-bottom:12px">
+        <div class="spread" style="margin-bottom:8px"><strong>📤 صرف مادة من المستودع</strong><span class="hint">حدّد الجهة (مقاول باطن أو ذاتي) والكمية المسحوبة</span></div>
+        <div class="wform">
+          <div class="field"><label>المادة</label><select id="is-mat" onchange="isMatChanged()"></select><div class="hint" id="is-bal"></div></div>
+          <div class="field"><label>الكمية المصروفة</label><input type="number" id="is-qty" min="0" step="0.01"></div>
+          <div class="field"><label>الجهة المستلمة *</label>
+            <select id="is-bearer" onchange="isBearerChanged()">
+              <option value="own">🏢 ذاتي — على الشركة</option>
+              <option value="sub">🧱 مقاول باطن</option>
+            </select>
+          </div>
+          <div class="field" id="is-sub-f" style="display:none"><label>أي مقاول باطن؟</label><select id="is-sub"></select></div>
+          <div class="field"><label>البند (اختياري)</label><select id="is-boq"></select></div>
+          <div class="field"><label>التاريخ</label><input type="date" id="is-date"></div>
+          <div class="field full"><label>ملاحظات (اختياري)</label><input id="is-note" placeholder="أمر صرف / مستلم"></div>
+        </div>
+        <button class="btn btn-primary" style="margin-top:10px" onclick="addIssue()">📤 صرف</button>
+      </div>
+      <div class="panel">
+        <div class="spread" style="margin-bottom:8px"><strong>سجل الصرف</strong><span class="hint" id="is-count"></span></div>
+        <div style="overflow:auto"><table>
+          <thead><tr><th>التاريخ</th><th>المادة</th><th>الكمية</th><th>صُرفت إلى</th><th>البند</th><th>بواسطة</th><th></th></tr></thead>
+          <tbody id="is-body"></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- حسب الجهة -->
+    <div id="v-recipient" class="hide">
+      <div class="panel">
+        <div class="spread" style="margin-bottom:10px"><strong>🏷 المواد المسحوبة لكل جهة (من سحب كم؟)</strong></div>
+        <div id="recipient-box"></div>
+      </div>
+    </div>
+
+    <!-- الأصناف -->
+    <div id="v-materials" class="hide">
+      <div class="panel" id="mat-form-panel" style="margin-bottom:12px">
+        <div class="spread" style="margin-bottom:8px"><strong>🧾 إضافة صنف مادة</strong><span class="hint">أضف المادة مرة واحدة ثم ورّدها واصرفها</span></div>
+        <div class="row">
+          <div class="field" style="flex:2"><label>اسم المادة</label><input id="mat-name" placeholder="مثال: دهان بلاستيك / إسمنت / حديد 12مم"></div>
+          <div class="field" style="flex:1"><label>الوحدة</label><input id="mat-unit" placeholder="كجم / لتر / م² / كيس"></div>
+        </div>
+        <button class="btn btn-primary" style="margin-top:10px" onclick="addMaterial()">➕ إضافة الصنف</button>
+      </div>
+      <div class="panel">
+        <div class="spread" style="margin-bottom:8px"><strong>الأصناف المسجّلة</strong><span class="hint" id="mat-count"></span></div>
+        <div style="overflow:auto"><table>
+          <thead><tr><th>المادة</th><th>الوحدة</th><th>الرصيد</th><th></th></tr></thead>
+          <tbody id="mat-body"></tbody>
+        </table></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"><span></span></div>
+
+<script>
+var TOKEN=localStorage.getItem('azoom_token')||'', ST=null, PID=null, DATA=null, VIEW='stock';
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function num(n){return Number(n||0).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:2})}
+function toast(m){var t=document.getElementById('toast');t.querySelector('span').textContent=m;t.classList.add('show');setTimeout(function(){t.classList.remove('show')},2600)}
+function show(el,on){document.getElementById(el).classList[on?'remove':'add']('hide')}
+function api(method,path,body){return fetch(path,{method:method,headers:{'Content-Type':'application/json',Authorization:'Bearer '+TOKEN},body:body?JSON.stringify(body):undefined}).then(function(r){return r.json().then(function(d){return{status:r.status,ok:r.ok,d:d}})})}
+
+function boot(){
+  if(!TOKEN){ show('login-gate',true); show('content',false); return; }
+  api('GET','/api/state').then(function(r){
+    if(r.status===401){ localStorage.removeItem('azoom_token'); TOKEN=''; show('login-gate',true); show('content',false); return; }
+    ST=r.d; show('login-gate',false); show('content',true);
+    var sel=document.getElementById('proj-sel');
+    sel.innerHTML=(ST.projects||[]).map(function(p){return '<option value="'+p.id+'">'+esc(p.info&&p.info.name||('مشروع '+p.id))+'</option>'}).join('')||'<option value="">لا مشاريع</option>';
+    if((ST.projects||[]).length){
+      var qp=new URLSearchParams(location.search).get('project');
+      var want=(qp && (ST.projects||[]).some(function(p){return String(p.id)===String(qp)})) ? Number(qp) : ST.projects[0].id;
+      PID=want; sel.value=String(want); loadProject();
+    }
+  });
+}
+function doLogin(){
+  var u=document.getElementById('lg-user').value.trim(), p=document.getElementById('lg-pass').value;
+  fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})}).then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d}})}).then(function(res){
+    if(!res.ok){ var e=document.getElementById('login-err'); e.textContent=res.d.error||'فشل الدخول'; e.classList.remove('hide'); return; }
+    TOKEN=res.d.token; localStorage.setItem('azoom_token',TOKEN); boot();
+  });
+}
+function logout(){ localStorage.removeItem('azoom_token'); location.href='/'; }
+
+function loadProject(){
+  PID=Number(document.getElementById('proj-sel').value)||PID; if(!PID) return;
+  api('GET','/api/projects/'+PID+'/warehouse').then(function(r){
+    if(!r.ok){ toast(r.d.error||'تعذّر التحميل'); return; }
+    DATA=r.d; renderAll();
+  });
+}
+function setView(v){
+  VIEW=v;
+  [].forEach.call(document.querySelectorAll('#view-seg button'),function(b){b.classList.toggle('on',b.dataset.v===v)});
+  ['stock','receipts','issues','recipient','materials'].forEach(function(x){ document.getElementById('v-'+x).classList.toggle('hide', x!==v); });
+}
+function fillMaterialSelects(){
+  var opts='<option value="">— اختر المادة —</option>'+(DATA.materials||[]).map(function(m){return '<option value="'+m.id+'">'+esc(m.name)+(m.unit?(' ('+esc(m.unit)+')'):'')+'</option>'}).join('');
+  var rc=document.getElementById('rc-mat'), is=document.getElementById('is-mat');
+  if(rc) rc.innerHTML=opts; if(is) is.innerHTML=opts;
+  var sub=document.getElementById('is-sub'); if(sub) sub.innerHTML=(DATA.subs||[]).map(function(s){return '<option value="'+s.id+'">'+esc(s.name)+'</option>'}).join('')||'<option value="">لا مقاولون</option>';
+  var boq=document.getElementById('is-boq'); if(boq) boq.innerHTML='<option value="">— بدون بند —</option>'+(DATA.boqItems||[]).map(function(it){return '<option value="'+esc(it.id)+'">'+esc(it.id)+' — '+esc((it.desc||'').slice(0,40))+'</option>'}).join('');
+}
+function renderAll(){
+  var cm=DATA.canManage;
+  document.getElementById('k-mats').textContent=(DATA.materials||[]).length;
+  document.getElementById('k-rc').textContent=(DATA.receipts||[]).length;
+  document.getElementById('k-is').textContent=(DATA.issues||[]).length;
+  document.getElementById('k-low').textContent=(DATA.stock||[]).filter(function(s){return s.balance<=0 && (s.received>0||s.issued>0)}).length;
+  ['rc-form-panel','is-form-panel','mat-form-panel'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display=cm?'':'none';});
+  fillMaterialSelects(); isBearerChanged();
+  if(!document.getElementById('rc-date').value) document.getElementById('rc-date').value=new Date().toISOString().slice(0,10);
+  if(!document.getElementById('is-date').value) document.getElementById('is-date').value=new Date().toISOString().slice(0,10);
+  // الرصيد
+  document.getElementById('stock-body').innerHTML=(DATA.stock||[]).length?(DATA.stock||[]).map(function(s){
+    var bal=s.balance; var cls=bal<=0?'bal-neg':(bal<5?'':'bal-ok');
+    return '<tr><td><strong>'+esc(s.name)+'</strong></td><td>'+esc(s.unit||'—')+'</td><td class="amount" style="color:var(--green)">'+num(s.received)+'</td><td class="amount" style="color:var(--teal)">'+num(s.issued)+'</td><td class="amount '+cls+'">'+num(bal)+'</td></tr>';
+  }).join(''):'<tr><td colspan="5" class="muted center">لا مواد بعد — أضف صنفاً ثم ورّده</td></tr>';
+  // التوريد
+  document.getElementById('rc-count').textContent=(DATA.receipts||[]).length+' حركة';
+  document.getElementById('rc-body').innerHTML=(DATA.receipts||[]).length?(DATA.receipts||[]).map(function(r){
+    return '<tr><td>'+esc(r.date)+'</td><td>'+esc(r.materialName)+'</td><td class="amount" style="color:var(--green);font-weight:700">+'+num(r.qty)+'</td><td>'+esc(r.supplier||'—')+'</td><td>'+esc(r.note||'—')+'</td><td class="hint">'+esc(r.by||'')+'</td><td>'+(cm?'<button class="btn btn-ghost btn-sm" onclick="delItem(\'receipts\',\''+r.id+'\')">🗑</button>':'')+'</td></tr>';
+  }).join(''):'<tr><td colspan="7" class="muted center">لا حركات توريد</td></tr>';
+  // الصرف
+  document.getElementById('is-count').textContent=(DATA.issues||[]).length+' حركة';
+  document.getElementById('is-body').innerHTML=(DATA.issues||[]).length?(DATA.issues||[]).map(function(x){
+    var chip=x.bearer==='sub'?('<span class="chip c-sub">🧱 '+esc(x.recipient)+'</span>'):('<span class="chip c-own">🏢 ذاتي</span>');
+    return '<tr><td>'+esc(x.date)+'</td><td>'+esc(x.materialName)+'</td><td class="amount" style="color:var(--red);font-weight:700">−'+num(x.qty)+'</td><td>'+chip+'</td><td class="hint">'+esc(x.boqItemId||'—')+'</td><td class="hint">'+esc(x.by||'')+'</td><td>'+(cm?'<button class="btn btn-ghost btn-sm" onclick="delItem(\'issues\',\''+x.id+'\')">🗑</button>':'')+'</td></tr>';
+  }).join(''):'<tr><td colspan="7" class="muted center">لا حركات صرف</td></tr>';
+  // حسب الجهة
+  document.getElementById('recipient-box').innerHTML=(DATA.byRecipient||[]).length?(DATA.byRecipient||[]).map(function(s){
+    var rows=s.materials.map(function(m){return '<div class="spread" style="font-size:12.5px;padding:4px 0;border-bottom:1px solid var(--line)"><span>'+esc(m.name)+'</span><strong>'+num(m.qty)+' '+esc(m.unit||'')+'</strong></div>'}).join('');
+    return '<div style="border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px;background:var(--surface)"><div style="font-weight:800;margin-bottom:6px">'+(s.key==='own'?'🏢 ':'🧱 ')+esc(s.name)+'</div>'+(rows||'<span class="hint">—</span>')+'</div>';
+  }).join(''):'<div class="hint">لا توجد مسحوبات بعد</div>';
+  // الأصناف
+  document.getElementById('mat-count').textContent=(DATA.materials||[]).length+' صنف';
+  var balOf={}; (DATA.stock||[]).forEach(function(s){balOf[s.materialId]=s.balance});
+  document.getElementById('mat-body').innerHTML=(DATA.materials||[]).length?(DATA.materials||[]).map(function(m){
+    var b=balOf[m.id]||0;
+    return '<tr><td><strong>'+esc(m.name)+'</strong></td><td>'+esc(m.unit||'—')+'</td><td class="amount '+(b<=0?'bal-neg':'bal-ok')+'">'+num(b)+'</td><td>'+(cm?'<button class="btn btn-ghost btn-sm" onclick="delItem(\'materials\',\''+m.id+'\')">🗑</button>':'')+'</td></tr>';
+  }).join(''):'<tr><td colspan="4" class="muted center">لا أصناف بعد</td></tr>';
+}
+function isBearerChanged(){ var el=document.getElementById('is-sub-f'); if(el) el.style.display=document.getElementById('is-bearer').value==='sub'?'':'none'; }
+function isMatChanged(){
+  var id=document.getElementById('is-mat').value; var s=(DATA.stock||[]).find(function(x){return x.materialId===id});
+  document.getElementById('is-bal').textContent = s?('الرصيد المتاح: '+num(s.balance)+' '+(s.unit||'')):'';
+}
+function addMaterial(){
+  var name=document.getElementById('mat-name').value.trim(), unit=document.getElementById('mat-unit').value.trim();
+  if(!name){ toast('اكتب اسم المادة'); return; }
+  api('POST','/api/projects/'+PID+'/warehouse/materials',{name:name,unit:unit}).then(function(r){
+    if(!r.ok){ toast(r.d.error||'تعذّر'); return; }
+    document.getElementById('mat-name').value=''; document.getElementById('mat-unit').value=''; toast('✅ أُضيف الصنف'); loadProject();
+  });
+}
+function addReceipt(){
+  var mat=document.getElementById('rc-mat').value, qty=Number(document.getElementById('rc-qty').value)||0;
+  if(!mat){ toast('اختر المادة'); return; } if(qty<=0){ toast('أدخل كمية'); return; }
+  api('POST','/api/projects/'+PID+'/warehouse/receipts',{materialId:mat,qty:qty,supplier:document.getElementById('rc-supplier').value,date:document.getElementById('rc-date').value,note:document.getElementById('rc-note').value}).then(function(r){
+    if(!r.ok){ toast(r.d.error||'تعذّر'); return; }
+    document.getElementById('rc-qty').value=''; document.getElementById('rc-supplier').value=''; document.getElementById('rc-note').value=''; toast('✅ تم التوريد'); loadProject();
+  });
+}
+function addIssue(){
+  var mat=document.getElementById('is-mat').value, qty=Number(document.getElementById('is-qty').value)||0;
+  if(!mat){ toast('اختر المادة'); return; } if(qty<=0){ toast('أدخل كمية'); return; }
+  var bearer=document.getElementById('is-bearer').value, subId=Number(document.getElementById('is-sub').value)||null;
+  if(bearer==='sub' && !subId){ toast('اختر مقاول الباطن'); return; }
+  api('POST','/api/projects/'+PID+'/warehouse/issues',{materialId:mat,qty:qty,bearer:bearer,subId:subId,boqItemId:document.getElementById('is-boq').value||null,date:document.getElementById('is-date').value,note:document.getElementById('is-note').value}).then(function(r){
+    if(!r.ok){ toast(r.d.error||'تعذّر الصرف'); return; }
+    document.getElementById('is-qty').value=''; document.getElementById('is-note').value=''; toast('✅ تم الصرف'); loadProject();
+  });
+}
+function delItem(kind,id){ if(!confirm('حذف هذه الحركة؟')) return; api('DELETE','/api/projects/'+PID+'/warehouse/'+kind+'/'+id).then(function(r){ if(r.ok){toast('حُذف');loadProject();}else toast(r.d.error||'تعذّر'); }); }
+boot();
+</script>
+</body>
+</html>

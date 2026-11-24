@@ -151,6 +151,10 @@
       </div>
       <div class="field" style="flex:1"><label>الكمية المغطّاة (اختياري)</label><input type="number" id="e-matqty" min="0" step="0.01" placeholder="مثال: م²/كجم"></div>
     </div>
+    <div class="field"><label>📦 صنف المستودع (لمطابقة المشتريات بالوارد)</label>
+      <select id="e-whmat"></select>
+      <div class="hint">اربط الفاتورة بصنف المستودع لتظهر في «حركة المواد» مقارنة: المشتراة (فواتير) مقابل الوارد للمستودع — فيكشف أي كمية دُفع عليها ولم تدخل المستودع.</div>
+    </div>
   </div>
   <div class="field" id="e-headcount-f"><label>عدد العمالة (اختياري)</label><input type="number" id="e-headcount" min="0"></div>
   <div class="field"><label>تصنيف (اختياري)</label><input id="e-category" placeholder="مثال: حديد / إسمنت / وقود"></div>
@@ -260,9 +264,11 @@ function loadProject(){
     document.getElementById('add-btn').style.display=(CURVIEW==='expenses'&&DATA.canManage)?'':'none';
     if(CURVIEW==='materials') loadMaterialReport();
   });
+  api('GET','/api/projects/'+PID+'/warehouse').then(function(r){ if(r.ok){ WHMATS=(r.d.materials||[]); fillWhMats(); } });
 }
-var CURVIEW='expenses', MREPORT=null;
+var CURVIEW='expenses', MREPORT=null, WHMATS=[];
 function fillBoqItems(){ var sel=document.getElementById('e-boqitem'); if(!sel) return; sel.innerHTML='<option value="">— بدون ربط ببند —</option>'+((DATA&&DATA.boqItems||[]).map(function(it){return '<option value="'+esc(it.id)+'">'+esc(it.id)+' — '+esc((it.desc||'').slice(0,40))+'</option>'}).join('')); }
+function fillWhMats(){ var sel=document.getElementById('e-whmat'); if(!sel) return; var cur=sel.value; sel.innerHTML='<option value="">— بدون ربط بصنف المستودع —</option>'+(WHMATS.map(function(m){return '<option value="'+esc(m.id)+'">'+esc(m.name)+(m.unit?(' ('+esc(m.unit)+')'):'')+'</option>'}).join('')); sel.value=cur; }
 function setView(v){
   CURVIEW=v;
   [].forEach.call(document.querySelectorAll('#view-seg button'),function(b){b.classList.toggle('on',b.dataset.v===v)});
@@ -398,6 +404,7 @@ function openEdit(id){ EDIT=id; var e=(DATA.items||[]).find(function(x){return x
   document.getElementById('e-supplier').value=e.supplier||''; document.getElementById('e-invno').value=e.taxInvoiceNo||''; document.getElementById('e-invdate').value=e.taxInvoiceDate||'';
   document.getElementById('e-headcount').value=e.headcount||''; document.getElementById('e-category').value=e.category||'';
   fillBoqItems(); document.getElementById('e-boqitem').value=e.boqItemId||''; document.getElementById('e-matqty').value=e.materialQty||'';
+  fillWhMats(); document.getElementById('e-whmat').value=e.warehouseMaterialId||'';
   document.getElementById('e-bearer').value=e.bearer||'own'; fillSubs(); if(e.subId)document.getElementById('e-subid').value=String(e.subId); bearerChanged();
   typeChanged(); recalc(); renderAllDocs();
   // بعد الاعتماد: مدير المشروع يرفع المستندات فقط (لا تعديل للبيانات)
@@ -410,7 +417,7 @@ function openEdit(id){ EDIT=id; var e=(DATA.items||[]).find(function(x){return x
 function closeAdd(){ document.getElementById('exp-ov').classList.remove('open'); }
 function resetForm(){ ['e-desc','e-amount','e-supplier','e-invno','e-invdate','e-headcount','e-category','e-month','e-matqty'].forEach(function(id){document.getElementById(id).value=''});
   document.getElementById('e-type').value='material'; document.getElementById('e-vatrate').value='15'; document.getElementById('e-date').value=new Date().toISOString().slice(0,10);
-  fillBoqItems(); document.getElementById('e-boqitem').value='';
+  fillBoqItems(); document.getElementById('e-boqitem').value=''; fillWhMats(); document.getElementById('e-whmat').value='';
   document.getElementById('e-bearer').value='own'; fillSubs(); bearerChanged();
   document.getElementById('e-sync').checked=false; document.getElementById('exp-err').classList.add('hide'); setFormDocsOnly(false); document.getElementById('e-save').textContent='💾 حفظ'; if(!EDIT){ quotePending=[]; invPending=[]; delivPending=[]; } typeChanged(); recalc(); renderAllDocs(); }
 function typeChanged(){
@@ -482,7 +489,7 @@ async function saveExp(){
     amount:amount, vatRate:Number(document.getElementById('e-vatrate').value)||0,
     supplier:document.getElementById('e-supplier').value, taxInvoiceNo:document.getElementById('e-invno').value, taxInvoiceDate:document.getElementById('e-invdate').value,
     month:document.getElementById('e-month').value, headcount:Number(document.getElementById('e-headcount').value)||0,
-    category:document.getElementById('e-category').value, boqItemId:document.getElementById('e-boqitem').value||null, materialQty:Number(document.getElementById('e-matqty').value)||0, bearer:bearer, subId:subId,
+    category:document.getElementById('e-category').value, boqItemId:document.getElementById('e-boqitem').value||null, materialQty:Number(document.getElementById('e-matqty').value)||0, warehouseMaterialId:document.getElementById('e-whmat').value||null, bearer:bearer, subId:subId,
     quoteDocs:quoteDocs, invoiceDocs:invoiceDocs, deliveryDocs:deliveryDocs, docs:[],
     syncErp:document.getElementById('e-sync').checked };
   var res=await (EDIT?api('PUT','/api/projects/'+PID+'/expenses/'+EDIT,body):api('POST','/api/projects/'+PID+'/expenses',body));

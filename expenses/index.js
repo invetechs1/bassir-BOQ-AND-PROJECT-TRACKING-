@@ -65,6 +65,7 @@ module.exports = function initExpenses(ctx) {
       category: String(body.category || '').trim(),
       boqItemId: body.boqItemId || null,                 // البند المستفيد من المواد (لتوزيع المواد ومراقبة التكلفة)
       materialQty: type === 'material' ? (Number(body.materialQty) || 0) : 0, // الكمية التي تغطيها هذه المواد (اختياري)
+      warehouseMaterialId: type === 'material' ? (body.warehouseMaterialId ? String(body.warehouseMaterialId) : null) : null, // ربط بصنف المستودع لمطابقة المشتريات بالوارد
       month: type === 'salary' ? String(body.month || '').slice(0, 7) : '',
       headcount: type === 'salary' ? (Number(body.headcount) || 0) : 0,
       // التحميل: 'own' = ذاتي (على الشركة، تكلفة مشروع) | 'sub' = على مقاول باطن (تُسترد بالخصم من مستخلصه)
@@ -327,7 +328,7 @@ module.exports = function initExpenses(ctx) {
     const locked = (prev.approvalStatus && prev.approvalStatus !== 'pending');
     if (locked && !canApprove(req.user, p)) {
       ['type', 'date', 'description', 'supplier', 'amount', 'vatRate', 'vat', 'total', 'taxInvoiceNo', 'taxInvoiceDate',
-       'category', 'boqItemId', 'month', 'headcount', 'bearer', 'subId', 'settledMusNo', 'settledAt'].forEach(k => { exp[k] = prev[k]; });
+       'category', 'boqItemId', 'warehouseMaterialId', 'month', 'headcount', 'bearer', 'subId', 'settledMusNo', 'settledAt'].forEach(k => { exp[k] = prev[k]; });
     }
     // تعديل بيانات المصروف لا يغيّر الاعتماد ولا الدفع (خطوة المالك المنفصلة) — تُحفظ كما هي من السجل المخزّن
     exp.approvalStatus = prev.approvalStatus || 'pending'; exp.approvedAmount = prev.approvedAmount || 0;

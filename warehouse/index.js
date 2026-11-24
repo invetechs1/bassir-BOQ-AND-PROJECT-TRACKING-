@@ -11,6 +11,7 @@ module.exports = function initWarehouse(ctx) {
   const { app, DATA_DIR, PUBLIC_DIR, readJSON, writeJSON, fs, auth, loadProject, canAccessProject } = ctx;
 
   const WH_DIR = path.join(DATA_DIR, 'warehouse');
+  const EXP_DIR = path.join(DATA_DIR, 'expenses');
   fs.mkdirSync(WH_DIR, { recursive: true });
 
   const round2 = n => Math.round((Number(n) || 0) * 100) / 100;
@@ -19,6 +20,23 @@ module.exports = function initWarehouse(ctx) {
   function loadWh(pid) { const o = readJSON(whFile(pid), { version: 0, materials: [], receipts: [], issues: [] }); o.materials = o.materials || []; o.receipts = o.receipts || []; o.issues = o.issues || []; return o; }
   function saveWh(pid, o) { o.version = (o.version || 0) + 1; writeJSON(whFile(pid), o); return o; }
   const genId = pre => pre + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+
+  // الكميات المشتراة فعلاً حسب فواتير المصاريف — مجمّعة حسب صنف المستودع المربوط بها.
+  // تكشف الفرق بين ما دُفع عليه (فاتورة) وما دخل المستودع فعلاً (توريد).
+  function purchasedByMaterial(pid) {
+    const db = readJSON(path.join(EXP_DIR, pid + '.json'), { items: [] });
+    const by = {};
+    (db.items || []).forEach(e => {
+      if (e.type === 'material' && e.warehouseMaterialId) {
+        const k = String(e.warehouseMaterialId);
+        if (!by[k]) by[k] = { qty: 0, amount: 0, count: 0 };
+        by[k].qty = round2(by[k].qty + (Number(e.materialQty) || 0));
+        by[k].amount = round2(by[k].amount + (Number(e.amount) || 0));
+        by[k].count++;
+      }
+    });
+    return by;
+  }
 
   // صلاحية الإدارة (أمين المستودع): أدمن/عميل/مدير مشاريع/مدير مشروع ممن يملك وصولاً للمشروع
   function canManage(user, project) { return canAccessProject(user, project) && ['admin', 'client', 'pmo', 'pm'].includes(user.role); }
@@ -66,6 +84,7 @@ module.exports = function initWarehouse(ctx) {
       receipts: db.receipts.map(r => ({ ...r, materialName: matName(r.materialId) })).sort((a, b) => (b.date || '').localeCompare(a.date || '')),
       issues: db.issues.map(x => ({ ...x, materialName: matName(x.materialId), recipient: x.bearer === 'sub' ? subName(x.subId) : 'ذاتي (على الشركة)' })).sort((a, b) => (b.date || '').localeCompare(a.date || '')),
       stock: stockOf(db),
+      purchasedByMaterial: purchasedByMaterial(p.id),
       byRecipient: byRecipient(db, p),
       subs: (p.subcontractors || []).map(s => ({ id: s.id, name: s.name })),
       boqItems: (p.boqItems || []).map(it => ({ id: it.id, desc: it.desc, unit: it.unit })),

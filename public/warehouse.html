@@ -68,10 +68,10 @@
     <!-- حركة المواد -->
     <div id="v-movement" class="hide">
       <div class="panel">
-        <div class="spread" style="margin-bottom:6px"><strong>🔀 حركة المواد — من الشراء إلى الموقع</strong><span class="hint">المشتراة = في المستودع + في الموقع</span></div>
-        <div class="note" style="margin-bottom:10px;font-size:12px">كل مادة: كم اشتريتها (وردت للمستودع)، كم باقٍ بالمستودع، وكم خرجت للموقع ومع أي مقاول أو ذاتي. لو ظهرت حالة <span class="chip bal-neg" style="padding:1px 6px">فرق</span> فمعناه فيه نقص غير مُسجَّل بين الشراء والمستودع.</div>
+        <div class="spread" style="margin-bottom:6px"><strong>🔀 حركة المواد — من الشراء إلى الموقع</strong><span class="hint">المشتراة (فواتير) ← الوارد للمستودع ← المستودع + الموقع</span></div>
+        <div class="note" style="margin-bottom:10px;font-size:12px">كل مادة: كم اشتريت منها بالفواتير، كم دخل منها المستودع فعلاً، كم باقٍ، وكم خرج للموقع ومع أي مقاول أو ذاتي. عمود <strong>فرق الشراء</strong> يقارن المشتراة بالوارد — لو ظهر <span class="chip bal-neg" style="padding:1px 6px">فرق</span> فمعناه كمية دُفع عليها ولم تدخل المستودع (اربط فاتورة المادة بصنف المستودع من صفحة المصاريف لتظهر المشتراة).</div>
         <div style="overflow:auto"><table>
-          <thead><tr><th>المادة</th><th>الوحدة</th><th>المشتراة (الواردة)</th><th>في المستودع</th><th>في الموقع (مصروفة)</th><th>مع مَن؟ (الجهات)</th><th>التطابق</th></tr></thead>
+          <thead><tr><th>المادة</th><th>الوحدة</th><th>المشتراة (فواتير)</th><th>الوارد للمستودع</th><th>في المستودع</th><th>في الموقع</th><th>مع مَن؟ (الجهات)</th><th>فرق الشراء</th></tr></thead>
           <tbody id="mov-body"></tbody>
         </table></div>
       </div>
@@ -232,18 +232,27 @@ function renderAll(){
     if(!m[key]) m[key]={bearer:x.bearer,name:x.bearer==='own'?'ذاتي':x.recipient,qty:0};
     m[key].qty+=Number(x.qty)||0;
   });
+  var pbm=DATA.purchasedByMaterial||{};
   document.getElementById('mov-body').innerHTML=(DATA.stock||[]).length?(DATA.stock||[]).map(function(s){
     var parts=movByMat[s.materialId]||{};
     var chips=Object.keys(parts).map(function(k){var p=parts[k];return '<span class="chip '+(p.bearer==='own'?'c-own':'c-sub')+'" style="margin:2px 3px 2px 0;display:inline-block">'+(p.bearer==='own'?'🏢 ':'🧱 ')+esc(p.name)+': '+num(p.qty)+' '+esc(s.unit||'')+'</span>';}).join('')||'<span class="hint">لم تُصرف بعد</span>';
     var bal=s.balance, cls=bal<=0?'bal-neg':(bal<5?'':'bal-ok');
-    var diff=Number((s.received-s.issued-bal).toFixed(4));
-    var okTag=diff===0?'<span class="chip bal-ok" style="padding:1px 7px">✓ مطابق</span>':'<span class="chip bal-neg" style="padding:1px 7px">فرق '+num(diff)+'</span>';
+    var pur=pbm[s.materialId];
+    var purCell, gapCell;
+    if(pur && (pur.qty>0 || pur.count>0)){
+      purCell='<span class="amount" style="color:var(--amber,#e0a800);font-weight:700">'+num(pur.qty)+'</span>';
+      var gap=Number((pur.qty-s.received).toFixed(2));
+      if(gap>0.5) gapCell='<span class="chip bal-neg" style="padding:1px 7px">⚠ '+num(gap)+' لم يدخل</span>';
+      else if(gap<-0.5) gapCell='<span class="chip c-own" style="padding:1px 7px">وارد أكثر بـ '+num(-gap)+'</span>';
+      else gapCell='<span class="chip bal-ok" style="padding:1px 7px">✓ مطابق</span>';
+    } else { purCell='<span class="hint">— غير مربوط</span>'; gapCell='<span class="hint">—</span>'; }
     return '<tr><td><strong>'+esc(s.name)+'</strong></td><td>'+esc(s.unit||'—')+'</td>'+
+      '<td class="amount">'+purCell+'</td>'+
       '<td class="amount" style="color:var(--green);font-weight:700">'+num(s.received)+'</td>'+
       '<td class="amount '+cls+'">'+num(bal)+'</td>'+
       '<td class="amount" style="color:var(--teal);font-weight:700">'+num(s.issued)+'</td>'+
-      '<td style="line-height:2">'+chips+'</td><td>'+okTag+'</td></tr>';
-  }).join(''):'<tr><td colspan="7" class="muted center">لا مواد بعد — أضف صنفاً ثم ورّده</td></tr>';
+      '<td style="line-height:2">'+chips+'</td><td>'+gapCell+'</td></tr>';
+  }).join(''):'<tr><td colspan="8" class="muted center">لا مواد بعد — أضف صنفاً ثم ورّده</td></tr>';
   // التوريد
   document.getElementById('rc-count').textContent=(DATA.receipts||[]).length+' حركة';
   document.getElementById('rc-body').innerHTML=(DATA.receipts||[]).length?(DATA.receipts||[]).map(function(r){

@@ -30,8 +30,8 @@ npm install                               # no new dependencies, safe to run
 
 | File | What |
 |---|---|
-| `expenses/index.js` | **New module** — Project Costs / Expenses + profitability + approval/payment + expense documents |
-| `public/expenses.html` | **New page** — expenses UI (entry, approve/pay, charge-to, proof, 3 document slots) |
+| `expenses/index.js` | **New module** — Project Costs / Expenses + profitability + approval/payment + expense documents + material distribution |
+| `public/expenses.html` | **New page** — expenses UI (entry, approve/pay, charge-to, proof, 3 document slots, material distribution view) |
 | `public/index.html` | Expenses menu entry; sub-certificate payments (edit/delete, dates, print); decimal prices; Finance role in user management; subcontractor contract + approval |
 | `server.js` | Owner-only guard for sub-certificate approve/pay; new `finance` role; owner-only subcontractor approval |
 | `saas/index.js`, `saas/tap.js` | Tap recurring (merchant-initiated) hardening |
@@ -98,7 +98,11 @@ When the project manager adds a subcontractor, they **attach the contract** and 
 When the project manager submits a subcontractor claim, a pledge dialog appears — **"أتعهّد بصفتي مدير المشروع بصحّة ما ورد في مستخلص مقاول الباطن."** On **"✅ نعم، أتعهّد"** the claim goes to the subcontractor-claims page for management review, and the pledge (text, author, date) is recorded on the claim and printed on the certificate.
 *Details: `docs/handover-sub-claim-pledge.md`.*
 
-### 12. Tap recurring hardening
+### 12. Material distribution & cost control
+A new **📦 توزيع المواد ومراقبة التكلفة** view in the expenses page. Each material expense is linked to a BOQ item and a sink (subcontractor / self); the view shows **actual material cost per executed unit** vs an editable **target per unit**, flags over-budget items (🔴 with the waste amount), and shows **"المواد راحت وين؟"** — the distribution across subs and self, plus unassigned materials. Solves uncontrolled site-material consumption (e.g. painting costing 12 SAR/m² against a 6.5 target).
+*Details: `docs/handover-material-distribution.md`.*
+
+### 13. Tap recurring hardening
 Tap adapter hardened for real monthly recurring charges (payment agreement + merchant-initiated charges). Keys are entered by you; sim/test/live modes supported.
 
 ---
@@ -115,6 +119,7 @@ Tap adapter hardened for real monthly recurring charges (payment agreement + mer
 8. **Finance role**: the owner creates a finance user (role الماليّة) in user management; that user logs in → lands on the expenses page → can open an **approved** expense and upload the **payment voucher (سند الدفع)** only; it cannot add/approve/edit expenses, and cannot pay a still-pending one.
 9. **Locked approved expense**: as the project manager, approve one of your expenses (as the owner), then as the PM open it → the core fields are disabled and there is no delete button, only document upload; sending an amount change is ignored, uploading an invoice/delivery note works.
 10. **Subcontractor approval**: as the PM, add a subcontractor with a contract → "حفظ وإرسال للإدارة" → it shows ⏳ pending and the build button is locked; as the owner, open subcontractors → "✅ اعتماد المقاول" → the build button unlocks. A PM cannot self-approve (server returns 403).
+11. **Material distribution**: add material expenses linked to a BOQ item (some own, some to a sub) → open **📦 توزيع المواد ومراقبة التكلفة** → set a target per unit → an over-target item shows 🔴 with the waste amount, the distribution shows the split across self/subs, and unassigned materials are flagged.
 
 ---
 

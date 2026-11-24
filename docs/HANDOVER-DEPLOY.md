@@ -2,7 +2,7 @@
 
 **Branch to deploy:** `claude/session-uqllzm`
 **Repo:** `invetechs1/bassir-BOQ-AND-PROJECT-TRACKING-`
-**Date:** 2026-11-12 · Bassir technical division
+**Date:** 2026-11-24 · Bassir technical division
 
 This is the single document to deploy all the work on the branch. Each feature was tested; details and per-feature notes are in the other files under `docs/`.
 
@@ -30,15 +30,17 @@ npm install                               # no new dependencies, safe to run
 
 | File | What |
 |---|---|
-| `expenses/index.js` | **New module** — Project Costs / Expenses + profitability + approval/payment + expense documents + material distribution |
-| `public/expenses.html` | **New page** — expenses UI (entry, approve/pay, charge-to, proof, 3 document slots, material distribution view) |
-| `public/index.html` | Expenses menu entry; sub-certificate payments (edit/delete, dates, print); decimal prices; Finance role in user management; subcontractor contract + approval |
-| `server.js` | Owner-only guard for sub-certificate approve/pay; new `finance` role; owner-only subcontractor approval |
+| `expenses/index.js` | **New module** — Project Costs / Expenses + profitability + approval/payment + expense documents + material distribution; material expense can link to a warehouse material (`warehouseMaterialId`) |
+| `public/expenses.html` | **New page** — expenses UI (entry, approve/pay, charge-to, proof, 3 document slots, material distribution view); warehouse-material link on the material form; 📦 المستودع nav link |
+| `warehouse/index.js` | **New module** — Warehouse: materials, receipts (توريد), issues (صرف) per subcontractor/self, live stock, by-recipient, and invoice-vs-received reconciliation |
+| `public/warehouse.html` | **New page** — warehouse UI (stock, movement ledger, receive, issue, by-recipient, materials) |
+| `public/index.html` | Expenses menu entry; **📦 المستودع** menu entry; sub-certificate payments (edit/delete, dates, print); decimal prices; Finance role in user management; subcontractor contract + approval |
+| `server.js` | Mounts the **Warehouse module**; owner-only guard for sub-certificate approve/pay; new `finance` role; owner-only subcontractor approval |
 | `saas/index.js`, `saas/tap.js` | Tap recurring (merchant-initiated) hardening |
 | `public/saas/billing.html`, `public/saas/owner.html` | Gregorian (Miladi) dates |
 | `docs/…` | Handover docs + a demo video |
 
-The Expenses module is **mounted from `server.js`** and is additive — it does not change the existing certificate/BOQ flows.
+The Expenses and Warehouse modules are **mounted from `server.js`** and are additive — they do not change the existing certificate/BOQ flows. Warehouse storage is a new per-project file `data/warehouse/<projectId>.json` (created on first use).
 
 ---
 
@@ -105,6 +107,21 @@ A new **📦 توزيع المواد ومراقبة التكلفة** view in the
 ### 13. Tap recurring hardening
 Tap adapter hardened for real monthly recurring charges (payment agreement + merchant-initiated charges). Keys are entered by you; sim/test/live modes supported.
 
+### 14. Warehouse module (المستودع) — material quantity tracking
+A new page (menu: **📦 المستودع**) that tracks materials by **quantity** (the expenses module tracks them by money). After purchase, a material is **received into the warehouse** (توريد); it is then **issued** (صرف) out, each issue assigned to a **subcontractor** or **self (ذاتي)** with the withdrawn quantity. The page shows:
+- **Live stock** per material (`balance = received − issued`); an issue that exceeds the available balance is **blocked** server-side (`400` with a clear message), so you can never take out more than is in store.
+- **حسب الجهة (من سحب كم؟)** — issued quantities grouped by recipient, so it is clear which subcontractor or self pulled how much of each material.
+- Add materials once, then receive/issue; each issue can optionally be linked to a BOQ item.
+- **Permissions**: managing the warehouse (add/receive/issue/delete) is the project team (admin/client/pmo/pm) with access to the project; others view only.
+- Backend: `warehouse/index.js`, storage `data/warehouse/<projectId>.json`; routes under `/api/projects/:id/warehouse` (+ `/materials`, `/receipts`, `/issues`, and `DELETE /:kind/:itemId`).
+
+### 15. Material-movement ledger + invoice reconciliation (حركة المواد)
+A **🔀 حركة المواد** tab inside the warehouse page gives one row per material consolidating the whole flow:
+**المشتراة (فواتير) → الوارد للمستودع → في المستودع + في الموقع**, plus a per-recipient breakdown of **who holds the material now** (each subcontractor / self with quantity).
+- The **المشتراة (فواتير)** column comes from the expenses module: a material expense can now be **linked to a warehouse material** (a "صنف المستودع" dropdown on the material form). The warehouse GET aggregates purchased qty per linked material (`purchasedByMaterial`).
+- The **فرق الشراء** column compares purchased vs received and flags any quantity **paid for but not received into the warehouse** (e.g. purchased 250, received 200 → **⚠ 50 لم يدخل**). Unlinked materials show **—** (no false gap). This directly answers "where did the site materials go" and surfaces leakage between the invoice and the store.
+- Computed on existing data — no new storage; the only new stored field is the optional `warehouseMaterialId` on a material expense.
+
 ---
 
 ## Post-deploy smoke test
@@ -120,6 +137,8 @@ Tap adapter hardened for real monthly recurring charges (payment agreement + mer
 9. **Locked approved expense**: as the project manager, approve one of your expenses (as the owner), then as the PM open it → the core fields are disabled and there is no delete button, only document upload; sending an amount change is ignored, uploading an invoice/delivery note works.
 10. **Subcontractor approval**: as the PM, add a subcontractor with a contract → "حفظ وإرسال للإدارة" → it shows ⏳ pending and the build button is locked; as the owner, open subcontractors → "✅ اعتماد المقاول" → the build button unlocks. A PM cannot self-approve (server returns 403).
 11. **Material distribution**: add material expenses linked to a BOQ item (some own, some to a sub) → open **📦 توزيع المواد ومراقبة التكلفة** → set a target per unit → an over-target item shows 🔴 with the waste amount, the distribution shows the split across self/subs, and unassigned materials are flagged.
+12. **Warehouse**: open **📦 المستودع** → under **🧾 الأصناف** add a material (e.g. دهان بلاستيك / لتر) → **📥 توريد** receive 200 → **📤 صرف** issue 120 to a subcontractor and 40 to ذاتي → the **📊 الرصيد الحالي** shows balance 40; try to issue 100 → it is **blocked** (not enough stock); **🏷 حسب الجهة** shows 120 under the sub and 40 under ذاتي.
+13. **Movement ledger + invoice gap**: in the expenses page, add a material expense, pick the **صنف المستودع** = دهان بلاستيك with a covered quantity of 250 → open the warehouse **🔀 حركة المواد** tab → the row shows المشتراة (فواتير) 250, الوارد للمستودع 200, and **فرق الشراء = ⚠ 50 لم يدخل**; a material with no linked invoice shows **—** in those columns.
 
 ---
 

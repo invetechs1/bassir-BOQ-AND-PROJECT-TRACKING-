@@ -1647,6 +1647,22 @@ const fmtRate = n => Number(n||0).toLocaleString('en-US',{minimumFractionDigits:
 const money = n => fmtN(n) + (LANG === 'en' ? ' SAR' : ' ر.س');
 const todayStr = () => new Date().toISOString().slice(0,10);
 const daysAgo = k => { const d = new Date(); d.setDate(d.getDate()-k); return d.toISOString().slice(0,10); };
+// تاريخ مزدوج: ميلادي (ISO) + هجري (أم القرى) — للعرض فقط؛ القيمة المخزّنة تبقى ميلادية ISO
+const hijriOf = iso => {
+  try {
+    const d = new Date(String(iso).slice(0,10) + 'T12:00:00');
+    if (isNaN(d.getTime())) return '';
+    const g = {};
+    new Intl.DateTimeFormat('en-u-ca-islamic-umalqura', { day:'2-digit', month:'2-digit', year:'numeric', numberingSystem:'latn' })
+      .formatToParts(d).forEach(p => g[p.type] = p.value);
+    return g.year + '/' + g.month + '/' + g.day;
+  } catch (e) { return ''; }
+};
+const dualDate = iso => {
+  if (!iso) return '—';
+  const g = String(iso).slice(0,10), h = hijriOf(iso);
+  return esc(g) + ' م' + (h ? ' · ' + h + ' هـ' : '');
+};
 const ageDays = d => { if (!d) return null; const n = Math.floor((Date.now() - new Date(d + 'T00:00:00').getTime()) / 86400000); return isNaN(n) ? null : Math.max(0, n); };
 const paidAmount = m => (m.payments||[]).reduce((s,p) => s + (Number(p.amount)||0), 0);
 
@@ -4309,7 +4325,7 @@ function renderHistory(){
     const canDelete = canReviewMus() || ['submitted','rejected'].includes(m.status);
     return '<tr>' +
       '<td><span class="item-no">' + esc(m.no) + '</span>' + (nAtt ? '<br><span class="pill blue" style="font-size:9px" data-tip="' + T('مرفقات:') + ' ' + (m.attachments||[]).map(a=>esc(a.name||T('ملف'))).join(' · ') + '">📎 ' + nAtt + '</span>' : '') + '</td>' +
-      '<td style="font-family:var(--mono);font-size:12px">' + esc(m.date) + '</td>' +
+      '<td style="font-family:var(--mono);font-size:11px;line-height:1.5">' + dualDate(m.date) + '</td>' +
       '<td>' + m.lines.length + '</td>' +
       '<td class="amount">' + fmtN(m.gross) + '</td>' +
       '<td class="amount" style="color:var(--teal)">' + fmtN(cumMap[m.id]) + '</td>' +
@@ -4495,7 +4511,7 @@ function showDoc(m){
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;font-size:12px">' +
       '<div><span style="color:var(--text2)">' + T('المقاول الرئيسي:') + '</span> <strong>' + esc(p.client) + '</strong></div>' +
       '<div><span style="color:var(--text2)">' + T('الاستشاري:') + '</span> <strong>' + esc(p.consultant) + '</strong></div>' +
-      '<div><span style="color:var(--text2)">' + T('تاريخ المستخلص:') + '</span> <strong>' + esc(m.date) + '</strong></div>' +
+      '<div><span style="color:var(--text2)">' + T('تاريخ المستخلص:') + '</span> <strong>' + dualDate(m.date) + '</strong></div>' +
       '<div><span style="color:var(--text2)">' + T('عدد البنود:') + '</span> <strong>' + m.lines.length + '</strong></div>' +
       (m.by ? '<div><span style="color:var(--text2)">' + T('معد المستخلص:') + '</span> <strong>' + esc(m.by) + '</strong></div>' : '') +
       (m.status ? '<div><span style="color:var(--text2)">' + T('الحالة:') + '</span> <strong>' + (MUS_STATUS[m.status] ? musLbl(MUS_STATUS[m.status]) : m.status) + '</strong></div>' : '') +
@@ -5982,7 +5998,7 @@ function renderSubMusTable(){
     return '<tr>' +
       '<td><span class="item-no">' + esc(m.no) + '</span>' + (nAtt?'<br><span class="pill blue" style="font-size:9px">📎 ' + nAtt + '</span>':'') + '</td>' +
       '<td>' + esc(sub?sub.name:'—') + '</td>' +
-      '<td style="font-family:var(--mono);font-size:12px">' + esc(m.date) + '</td>' +
+      '<td style="font-family:var(--mono);font-size:11px;line-height:1.5">' + dualDate(m.date) + '</td>' +
       '<td>' + (m.lines||[]).length + '</td>' +
       '<td class="amount">' + fmtN(m.gross) + '</td>' +
       '<td class="amount muted">' + fmtN(round2((m.retention||0)+(m.dedTotal||0))) + '</td>' +
@@ -6481,7 +6497,7 @@ function subMusDocHtml(m){
   const docsHtml = (m.docs||[]).length ? '<div style="margin-top:10px"><strong>' + T('المرفقات والتسوية:') + '</strong><br>' + m.docs.map(d=>'<a href="' + esc(d.url) + '" target="_blank" style="color:var(--blue);font-size:12px">' + (String(d.url).endsWith('.pdf')?'📄':'🖼') + ' ' + esc(d.name||T('ملف')) + ' ↗</a>').join('<br>') + '</div>' : '<div style="margin-top:10px;color:var(--red);font-size:12px">⚠ ' + T('لا مرفقات') + '</div>';
   const pledgeHtml = m.pledgedBy ? '<div style="margin-top:12px;border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:11.5px;color:var(--text2);background:var(--bg2)">📝 <strong>' + T('تعهّد:') + '</strong> ' + T('أتعهّد بصفتي مدير المشروع بصحّة ما ورد في مستخلص مقاول الباطن.') + ' — ' + esc(m.pledgedBy) + (m.pledgedAt?(' · ' + esc(m.pledgedAt)):'') + '</div>' : '';
   return '<div style="font-family:var(--font)"><div style="font-size:14px;font-weight:700;margin-bottom:4px">' + T('مستخلص مقاول باطن') + ' ' + esc(m.no) + '</div>' +
-    '<div style="font-size:12px;color:var(--text2);margin-bottom:10px">' + T('المقاول:') + ' ' + esc(sub?sub.name:'—') + ' · ' + T('التاريخ:') + ' ' + esc(m.date) + ' · ' + T('أعدّه:') + ' ' + esc(m.by||'—') + '</div>' +
+    '<div style="font-size:12px;color:var(--text2);margin-bottom:10px">' + T('المقاول:') + ' ' + esc(sub?sub.name:'—') + ' · ' + T('التاريخ:') + ' ' + dualDate(m.date) + ' · ' + T('أعدّه:') + ' ' + esc(m.by||'—') + '</div>' +
     '<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:var(--bg2)"><th style="text-align:right;padding:5px">' + T('البند') + '</th><th>' + T('الوحدة') + '</th><th>' + T('السعر') + '</th><th>' + T('الكمية') + '</th><th>' + T('القيمة') + '</th></tr></thead><tbody>' + rows + '</tbody></table>' +
     '<table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:8px">' +
     '<tr><td style="text-align:right;padding:4px"><strong>' + T('قيمة الأعمال') + '</strong></td><td style="text-align:left;font-family:var(--mono)">' + fmtN(m.gross) + '</td></tr>' +

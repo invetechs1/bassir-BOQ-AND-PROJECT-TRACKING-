@@ -360,6 +360,7 @@
   <div class="nav-tab" data-tab="subs" onclick="switchTab('subs')"><span data-i18n="🧱 مقاولو الباطن">🧱 مقاولو الباطن</span> <span class="tab-count" id="tc-subs">0</span><span class="tab-count" id="tc-subs-alert" style="display:none;background:var(--red);color:#fff">0</span></div>
   <div class="nav-tab" data-tab="archive" onclick="switchTab('archive')"><span data-i18n="📁 الأرشيف والمستندات">📁 الأرشيف والمستندات</span> <span class="tab-count" id="tc-archive">0</span></div>
   <div class="nav-tab" onclick="openExpensesModule()" title="مصاريف وربحية المشروع"><span data-i18n="💰 المصاريف والربحية">💰 المصاريف والربحية</span></div>
+  <div class="nav-tab" onclick="openWarehouseModule()" title="المستودع — توريد وصرف المواد"><span data-i18n="📦 المستودع">📦 المستودع</span></div>
 </div>
 
 <div class="main">
@@ -1409,6 +1410,11 @@
 let LANG = localStorage.getItem('azoom_lang') || 'ar';
 const I18N_EN = {};
 Object.assign(I18N_EN, {
+  '📝 تعهّد مدير المشروع':'📝 Project manager undertaking',
+  'أتعهّد بصفتي مدير المشروع بصحّة ما ورد في مستخلص مقاول الباطن.':'As the project manager, I attest to the accuracy of the data in this subcontractor claim.',
+  '✅ نعم، أتعهّد':'✅ Yes, I attest',
+  'تعهّد:':'Undertaking:',
+  '✅ تم رفع مستخلص مقاول الباطن للمراجعة من قبل الإدارة.':'✅ The subcontractor claim was submitted for management review.',
   'تغيير كلمة المرور':'Change password',
   '💲 قاعدة الأسعار':'💲 Price database',
   '🔗 ربط Bassir ERP':'🔗 Connect Bassir ERP',
@@ -2596,7 +2602,7 @@ Object.assign(I18N_EN, {
 // ============================================================
 //  USERS
 // ============================================================
-const ROLE_LABELS = {admin:'أدمن النظام', client:'العميل - مالك الشركة', pmo:'مدير المشاريع', pm:'مدير مشروع', finance:'الماليّة'};
+const ROLE_LABELS = {admin:'أدمن النظام', client:'العميل - مالك الشركة', pmo:'مدير المشاريع', pm:'مدير مشروع', finance:'الماليّة (رفع سند الدفع)'};
 
 function openUsersManage(){
   if (!isManagerial()) { alert(T('إدارة المستخدمين صلاحية أدمن النظام أو العميل')); return; }
@@ -2950,6 +2956,10 @@ function switchTab(id){
 function openExpensesModule(){
   if (!state || !state.currentProjectId) return;
   window.open('/expenses?project=' + state.currentProjectId, '_blank');
+}
+function openWarehouseModule(){
+  if (!state || !state.currentProjectId) return;
+  window.open('/warehouse?project=' + state.currentProjectId, '_blank');
 }
 
 // ============================================================
@@ -6891,6 +6901,8 @@ async function buildSubMus(){
 }
 async function doBuildSubMus(){
   const c = subMusComputeDraft();
+  // الفحوصات (بند واحد على الأقل، عدم تجاوز المتاح، المرفقات إلزامية) تمّت بالفعل في buildSubMus()
+  // قبل عرض نافذة التعهّد — لا تُكرَّر هنا.
   let docs = [];
   if (sdPendingFiles.length) {
     try { for (const f of sdPendingFiles) { const r = await API.req('POST', '/api/projects/' + proj().id + '/photos', {dataUrl:f.dataUrl}); docs.push({url:r.url, name:f.name}); } }
@@ -6920,7 +6932,7 @@ async function doBuildSubMus(){
   }
   sdSubCharge = null;
   closeModal('sub-detail-modal'); save(); renderAll(); switchSubView('mus');
-  setTimeout(()=>alert(T('✅ تم رفع مستخلص مقاول الباطن للاعتماد.')), 200);
+  setTimeout(()=>alert(T('✅ تم رفع مستخلص مقاول الباطن للمراجعة من قبل الإدارة.')), 200);
 }
 
 // ---- عرض/اعتماد/صرف مستخلص مقاول الباطن ----
@@ -8011,7 +8023,7 @@ async function boot(){
   try {
     await refreshState();
     // موظف الماليّة ليس له مكان في لوحة التحكم الكاملة — صفحة المصاريف فقط
-    if (state.me && state.me.role === 'finance') { location.href = '/expenses'; return; }
+    if (state && state.me && state.me.role === 'finance') { location.href = '/expenses'; return; }
     hideLogin();
   } catch(e) {
     if (e.status === 401) {

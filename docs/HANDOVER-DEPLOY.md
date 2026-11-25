@@ -2,7 +2,7 @@
 
 **Branch to deploy:** `claude/session-uqllzm`
 **Repo:** `invetechs1/bassir-BOQ-AND-PROJECT-TRACKING-`
-**Date:** 2026-11-12 · Bassir technical division
+**Date:** 2026-11-24 · Bassir technical division
 
 This is the single document to deploy all the work on the branch. Each feature was tested; details and per-feature notes are in the other files under `docs/`.
 
@@ -30,15 +30,17 @@ npm install                               # no new dependencies, safe to run
 
 | File | What |
 |---|---|
-| `expenses/index.js` | **New module** — Project Costs / Expenses + profitability + approval/payment |
-| `public/expenses.html` | **New page** — expenses UI (entry, approve/pay, charge-to, proof) |
-| `public/index.html` | Expenses menu entry; sub-certificate payments (edit/delete, dates, print); decimal prices |
-| `server.js` | Owner-only guard for sub-certificate approve/pay |
+| `expenses/index.js` | **New module** — Project Costs / Expenses + profitability + approval/payment + expense documents + material distribution; material expense can link to a warehouse material (`warehouseMaterialId`) |
+| `public/expenses.html` | **New page** — expenses UI (entry, approve/pay, charge-to, proof, 3 document slots, material distribution view); warehouse-material link on the material form; 📦 المستودع nav link |
+| `warehouse/index.js` | **New module** — Warehouse: materials, receipts (توريد), issues (صرف) per subcontractor/self, live stock, by-recipient, and invoice-vs-received reconciliation |
+| `public/warehouse.html` | **New page** — warehouse UI (stock, movement ledger, receive, issue, by-recipient, materials) |
+| `public/index.html` | Expenses menu entry; **📦 المستودع** menu entry; sub-certificate payments (edit/delete, dates, print); decimal prices; Finance role in user management; subcontractor contract + approval |
+| `server.js` | Mounts the **Warehouse module**; owner-only guard for sub-certificate approve/pay; new `finance` role; owner-only subcontractor approval |
 | `saas/index.js`, `saas/tap.js` | Tap recurring (merchant-initiated) hardening |
 | `public/saas/billing.html`, `public/saas/owner.html` | Gregorian (Miladi) dates |
 | `docs/…` | Handover docs + a demo video |
 
-The Expenses module is **mounted from `server.js`** and is additive — it does not change the existing certificate/BOQ flows.
+The Expenses and Warehouse modules are **mounted from `server.js`** and are additive — they do not change the existing certificate/BOQ flows. Warehouse storage is a new per-project file `data/warehouse/<projectId>.json` (created on first use).
 
 ---
 
@@ -74,8 +76,51 @@ On a subcontractor certificate:
 - **Owner-only**: approving, paying, and editing/deleting payments is limited to the company **owner (client)** and admin; **pm/pmo only submit**. Enforced in `server.js` (`subcontractor_approval_owner_only` / `subcontractor_payment_owner_only`), closing an earlier gap where editing/deleting a payment was unguarded.
 *Details: `docs/handover-sub-payments-edit.md`.*
 
-### 7. Tap recurring hardening
+### 7. Three document slots on an expense
+Adding an expense now has three separate, labeled upload slots:
+- **📋 عرض السعر (Quotation)** — uploaded at entry.
+- **🧾 فاتورة المصروف (Invoice)** — uploaded by the project manager **after the transfer**.
+- **📦 كشف الاستلام (Delivery note)** — proof the materials were received.
+All three are optional at entry and can be added later by editing the expense; the owner sees links to all three in the review dialog before approving/paying. The old "material requires an invoice at creation" rule was removed (the invoice arrives after the transfer). Legacy attachments are kept and shown under the invoice slot.
+*Details: `docs/handover-expense-documents.md`.*
+
+### 8. Finance role (upload payment voucher only)
+A new **Finance (الماليّة)** role with its own username/password. A finance employee logs into the expenses page and can **only** record the payment and upload the **payment voucher / transfer receipt (سند الدفع / صورة الحوالة)** on an **approved** expense — they cannot enter expenses, approve, or edit anything else. Flow: PM enters → owner approves → finance uploads the voucher. The owner creates the finance user from **"👥 إدارة المستخدمين"** → role **الماليّة**. The review endpoint now guards per section (approval = admin/client/pmo; payment = admin/client/finance).
+*Details: `docs/handover-finance-role.md`.*
+
+### 9. Lock an approved expense for the project manager
+Once an expense is **approved**, the project manager can no longer edit its data or delete it — they can only open it and upload documents (invoice / delivery note). Core-field changes from a non-approver are ignored server-side and the stored values kept; deletion of an approved expense is limited to the owner/admin. The PM's row shows a 📎 upload button (no delete), and the edit modal opens in documents-only mode (🔒 notice, core fields disabled).
+*Details: `docs/handover-lock-approved-expense.md`.*
+
+### 10. Subcontractor contract + owner approval
+When the project manager adds a subcontractor, they **attach the contract** and click **"حفظ وإرسال للإدارة"**; the subcontractor becomes **pending**. The company owner reviews the contract and clicks **"✅ اعتماد المقاول"**. Only after approval can the subcontractor start work (the "build certificate" button is locked until then). Server-side, only the owner/admin can approve a subcontractor. Existing subcontractors have no status and are treated as approved (backward-safe).
+*Details: `docs/handover-subcontractor-approval.md`.*
+
+### 11. Project-manager pledge on a subcontractor claim
+When the project manager submits a subcontractor claim, a pledge dialog appears — **"أتعهّد بصفتي مدير المشروع بصحّة ما ورد في مستخلص مقاول الباطن."** On **"✅ نعم، أتعهّد"** the claim goes to the subcontractor-claims page for management review, and the pledge (text, author, date) is recorded on the claim and printed on the certificate.
+*Details: `docs/handover-sub-claim-pledge.md`.*
+
+### 12. Material distribution & cost control
+A new **📦 توزيع المواد ومراقبة التكلفة** view in the expenses page. Each material expense is linked to a BOQ item and a sink (subcontractor / self); the view shows **actual material cost per executed unit** vs an editable **target per unit**, flags over-budget items (🔴 with the waste amount), and shows **"المواد راحت وين؟"** — the distribution across subs and self, plus unassigned materials. Solves uncontrolled site-material consumption (e.g. painting costing 12 SAR/m² against a 6.5 target).
+*Details: `docs/handover-material-distribution.md`.*
+
+### 13. Tap recurring hardening
 Tap adapter hardened for real monthly recurring charges (payment agreement + merchant-initiated charges). Keys are entered by you; sim/test/live modes supported.
+
+### 14. Warehouse module (المستودع) — material quantity tracking
+A new page (menu: **📦 المستودع**) that tracks materials by **quantity** (the expenses module tracks them by money). After purchase, a material is **received into the warehouse** (توريد); it is then **issued** (صرف) out, each issue assigned to a **subcontractor** or **self (ذاتي)** with the withdrawn quantity. The page shows:
+- **Live stock** per material (`balance = received − issued`); an issue that exceeds the available balance is **blocked** server-side (`400` with a clear message), so you can never take out more than is in store.
+- **حسب الجهة (من سحب كم؟)** — issued quantities grouped by recipient, so it is clear which subcontractor or self pulled how much of each material.
+- Add materials once, then receive/issue; each issue can optionally be linked to a BOQ item.
+- **Permissions**: managing the warehouse (add/receive/issue/delete) is the project team (admin/client/pmo/pm) with access to the project; others view only.
+- Backend: `warehouse/index.js`, storage `data/warehouse/<projectId>.json`; routes under `/api/projects/:id/warehouse` (+ `/materials`, `/receipts`, `/issues`, and `DELETE /:kind/:itemId`).
+
+### 15. Material-movement ledger + invoice reconciliation (حركة المواد)
+A **🔀 حركة المواد** tab inside the warehouse page gives one row per material consolidating the whole flow:
+**المشتراة (فواتير) → الوارد للمستودع → في المستودع + في الموقع**, plus a per-recipient breakdown of **who holds the material now** (each subcontractor / self with quantity).
+- The **المشتراة (فواتير)** column comes from the expenses module: a material expense can now be **linked to a warehouse material** (a "صنف المستودع" dropdown on the material form). The warehouse GET aggregates purchased qty per linked material (`purchasedByMaterial`).
+- The **فرق الشراء** column compares purchased vs received and flags any quantity **paid for but not received into the warehouse** (e.g. purchased 250, received 200 → **⚠ 50 لم يدخل**). Unlinked materials show **—** (no false gap). This directly answers "where did the site materials go" and surfaces leakage between the invoice and the store.
+- Computed on existing data — no new storage; the only new stored field is the optional `warehouseMaterialId` on a material expense.
 
 ---
 
@@ -87,6 +132,13 @@ Tap adapter hardened for real monthly recurring charges (payment agreement + mer
 4. **Expense review**: pm enters an expense → owner approves (partial) and uploads a transfer statement; pm cannot approve/pay.
 5. **Sub-certificate payment**: owner records a payment → edit its amount → it updates; the table/print show the payment date(s); pm/pmo cannot pay.
 6. **Dates** on billing/owner pages show Gregorian; a sub rate of `10.5` shows as `10.50`.
+7. **Expense documents**: add an expense with only a **quotation** (no invoice) → it saves; edit it later to add the **invoice** and **delivery note** → they persist and the quotation is kept; the three links show in the table and the owner review dialog.
+8. **Finance role**: the owner creates a finance user (role الماليّة) in user management; that user logs in → lands on the expenses page → can open an **approved** expense and upload the **payment voucher (سند الدفع)** only; it cannot add/approve/edit expenses, and cannot pay a still-pending one.
+9. **Locked approved expense**: as the project manager, approve one of your expenses (as the owner), then as the PM open it → the core fields are disabled and there is no delete button, only document upload; sending an amount change is ignored, uploading an invoice/delivery note works.
+10. **Subcontractor approval**: as the PM, add a subcontractor with a contract → "حفظ وإرسال للإدارة" → it shows ⏳ pending and the build button is locked; as the owner, open subcontractors → "✅ اعتماد المقاول" → the build button unlocks. A PM cannot self-approve (server returns 403).
+11. **Material distribution**: add material expenses linked to a BOQ item (some own, some to a sub) → open **📦 توزيع المواد ومراقبة التكلفة** → set a target per unit → an over-target item shows 🔴 with the waste amount, the distribution shows the split across self/subs, and unassigned materials are flagged.
+12. **Warehouse**: open **📦 المستودع** → under **🧾 الأصناف** add a material (e.g. دهان بلاستيك / لتر) → **📥 توريد** receive 200 → **📤 صرف** issue 120 to a subcontractor and 40 to ذاتي → the **📊 الرصيد الحالي** shows balance 40; try to issue 100 → it is **blocked** (not enough stock); **🏷 حسب الجهة** shows 120 under the sub and 40 under ذاتي.
+13. **Movement ledger + invoice gap**: in the expenses page, add a material expense, pick the **صنف المستودع** = دهان بلاستيك with a covered quantity of 250 → open the warehouse **🔀 حركة المواد** tab → the row shows المشتراة (فواتير) 250, الوارد للمستودع 200, and **فرق الشراء = ⚠ 50 لم يدخل**; a material with no linked invoice shows **—** in those columns.
 
 ---
 

@@ -383,6 +383,12 @@ const EXPENSES = require('./expenses')({
   companyIntegration, setIntegrationStatus
 });
 
+const WAREHOUSE = require('./warehouse')({
+  app, DATA_DIR, PUBLIC_DIR: path.join(__dirname, 'public'),
+  readJSON, writeJSON, fs,
+  auth, isAdmin, loadProject, canAccessProject
+});
+
 // ---------- المصادقة ----------
 app.post('/api/auth/login', (req, res) => {
   const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '?';

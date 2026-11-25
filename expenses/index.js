@@ -91,6 +91,57 @@ module.exports = function initExpenses(ctx) {
     };
   }
 
+  // ------- توزيع المواد ومراقبة التكلفة (المواد راحت وين؟ وكم كلّفت الوحدة مقابل المستهدف؟) -------
+  // يقرأ المصاريف المخزّنة هنا مباشرة (materialQty/warehouseMaterialId على كل مصروف مواد) — نفس الحقول
+  // التي تعتمد عليها وحدة المستودع (warehouse/index.js: purchasedByMaterial) لمطابقة المشتريات بالوارد.
+  function materialReport(project, items, targets) {
+    const boq = project.boqItems || [];
+    const boqById = new Map(boq.map(it => [it.id, it]));
+    const subName = id => { const s = (project.subcontractors || []).find(x => x.id === id); return s ? s.name : ('#' + id); };
+    const mats = items.filter(e => e.type === 'material');
+    const byItem = {};       // itemId -> { spent, own, subs:{subId:amt}, qty, count }
+    const bySink = {};       // 'own' | 'sub:<id>' -> amount  (المواد راحت لمن)
+    let totalMaterial = 0, unassigned = 0, toSubs = 0, toOwn = 0;
+    mats.forEach(e => {
+      const amt = approvedCost(e); // اتساقاً مع الربحية: المعتمد فقط، ليس كامل المبلغ المُدخَل
+      totalMaterial = round2(totalMaterial + amt);
+      const isSub = e.bearer === 'sub' && e.subId;
+      const sinkKey = isSub ? ('sub:' + e.subId) : 'own';
+      bySink[sinkKey] = round2((bySink[sinkKey] || 0) + amt);
+      if (isSub) toSubs = round2(toSubs + amt); else toOwn = round2(toOwn + amt);
+      const iid = e.boqItemId && boqById.has(e.boqItemId) ? e.boqItemId : null;
+      if (!iid) { unassigned = round2(unassigned + amt); return; }
+      if (!byItem[iid]) byItem[iid] = { spent: 0, own: 0, subs: {}, qty: 0, count: 0 };
+      const g = byItem[iid];
+      g.spent = round2(g.spent + amt); g.qty = round2(g.qty + (Number(e.materialQty) || 0)); g.count++;
+      if (isSub) g.subs[e.subId] = round2((g.subs[e.subId] || 0) + amt);
+      else g.own = round2(g.own + amt);
+    });
+    const rows = boq.filter(it => byItem[it.id] || targets[it.id] != null).map(it => {
+      const g = byItem[it.id] || { spent: 0, own: 0, subs: {}, qty: 0, count: 0 };
+      const executed = Number(it.executedQty) || 0;
+      const actualRate = executed > 0 ? round2(g.spent / executed) : 0;
+      const target = targets[it.id] != null ? round2(targets[it.id]) : null;
+      const targetBudget = target != null ? round2(executed * target) : null;
+      const variance = target != null ? round2(g.spent - targetBudget) : null;
+      return {
+        itemId: it.id, desc: it.desc, unit: it.unit, executed, contractRate: Number(it.unitRate) || 0,
+        spent: g.spent, coveredQty: g.qty, count: g.count, own: g.own,
+        subs: Object.entries(g.subs).map(([sid, a]) => ({ subId: Number(sid), name: subName(Number(sid)), amount: a })),
+        actualRate, target, targetBudget, variance,
+        variancePct: (targetBudget > 0 ? round2(variance / targetBudget * 100) : null),
+        over: variance != null && variance > 0.5
+      };
+    }).sort((a, b) => (b.variance || 0) - (a.variance || 0));
+    const distribution = Object.entries(bySink).map(([k, a]) => ({
+      key: k, name: k === 'own' ? 'ذاتي (على الشركة)' : subName(Number(k.split(':')[1])), amount: a,
+      pct: totalMaterial > 0 ? round2(a / totalMaterial * 100) : 0
+    })).sort((a, b) => b.amount - a.amount);
+    const overCount = rows.filter(r => r.over).length;
+    const overTotal = round2(rows.reduce((s, r) => s + (r.over ? r.variance : 0), 0));
+    return { totalMaterial, assigned: round2(totalMaterial - unassigned), unassigned, toSubs, toOwn, rows, distribution, overCount, overTotal };
+  }
+
   // ---------- دفع المصروف إلى Bassir ERP (باتجاه واحد، لا يوقف الحفظ مهما حدث) ----------
   async function pushExpenseToErp(project, exp) {
     const cfg = companyIntegration(project.companyId);
@@ -150,11 +201,15 @@ module.exports = function initExpenses(ctx) {
     const amount = round2(body.amount);
     const vatRate = Number(body.vatRate) || 0;
     const vat = round2(amount * vatRate / 100);
+    const type = body.type;
     return {
-      type: body.type, date: body.date, description: String(body.description).trim(),
+      type, date: body.date, description: String(body.description).trim(),
       supplier: String(body.supplier || '').trim(), amount, vatRate, vat, total: round2(amount + vat),
       taxInvoiceNo: String(body.taxInvoiceNo || '').trim(), taxInvoiceDate: body.taxInvoiceDate || '',
       category: String(body.category || '').trim(), boqItemId: body.boqItemId || null,
+      // الكمية التي تغطيها هذه المواد وربطها بصنف المستودع (اختياري) — لمطابقة المشتريات بالوارد في وحدة المستودع
+      materialQty: type === 'material' ? (Number(body.materialQty) || 0) : 0,
+      warehouseMaterialId: type === 'material' ? (body.warehouseMaterialId ? String(body.warehouseMaterialId) : null) : null,
       month: String(body.month || '').trim(), headcount: body.headcount != null ? Number(body.headcount) || 0 : null,
       // التحميل: 'own' = ذاتي (تكلفة مشروع كالمعتاد) | 'sub' = على مقاول باطن (يُستبعد من تكلفة المشروع ويُخصم من مستخلصه)
       bearer: body.bearer === 'sub' ? 'sub' : 'own',
@@ -190,6 +245,9 @@ module.exports = function initExpenses(ctx) {
       items: store.items || [],
       profitability: profitability(project, store.items || []),
       subs: (project.subcontractors || []).map(s => ({ id: s.id, name: s.name })),
+      // لتقرير توزيع المواد (material-report) في الواجهة — نفس شكل البيانات المستخدم في وحدة المستودع
+      boqItems: (project.boqItems || []).map(it => ({ id: it.id, desc: it.desc, unit: it.unit, executedQty: Number(it.executedQty) || 0, unitRate: Number(it.unitRate) || 0 })),
+      materialTargets: store.materialTargets || {},
       subCharges: outstandingSubCharges(store.items || []),
       canManage: canManage(req.user),
       canDelete: req.user.role !== 'finance', // أي دور عدا الماليّة (انظر تعليق DELETE أدناه)
@@ -198,6 +256,33 @@ module.exports = function initExpenses(ctx) {
       role: req.user.role,
       integrationEnabled: !!companyIntegration(project.companyId).enabled
     });
+  });
+
+  // ---------- GET: تقرير توزيع المواد ومراقبة التكلفة (المواد راحت وين + تكلفة الوحدة مقابل المستهدف) ----------
+  app.get('/api/projects/:id/material-report', auth, (req, res) => {
+    const project = loadProjectOr404(req, res); if (!project) return;
+    const store = loadExpenses(project.id);
+    res.json({
+      report: materialReport(project, store.items || [], store.materialTargets || {}),
+      materialTargets: store.materialTargets || {},
+      canApprove: canApprove(req.user)
+    });
+  });
+
+  // ---------- POST: تعيين تكلفة المواد المستهدفة لكل وحدة من بند (مرجع المقارنة) — صلاحية الإدارة/المالك ----------
+  app.post('/api/projects/:id/material-targets', auth, (req, res) => {
+    const project = loadProjectOr404(req, res); if (!project) return;
+    if (!canApprove(req.user)) return res.status(403).json({ error: 'تعيين المستهدف صلاحية الإدارة/المالك' });
+    const b = req.body || {};
+    const itemId = String(b.boqItemId || '').trim();
+    if (!itemId || !(project.boqItems || []).some(it => it.id === itemId)) return res.status(400).json({ error: 'بند غير صحيح' });
+    const store = loadExpenses(project.id);
+    store.materialTargets = store.materialTargets || {};
+    if (b.rate === null || b.rate === '' || Number(b.rate) <= 0) delete store.materialTargets[itemId];
+    else store.materialTargets[itemId] = round2(b.rate);
+    store.version = (store.version || 0) + 1;
+    saveExpenses(project.id, store);
+    res.json({ ok: true, materialTargets: store.materialTargets, report: materialReport(project, store.items || [], store.materialTargets) });
   });
 
   // ---------- GET: المصاريف المحمّلة على كل مقاول باطن وغير المسوَّاة بعد (يستدعيها بنّاء مستخلص الباطن) ----------
@@ -272,7 +357,7 @@ module.exports = function initExpenses(ctx) {
     const locked = ['approved', 'partially_approved'].includes(exp.status) && !canApprove(req.user);
     if (locked) {
       ['type', 'date', 'description', 'supplier', 'amount', 'vatRate', 'vat', 'total', 'taxInvoiceNo', 'taxInvoiceDate',
-       'category', 'boqItemId', 'month', 'headcount', 'bearer', 'subId'].forEach(k => { fields[k] = exp[k]; });
+       'category', 'boqItemId', 'warehouseMaterialId', 'month', 'headcount', 'bearer', 'subId'].forEach(k => { fields[k] = exp[k]; });
     }
     Object.assign(exp, fields, { updatedAt: now() });
     // توافق مع الاعتماد القائم: إن قلّ المبلغ المعدَّل عن اعتماد سابق (كامل أو جزئي)، نقصّ المعتمد ليطابق

@@ -33,6 +33,13 @@
 .exp-table .cell-ellipsis{display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom}
 .exp-table td .status-chip{max-width:100%;display:inline-block;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom}
 @media(max-width:700px){th.hs,td.hs,col.hs{display:none}}
+.seg{display:flex;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:4px}
+.seg button{background:transparent;border:0;color:var(--text3);font-weight:700;padding:7px 13px;border-radius:7px;cursor:pointer;font-family:var(--font);font-size:13px}
+.seg button.on{background:#0e2e3340;color:var(--text)}
+.typechip{display:inline-block;border-radius:6px;padding:1px 8px;font-size:11px;font-weight:700}
+.t-material{background:#0e2b55;color:#9dc0ff;border:1px solid #27508c}
+.t-sub{background:#0c3324;color:#7ff0bb;border:1px solid #1c6b47}
+.t-own{background:#1a2740;color:var(--text3);border:1px solid var(--line)}
 </style>
 </head>
 <body>
@@ -40,6 +47,7 @@
   <div class="logo"><svg class="mark" viewBox="0 0 100 100" width="36" height="36" aria-hidden="true" focusable="false"><path d="M22 28 H72 L34 72 H66" fill="none" stroke="#00C6A7" stroke-width="11" stroke-linecap="square" stroke-linejoin="miter"/><rect x="60" y="58" width="7" height="18" fill="#3ED6E3"/><rect x="71" y="46" width="7" height="30" fill="#00C6A7"/><rect x="82" y="34" width="7" height="42" fill="#00C6A7"/></svg><span data-i18n="مصاريف المشروع">مصاريف المشروع</span></div>
   <div class="row">
     <button class="btn btn-ghost btn-sm" id="lang-switch" onclick="toggleLang()">🌐 English</button>
+    <a class="btn btn-ghost btn-sm" href="/warehouse" data-i18n="📦 المستودع">📦 المستودع</a>
     <a class="btn btn-ghost btn-sm" href="/app" data-i18n="→ النظام">→ النظام</a>
     <button class="btn btn-ghost btn-sm" onclick="logout()" data-i18n="خروج">خروج</button>
   </div>
@@ -66,6 +74,13 @@
       <button class="btn btn-primary" id="add-exp-b" onclick="openExpModal()" data-i18n="➕ مصروف جديد">➕ مصروف جديد</button>
     </div>
 
+    <!-- تبديل العرض: المصاريف / توزيع المواد -->
+    <div class="seg" id="view-seg" style="margin-bottom:14px">
+      <button class="on" data-v="expenses" onclick="setView('expenses')" data-i18n="💵 المصاريف والربحية">💵 المصاريف والربحية</button>
+      <button data-v="materials" onclick="setView('materials')" data-i18n="📦 توزيع المواد ومراقبة التكلفة">📦 توزيع المواد ومراقبة التكلفة</button>
+    </div>
+
+    <div id="view-expenses">
     <div class="grid g4" style="margin-bottom:18px">
       <div class="kpi"><div class="k-label" data-i18n="💰 الإيراد المعتمد">💰 الإيراد المعتمد</div><div class="k-val" id="k-rev">—</div><div class="k-sub" id="k-rev-sub"></div></div>
       <div class="kpi"><div class="k-label" data-i18n="💸 إجمالي التكلفة">💸 إجمالي التكلفة</div><div class="k-val" id="k-cost">—</div><div class="k-sub" id="k-cost-sub"></div></div>
@@ -94,6 +109,30 @@
         <thead><tr><th data-i18n="التاريخ">التاريخ</th><th data-i18n="النوع">النوع</th><th data-i18n="الوصف">الوصف</th><th class="hs" data-i18n="المورّد">المورّد</th><th data-i18n="المبلغ">المبلغ</th><th class="hs" data-i18n="الضريبة">الضريبة</th><th data-i18n="الإجمالي">الإجمالي</th><th class="hs" data-i18n="التحميل على">التحميل على</th><th class="hs">ERP</th><th data-i18n="المستندات">المستندات</th><th data-i18n="الحالة">الحالة</th><th></th></tr></thead>
         <tbody id="exp-body"></tbody>
       </table></div>
+    </div>
+    </div><!-- /view-expenses -->
+
+    <!-- عرض توزيع المواد ومراقبة التكلفة -->
+    <div id="view-materials" class="hide">
+      <div class="grid g4" style="margin-bottom:12px">
+        <div class="kpi"><div class="k-label">📦 إجمالي المواد المشتراة</div><div class="k-val" id="m-total">—</div><div class="k-sub" id="m-total-sub"></div></div>
+        <div class="kpi"><div class="k-label">🧱 على مقاولي الباطن</div><div class="k-val" id="m-tosubs" style="color:var(--teal)">—</div></div>
+        <div class="kpi"><div class="k-label">🏢 ذاتي (على الشركة)</div><div class="k-val" id="m-toown">—</div></div>
+        <div class="kpi"><div class="k-label">⚠ تجاوز المستهدف</div><div class="k-val" id="m-over" style="color:var(--red)">—</div><div class="k-sub" id="m-over-sub"></div></div>
+      </div>
+      <div class="panel" style="margin-bottom:12px">
+        <div class="spread" style="margin-bottom:8px"><strong>📊 تكلفة المواد لكل بند مقابل المستهدف</strong><span class="hint">عيّن المستهدف لكل وحدة لتظهر المقارنة والحالة</span></div>
+        <div style="overflow:auto"><table>
+          <thead><tr><th>البند</th><th>الوحدة</th><th>المنفّذ</th><th>مواد مصروفة</th><th>تكلفة الوحدة (فعلي)</th><th>المستهدف/وحدة</th><th>الفرق</th><th>الحالة</th><th>التوزيع (راحت وين)</th></tr></thead>
+          <tbody id="m-rows"></tbody>
+        </table></div>
+        <p class="hint" style="margin-top:8px">💡 «تكلفة الوحدة الفعلية» = إجمالي المواد المصروفة على البند ÷ الكمية المنفّذة. إن تجاوزت المستهدف يظهر 🔴 مع قيمة الهدر.</p>
+      </div>
+      <div class="panel">
+        <div class="spread" style="margin-bottom:8px"><strong>🧭 المواد راحت وين؟ (التوزيع على الجهات)</strong></div>
+        <div id="m-dist"></div>
+        <p class="hint" id="m-unassigned" style="margin-top:8px"></p>
+      </div>
     </div>
   </div>
 </div>
@@ -142,6 +181,12 @@
     <div class="field" style="flex:1"><label for="e-inv-date" data-i18n="تاريخ الفاتورة">تاريخ الفاتورة</label><input id="e-inv-date" type="date"></div>
   </div>
   <div class="field"><label for="e-boq" data-i18n="ربط ببند جدول الكميات (اختياري)">ربط ببند جدول الكميات (اختياري)</label><select id="e-boq"><option value="" data-i18n="— بلا ربط —">— بلا ربط —</option></select></div>
+  <div class="row">
+    <div class="field" style="flex:1"><label for="e-matqty" data-i18n="الكمية المغطّاة (اختياري)">الكمية المغطّاة (اختياري)</label><input id="e-matqty" type="number" min="0" step="0.01" data-i18n-ph="مثال: م²/كجم" placeholder="مثال: م²/كجم"></div>
+    <div class="field" style="flex:1"><label for="e-whmat" data-i18n="📦 صنف المستودع (اختياري)">📦 صنف المستودع (اختياري)</label><select id="e-whmat"><option value="" data-i18n="— بلا ربط —">— بلا ربط —</option></select>
+      <div class="help" data-i18n="اربط فاتورة المواد بصنف المستودع لمطابقة المشتريات بالوارد في حركة المواد.">اربط فاتورة المواد بصنف المستودع لمطابقة المشتريات بالوارد في حركة المواد.</div>
+    </div>
+  </div>
   <div class="field" id="e-docs-field" style="border:1px solid var(--line);border-radius:12px;padding:12px;background:rgba(255,255,255,.02)">
     <label style="font-weight:700" data-i18n="📎 مستندات المصروف">📎 مستندات المصروف</label>
     <div class="field" style="margin-top:8px">
@@ -240,17 +285,19 @@
 <script src="/saas/shared.js"></script>
 <script>
 var PROJECTS=[], CUR=null, EXP=null, QUOTE_DOCS=[], INVOICE_DOCS=[], DELIVERY_DOCS=[], EDIT_DOCS_ONLY=false;
+var WHMATS=[], CURVIEW='expenses', MREPORT=null;
 function setFormDocsOnly(on){
   EDIT_DOCS_ONLY=on;
-  ['e-type','e-date','e-month','e-desc','e-amount','e-vat','e-supplier','e-inv-no','e-inv-date','e-headcount','e-category','e-boq','e-bearer','e-subid','e-sync'].forEach(function(id){var el=document.getElementById(id);if(el)el.disabled=on;});
+  ['e-type','e-date','e-month','e-desc','e-amount','e-vat','e-supplier','e-inv-no','e-inv-date','e-headcount','e-category','e-boq','e-matqty','e-whmat','e-bearer','e-subid','e-sync'].forEach(function(id){var el=document.getElementById(id);if(el)el.disabled=on;});
   document.getElementById('e-lock-note').classList[on?'remove':'add']('hide');
 }
 Object.assign(I18N_EN, {
   'مصاريف المشروع':'Project Expenses', '→ النظام':'→ System', 'خروج':'Log out', 'تسجيل الدخول':'Log in',
-  'مصاريف المشروع — نظام زمام':'Project Expenses — ZIMAM',
+  'مصاريف المشروع — نظام زمام':'Project Expenses — ZIMAM', '📦 المستودع':'📦 Warehouse',
   'اسم المستخدم':'Username', 'كلمة المرور':'Password', 'دخول':'Log in', 'المشروع':'Project',
   '➕ مصروف جديد':'➕ New expense', '💰 الإيراد المعتمد':'💰 Certified revenue', '💸 إجمالي التكلفة':'💸 Total cost',
   '📈 الربح':'📈 Margin', '🧾 المحصّل فعلياً':'🧾 Actually collected', 'من مستخلصات العميل':'From client claims',
+  '💵 المصاريف والربحية':'💵 Expenses & profitability', '📦 توزيع المواد ومراقبة التكلفة':'📦 Material distribution & cost control',
   'تفصيل التكلفة':'Cost breakdown', 'النوع':'Type', 'الكل':'All', 'مواد':'Materials', 'رواتب':'Salaries', 'نثريات':'Misc',
   'بحث':'Search', 'الوصف أو المورّد…':'Description or supplier…', 'التاريخ':'Date', 'الوصف':'Description', 'المورّد':'Supplier',
   'المبلغ':'Amount', 'الضريبة':'VAT', 'الإجمالي':'Total', 'مصروف جديد':'New expense', 'النوع *':'Type *',
@@ -258,6 +305,9 @@ Object.assign(I18N_EN, {
   'مثال: توريد حديد تسليح':'e.g. Rebar supply', 'المورّد/الجهة':'Supplier/party', 'التصنيف':'Category', 'اختياري':'Optional',
   'ر.س':'SAR', 'نسبة الضريبة %':'VAT rate %', 'الشهر':'Month', 'عدد العمال':'Headcount', 'رقم الفاتورة الضريبية':'Tax invoice no.',
   'تاريخ الفاتورة':'Invoice date', 'ربط ببند جدول الكميات (اختياري)':'Link to a BOQ item (optional)', '— بلا ربط —':'— No link —',
+  'الكمية المغطّاة (اختياري)':'Covered quantity (optional)', 'مثال: م²/كجم':'e.g. sqm/kg',
+  '📦 صنف المستودع (اختياري)':'📦 Warehouse item (optional)',
+  'اربط فاتورة المواد بصنف المستودع لمطابقة المشتريات بالوارد في حركة المواد.':'Link the material invoice to a warehouse item to match purchases against receipts in material movement.',
   'مستندات / فواتير':'Documents / invoices', 'إرسال فوري إلى Bassir ERP (إن كان التكامل مفعّلاً)':'Send immediately to Bassir ERP (if integration is enabled)',
   'حفظ المصروف':'Save expense', 'إلغاء':'Cancel', 'تأكيد':'Confirm',
   'تعذّر تحميل المشاريع':'Could not load projects', 'لا توجد مشاريع':'No projects', 'لا تملك صلاحية الوصول لأي مشروع بعد.':'You do not have access to any project yet.',
@@ -269,7 +319,7 @@ Object.assign(I18N_EN, {
   'تعذّر قراءة الملف':'Could not read the file', 'الوصف مطلوب':'Description is required', 'التاريخ مطلوب':'Date is required',
   'المبلغ مطلوب ويجب أن يكون أكبر من صفر':'Amount is required and must be greater than zero',
   'إرفاق فاتورة المورد إلزامي لمصاريف المواد':'Attaching a supplier invoice is mandatory for material expenses',
-  'جارٍ…':'Working…', 'حفظ المصروف':'Save expense', 'تعذّر الحفظ':'Could not save', 'تم الحفظ':'Saved', 'تعديل مصروف':'Edit expense',
+  'جارٍ…':'Working…', 'تعذّر الحفظ':'Could not save', 'تم الحفظ':'Saved', 'تعديل مصروف':'Edit expense',
   'حذف هذا المصروف؟':'Delete this expense?', 'تم الحذف':'Deleted', 'تعذّر':'Failed', 'تمت المزامنة':'Synced', 'فشلت المزامنة':'Sync failed',
   'مزامنة':'Sync', 'تعديل':'Edit', 'حذف':'Delete', 'لا مصاريف مسجّلة بعد':'No expenses recorded yet', 'بند #':'Item #',
   'المستندات':'Documents', 'مستندات المصروف':'Expense documents', 'فتح':'Open',
@@ -303,10 +353,18 @@ Object.assign(I18N_EN, {
   'لا يمكن أن يتجاوز المبلغ المدفوع المبلغ المعتمد (':'Paid amount cannot exceed the approved amount (',
   'تم تسجيل الدفع':'Payment recorded', '💰 دُفع':'💰 Paid', 'لم يُدفع بعد':'Not paid yet', 'مرجع:':'Ref:',
   '📎 إرفاق كشف التحويل البنكي إلزامي':'📎 Attaching a bank transfer statement is mandatory',
-  'لا يمكن تسجيل الدفع قبل اعتماد المصروف':'Payment cannot be recorded before the expense is approved'
+  'لا يمكن تسجيل الدفع قبل اعتماد المصروف':'Payment cannot be recorded before the expense is approved',
+  '📦 إجمالي المواد المشتراة':'📦 Total materials purchased', '🧱 على مقاولي الباطن':'🧱 Charged to subcontractors',
+  '🏢 ذاتي (على الشركة)':'🏢 Own (company)', '⚠ تجاوز المستهدف':'⚠ Over target', 'تعذّر تحميل التقرير':'Could not load the report',
+  'بند تجاوز المستهدف':'item(s) over target', 'الكل ضمن الحد':'All within target', 'لا يوجد':'None',
+  'موزّعة على بنود:':'Allocated to items:', 'غير موزّعة:':'Unallocated:', '✅ تم حفظ المستهدف':'✅ Target saved',
+  'لا يوجد منفّذ':'No executed quantity', 'حدّد المستهدف':'Set a target', '🔴 تجاوز':'🔴 Over', '🟢 ضمن الحد':'🟢 Within target',
+  'لا مواد مسجّلة بعد — أدخل «مصروف مواد» واربطه ببند.':'No materials recorded yet — enter a "material expense" and link it to an item.',
+  'لا توزيع بعد':'No distribution yet',
+  'مواد غير مربوطة ببند:':'Materials not linked to an item:', '— اربطها بالبنود عند الإدخال لتعرف أين ذهبت.':'— link them to items when entering to know where they went.'
 });
 applyDir(); translateStaticDOM();
-window.onLangChange = function(){ if(CUR){ renderBoqPicker(); if(EXP){ renderKpis(); renderList(); } } };
+window.onLangChange = function(){ if(CUR){ renderBoqPicker(); if(EXP){ renderKpis(); renderList(); } if(CURVIEW==='materials'&&MREPORT) renderMaterialReport(MREPORT); } };
 
 function clearState(){ var s=document.getElementById('page-state'); if(s) s.innerHTML=''; }
 function submitLogin(){ doLogin({ onSuccess: boot }); }
@@ -352,6 +410,7 @@ function switchProject(id){
   if(!CUR) return;
   try{ history.replaceState(null,'','/expenses?project='+CUR.id); }catch(e){}
   renderBoqPicker();
+  loadWarehouseMaterials();
   loadExpenses();
 }
 function renderBoqPicker(){
@@ -360,12 +419,73 @@ function renderBoqPicker(){
     return '<option value="'+b.id+'">'+esc(b.desc||(T('بند #')+b.id))+'</option>';
   }).join('');
 }
+// أصناف المستودع (لربط فاتورة المواد بصنف محدَّد — تطابق المشتريات بالوارد في وحدة المستودع)
+function loadWarehouseMaterials(){
+  if(!CUR) return;
+  api('GET','/api/projects/'+CUR.id+'/warehouse').then(function(r){ WHMATS=(r.ok&&r.d.materials)||[]; renderWhMatPicker(); });
+}
+function renderWhMatPicker(){
+  var sel=document.getElementById('e-whmat'); if(!sel) return;
+  var cur=sel.value;
+  sel.innerHTML='<option value="">'+T('— بلا ربط —')+'</option>'+WHMATS.map(function(m){
+    return '<option value="'+esc(m.id)+'">'+esc(m.name)+(m.unit?(' ('+esc(m.unit)+')'):'')+'</option>';
+  }).join('');
+  sel.value=cur;
+}
+
+// ---------- تبديل العرض: المصاريف / توزيع المواد ----------
+function setView(v){
+  CURVIEW=v;
+  [].forEach.call(document.querySelectorAll('#view-seg button'),function(b){b.classList.toggle('on',b.dataset.v===v)});
+  document.getElementById('view-expenses').classList.toggle('hide', v!=='expenses');
+  document.getElementById('view-materials').classList.toggle('hide', v!=='materials');
+  document.getElementById('add-exp-b').style.display = (v==='expenses' && EXP && EXP.canManage) ? '' : 'none';
+  if(v==='materials') loadMaterialReport();
+}
+function loadMaterialReport(){
+  if(!CUR) return;
+  api('GET','/api/projects/'+CUR.id+'/material-report').then(function(r){
+    if(!r.ok){ toast((r.d&&r.d.error)||T('تعذّر تحميل التقرير')); return; }
+    MREPORT=r.d; renderMaterialReport(MREPORT);
+  });
+}
+function setMaterialTarget(itemId, val){
+  api('POST','/api/projects/'+CUR.id+'/material-targets',{boqItemId:itemId, rate:(val===''?null:Number(val))}).then(function(r){
+    if(!r.ok){ toast((r.d&&r.d.error)||T('تعذّر الحفظ')); return; }
+    MREPORT={report:r.d.report, materialTargets:r.d.materialTargets, canApprove:MREPORT?MREPORT.canApprove:true};
+    renderMaterialReport(MREPORT); toast(T('✅ تم حفظ المستهدف'));
+  });
+}
+function renderMaterialReport(d){
+  var rep=d.report, canT=!!d.canApprove;
+  document.getElementById('m-total').textContent=money2(rep.totalMaterial);
+  document.getElementById('m-total-sub').textContent=T('موزّعة على بنود:')+' '+money(rep.assigned)+' · '+T('غير موزّعة:')+' '+money(rep.unassigned);
+  document.getElementById('m-tosubs').textContent=money2(rep.toSubs);
+  document.getElementById('m-toown').textContent=money2(rep.toOwn);
+  document.getElementById('m-over').textContent=rep.overCount?money2(rep.overTotal):T('لا يوجد');
+  document.getElementById('m-over-sub').textContent=rep.overCount?(rep.overCount+' '+T('بند تجاوز المستهدف')):T('الكل ضمن الحد');
+  document.getElementById('m-rows').innerHTML = rep.rows.length ? rep.rows.map(function(x){
+    var dist=(x.own>0?('<span class="typechip t-own" title="'+T('ذاتي')+'">🏢 '+money(x.own)+'</span> '):'')+x.subs.map(function(s){return '<span class="typechip t-sub">🧱 '+esc(s.name)+': '+money(s.amount)+'</span>'}).join(' ');
+    var actual=x.executed>0?(money(x.actualRate)+' '+T('ر.س')):('<span class="muted">'+T('لا يوجد منفّذ')+'</span>');
+    var targetCell=canT?('<input type="number" min="0" step="0.01" value="'+(x.target!=null?x.target:'')+'" style="width:88px" onchange="setMaterialTarget(\''+esc(x.itemId)+'\',this.value)" placeholder="—">'):(x.target!=null?money(x.target):'—');
+    var status,diff;
+    if(x.target==null){ status='<span class="muted">'+T('حدّد المستهدف')+'</span>'; diff='—'; }
+    else if(x.over){ status='<span style="color:var(--red);font-weight:800">'+T('🔴 تجاوز')+'</span>'; diff='<span style="color:var(--red);font-weight:700">+'+money(x.variance)+'</span>'; }
+    else { status='<span style="color:var(--green);font-weight:800">'+T('🟢 ضمن الحد')+'</span>'; diff='<span style="color:var(--green)">'+money(x.variance)+'</span>'; }
+    return '<tr'+(x.over?' style="background:#2a1414"':'')+'><td><span class="item-no">'+esc(x.itemId)+'</span> '+esc((x.desc||'').slice(0,26))+'</td><td>'+esc(x.unit)+'</td><td class="amount">'+money(x.executed)+'</td><td class="amount">'+money(x.spent)+'</td><td class="amount"'+(x.over?' style="color:var(--red);font-weight:700"':'')+'>'+actual+'</td><td>'+targetCell+'</td><td class="amount">'+diff+'</td><td>'+status+'</td><td style="font-size:11px">'+(dist||'<span class="muted">—</span>')+'</td></tr>';
+  }).join('') : ('<tr><td colspan="9" class="muted center">'+T('لا مواد مسجّلة بعد — أدخل «مصروف مواد» واربطه ببند.')+'</td></tr>');
+  var maxA=Math.max.apply(null,rep.distribution.map(function(x){return x.amount}).concat([1]));
+  document.getElementById('m-dist').innerHTML = rep.distribution.length ? rep.distribution.map(function(x){
+    return '<div style="margin:7px 0"><div class="spread" style="font-size:12.5px"><span>'+(x.key==='own'?'🏢 ':'🧱 ')+esc(x.name)+'</span><strong>'+money(x.amount)+' '+T('ر.س')+' · '+x.pct+'%</strong></div><div style="height:10px;background:var(--line);border-radius:6px;overflow:hidden;margin-top:3px"><div style="height:100%;width:'+(x.amount/maxA*100)+'%;background:'+(x.key==='own'?'var(--accent)':'var(--teal)')+'"></div></div></div>';
+  }).join('') : ('<div class="muted">'+T('لا توزيع بعد')+'</div>');
+  document.getElementById('m-unassigned').textContent = rep.unassigned>0 ? ('⚠ '+T('مواد غير مربوطة ببند:')+' '+money(rep.unassigned)+' '+T('ر.س')+' '+T('— اربطها بالبنود عند الإدخال لتعرف أين ذهبت.')) : '';
+}
 
 function loadExpenses(){
   api('GET','/api/projects/'+CUR.id+'/expenses').then(function(r){
     if(r.networkError||!r.ok){ toast((r.d&&r.d.error)||T('تعذّر تحميل المصاريف')); return; }
     EXP=r.d; renderKpis(); renderList();
-    document.getElementById('add-exp-b').style.display = EXP.canManage?'':'none';
+    document.getElementById('add-exp-b').style.display = (CURVIEW==='expenses' && EXP.canManage)?'':'none';
   });
 }
 function renderKpis(){
@@ -529,6 +649,7 @@ function openExpModal(id){
   document.getElementById('e-settled-note').classList.add('hide');
   QUOTE_DOCS=[]; INVOICE_DOCS=[]; DELIVERY_DOCS=[];
   renderSubIdPicker();
+  renderWhMatPicker();
   var settled=false;
   if(id){
     var x=(EXP.items||[]).find(function(i){return i.id===id});
@@ -547,6 +668,8 @@ function openExpModal(id){
     document.getElementById('e-inv-no').value=x.taxInvoiceNo||'';
     document.getElementById('e-inv-date').value=x.taxInvoiceDate||'';
     document.getElementById('e-boq').value=x.boqItemId||'';
+    document.getElementById('e-matqty').value=x.materialQty!=null&&x.materialQty!==0?x.materialQty:'';
+    document.getElementById('e-whmat').value=x.warehouseMaterialId||'';
     document.getElementById('e-sync').checked=false;
     document.getElementById('e-bearer').value=x.bearer==='sub'?'sub':'own';
     if(x.bearer==='sub' && x.subId) document.getElementById('e-subid').value=String(x.subId);
@@ -571,9 +694,10 @@ function openExpModal(id){
     document.getElementById('e-id').value='';
     document.getElementById('e-type').value='material';
     document.getElementById('e-date').value=new Date().toISOString().slice(0,10);
-    ['e-desc','e-supplier','e-category','e-amount','e-month','e-headcount','e-inv-no','e-inv-date'].forEach(function(f){document.getElementById(f).value='';});
+    ['e-desc','e-supplier','e-category','e-amount','e-month','e-headcount','e-inv-no','e-inv-date','e-matqty'].forEach(function(f){document.getElementById(f).value='';});
     document.getElementById('e-vat').value='15';
     document.getElementById('e-boq').value='';
+    document.getElementById('e-whmat').value='';
     document.getElementById('e-sync').checked=false;
     document.getElementById('e-bearer').value='own';
   }
@@ -637,6 +761,8 @@ function saveExpense(){
     taxInvoiceNo:document.getElementById('e-inv-no').value.trim(),
     taxInvoiceDate:document.getElementById('e-inv-date').value,
     boqItemId:document.getElementById('e-boq').value||null,
+    materialQty:Number(document.getElementById('e-matqty').value)||0,
+    warehouseMaterialId:document.getElementById('e-whmat').value||null,
     month:document.getElementById('e-month').value,
     headcount:document.getElementById('e-headcount').value===''?null:Number(document.getElementById('e-headcount').value),
     bearer:document.getElementById('e-bearer').value,
@@ -654,12 +780,13 @@ function saveExpense(){
     btn.disabled=false; btn.textContent = EDIT_DOCS_ONLY ? T('💾 حفظ المستندات') : T('حفظ المصروف');
     if(!r.ok) return showExpErr((r.d&&r.d.error)||T('تعذّر الحفظ'));
     closeExpModal(); toast('✅ '+T('تم الحفظ')); loadExpenses();
+    if(CURVIEW==='materials') loadMaterialReport();
   });
 }
 function deleteExpense(id){
   askConfirm(T('حذف هذا المصروف؟'), function(){
     api('DELETE','/api/projects/'+CUR.id+'/expenses/'+id).then(function(r){
-      if(r.ok){ toast(T('تم الحذف')); loadExpenses(); } else toast((r.d&&r.d.error)||T('تعذّر'));
+      if(r.ok){ toast(T('تم الحذف')); loadExpenses(); if(CURVIEW==='materials') loadMaterialReport(); } else toast((r.d&&r.d.error)||T('تعذّر'));
     });
   });
 }

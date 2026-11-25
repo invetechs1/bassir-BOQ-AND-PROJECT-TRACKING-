@@ -471,7 +471,7 @@
         <div class="invoice-sidebar">
           <div class="card-title" style="color:var(--green-bright)"><span data-i18n="💰 ملخص المستخلص">💰 ملخص المستخلص</span> <span class="pill green" id="mb-count">0 بند</span></div>
           <div class="f-grid" style="grid-template-columns:1fr 1fr;">
-            <div class="f-field"><label data-i18n="تاريخ المستخلص">تاريخ المستخلص</label><input type="date" id="mb-date" oninput="mbSaveDraft()"></div>
+            <div class="f-field"><label data-i18n="تاريخ المستخلص">تاريخ المستخلص</label><input type="date" lang="en-GB" id="mb-date" oninput="mbSaveDraft()"></div>
             <div class="f-field"><label data-i18n="رقم المستخلص">رقم المستخلص</label><input type="text" id="mb-no" data-i18n-ph="تلقائي إن تُرك فارغاً" placeholder="تلقائي إن تُرك فارغاً" oninput="mbSaveDraft()"></div>
             <div class="f-field"><label data-i18n="ملاحظات">ملاحظات</label><input type="text" id="mb-notes" placeholder="اختياري" data-i18n-ph="اختياري" oninput="mbSaveDraft()"></div>
             <div class="f-field"><label data-i18n="محتجز ضمان %">محتجز ضمان %</label><input type="number" id="mb-ret" min="0" max="100" step="0.5" oninput="mbSaveDraft()"></div>
@@ -569,7 +569,7 @@
         <div class="card blue-b">
           <div class="card-title" data-i18n="📝 تسجيل يومية عمل">📝 تسجيل يومية عمل</div>
           <div class="f-grid" style="grid-template-columns:repeat(3,1fr)">
-            <div class="f-field"><label data-i18n="التاريخ">التاريخ</label><input type="date" id="wl-date"></div>
+            <div class="f-field"><label data-i18n="التاريخ">التاريخ</label><input type="date" lang="en-GB" id="wl-date"></div>
             <div class="f-field"><label data-i18n="الفرقة / المسؤول">الفرقة / المسؤول</label><input type="text" id="wl-crew" list="crew-list" placeholder="مثال: فرقة الدهانات أ" data-i18n-ph="مثال: فرقة الدهانات أ"><datalist id="crew-list"></datalist></div>
             <div class="f-field"><label data-i18n="عدد العمال">عدد العمال</label><input type="number" id="wl-workers" min="1" value="4"></div>
             <div class="f-field"><label data-i18n="البند">البند</label>
@@ -774,8 +774,8 @@
           <option value="other" data-i18n="أخرى">أخرى</option>
         </select>
       </div>
-      <div class="f-field"><label data-i18n="تاريخ بداية العائق">تاريخ بداية العائق</label><input type="date" id="im-blk-since"></div>
-      <div class="f-field"><label data-i18n="التاريخ المتوقع للحل">التاريخ المتوقع للحل</label><input type="date" id="im-blk-expected"></div>
+      <div class="f-field"><label data-i18n="تاريخ بداية العائق">تاريخ بداية العائق</label><input type="date" lang="en-GB" id="im-blk-since"></div>
+      <div class="f-field"><label data-i18n="التاريخ المتوقع للحل">التاريخ المتوقع للحل</label><input type="date" lang="en-GB" id="im-blk-expected"></div>
       <div class="f-field full"><label data-i18n="تفاصيل العائق">تفاصيل العائق</label><input type="text" id="im-blk-note"></div>
       <div class="f-field full"><label data-i18n="ملاحظات">ملاحظات</label><textarea id="im-notes" rows="2"></textarea></div>
     </div>
@@ -851,7 +851,7 @@
       <div class="f-field"><label data-i18n="الكمية المنفذة حسب النظام (أدخلها المهندس)">الكمية المنفذة حسب النظام (أدخلها المهندس)</label><input type="number" id="aq-sysqty" readonly style="color:var(--blue)"></div>
       <div class="f-field"><label data-i18n="🖊 الكمية الموقّعة على الاستلام (AR) *">🖊 الكمية الموقّعة على الاستلام (AR) *</label><input type="number" id="aq-arqty" min="0" step="0.01" oninput="aqCheckMatch()" placeholder="كما هي على ورقة الاستشاري"></div>
       <div class="f-field full" id="aq-match" style="display:none"></div>
-      <div class="f-field"><label data-i18n="تاريخ الاعتماد">تاريخ الاعتماد</label><input type="date" id="aq-date"></div>
+      <div class="f-field"><label data-i18n="تاريخ الاعتماد">تاريخ الاعتماد</label><input type="date" lang="en-GB" id="aq-date"></div>
       <div class="f-field"><label data-i18n="اسم الاستشاري / المهندس">اسم الاستشاري / المهندس</label><input type="text" id="aq-consultant" placeholder="من وقّع الاستلام"></div>
       <div class="f-field"><label data-i18n="المقاول المنفّذ (اختياري)">المقاول المنفّذ (اختياري)</label><select id="aq-sub"></select></div>
       <div class="f-field"><label data-i18n="رقم الاستلام (AR)">رقم الاستلام (AR)</label><input type="text" id="aq-arno" placeholder="اختياري"></div>
@@ -872,7 +872,7 @@
     <div class="modal-title"><span data-i18n="💵 تسجيل دفعة مستلمة">💵 تسجيل دفعة مستلمة</span><span class="modal-close" onclick="closeModal('pay-modal')">✕</span></div>
     <div class="f-grid" style="grid-template-columns:1fr">
       <div class="f-field"><label id="pay-info" style="font-size:12px;color:var(--text2)"></label></div>
-      <div class="f-field"><label data-i18n="تاريخ الاستلام">تاريخ الاستلام</label><input type="date" id="pay-date"></div>
+      <div class="f-field"><label data-i18n="تاريخ الاستلام">تاريخ الاستلام</label><input type="date" lang="en-GB" id="pay-date"></div>
       <div class="f-field"><label data-i18n="المبلغ (ر.س)">المبلغ (ر.س)</label><input type="number" id="pay-amount" min="0" step="0.01"></div>
       <div class="f-field"><label data-i18n="ملاحظات">ملاحظات</label><input type="text" id="pay-note" placeholder="حوالة بنكية / شيك..." data-i18n-ph="حوالة بنكية / شيك..."></div>
     </div>
@@ -892,7 +892,7 @@
     <div style="border:1px solid var(--border);border-radius:10px;padding:10px;background:var(--bg2)">
       <div id="subpay-form-title" style="font-weight:700;font-size:12.5px;margin-bottom:8px" data-i18n="➕ دفعة جديدة">➕ دفعة جديدة</div>
       <div class="f-grid" style="grid-template-columns:1fr 1fr">
-        <div class="f-field"><label data-i18n="تاريخ الصرف">تاريخ الصرف</label><input type="date" id="subpay-date"></div>
+        <div class="f-field"><label data-i18n="تاريخ الصرف">تاريخ الصرف</label><input type="date" lang="en-GB" id="subpay-date"></div>
         <div class="f-field"><label data-i18n="المبلغ (ر.س)">المبلغ (ر.س)</label><input type="number" id="subpay-amount" min="0" step="0.01"></div>
         <div class="f-field full"><label data-i18n="ملاحظات">ملاحظات</label><input type="text" id="subpay-note" placeholder="حوالة / شيك..."></div>
       </div>
@@ -1005,7 +1005,7 @@
     <div class="modal-title"><span id="pdb-offer-title" data-i18n="إضافة عرض">إضافة عرض</span><span class="modal-close" onclick="closeModal('pdb-offer-modal')">✕</span></div>
     <div class="f-grid">
       <div class="f-field"><label data-i18n="رقم العرض *">رقم العرض *</label><input type="text" id="pdo-ref"></div>
-      <div class="f-field"><label data-i18n="التاريخ">التاريخ</label><input type="date" id="pdo-date"></div>
+      <div class="f-field"><label data-i18n="التاريخ">التاريخ</label><input type="date" lang="en-GB" id="pdo-date"></div>
       <div class="f-field"><label data-i18n="العميل">العميل</label><input type="text" id="pdo-client"></div>
       <div class="f-field"><label data-i18n="الموقع">الموقع</label><input type="text" id="pdo-location"></div>
       <div class="f-field full"><label data-i18n="المشروع *">المشروع *</label><input type="text" id="pdo-project"></div>
@@ -1219,7 +1219,7 @@
           <div class="f-field"><label data-i18n="كهرباء وماء (ر.س)">كهرباء وماء (ر.س)</label><input type="number" id="sd-utilities" min="0" step="0.01" value="0" oninput="renderSubMusTotals()"></div>
           <div class="f-field"><label data-i18n="سوء أداء / غرامات (ر.س)">سوء أداء / غرامات (ر.س)</label><input type="number" id="sd-performance" min="0" step="0.01" value="0" oninput="renderSubMusTotals()"></div>
           <div class="f-field"><label data-i18n="خصومات أخرى (ر.س)">خصومات أخرى (ر.س)</label><input type="number" id="sd-other" min="0" step="0.01" value="0" oninput="renderSubMusTotals()"></div>
-          <div class="f-field"><label data-i18n="تاريخ المستخلص">تاريخ المستخلص</label><input type="date" id="sd-date"></div>
+          <div class="f-field"><label data-i18n="تاريخ المستخلص">تاريخ المستخلص</label><input type="date" lang="en-GB" id="sd-date"></div>
           <div class="f-field full"><label style="color:var(--red)" data-i18n="📎 المرفقات إلزامية * — تُحفظ في أرشيف المشروع">📎 المرفقات إلزامية * — تُحفظ في أرشيف المشروع</label>
             <div style="font-size:11px;color:var(--text2);margin-bottom:4px">أرفق: <strong>المستخلص المعمول من قِبل الشركة</strong> + <strong>اعتمادات الاستشاري</strong> + التسوية (PDF أو صور)</div>
             <input type="file" id="sd-files" accept="image/*,.pdf,application/pdf" multiple onchange="sdFilesPicked(this)">

@@ -122,7 +122,7 @@
       <option value="other">🧾 مصاريف أخرى / نثريات</option>
     </select>
   </div>
-  <div class="row"><div class="field" style="flex:1"><label>التاريخ</label><input type="date" id="e-date"></div>
+  <div class="row"><div class="field" style="flex:1"><label>التاريخ <span class="hint">(ميلادي)</span></label><input type="date" id="e-date" lang="en-GB"></div>
     <div class="field" style="flex:1" id="e-month-f"><label>الشهر (رواتب)</label><input type="month" id="e-month"></div></div>
   <div class="field"><label>البيان / الوصف</label><input id="e-desc" placeholder="وصف المصروف"></div>
   <div class="row">
@@ -143,7 +143,7 @@
   <div id="e-material-fields">
     <div class="row"><div class="field" style="flex:1"><label>المورّد</label><input id="e-supplier"></div>
       <div class="field" style="flex:1"><label>رقم الفاتورة الضريبية</label><input id="e-invno"></div></div>
-    <div class="field"><label>تاريخ الفاتورة</label><input type="date" id="e-invdate"></div>
+    <div class="field"><label>تاريخ الفاتورة <span class="hint">(ميلادي)</span></label><input type="date" id="e-invdate" lang="en-GB"></div>
     <div class="row">
       <div class="field" style="flex:2"><label>📦 البند المستفيد من المواد (لتوزيع المواد)</label>
         <select id="e-boqitem"></select>
@@ -203,7 +203,7 @@
     <div style="font-weight:800;font-size:13px;margin-bottom:8px" id="rev-pay-title">٢) الدفع ورفع سند الدفع <span class="hint" style="font-weight:400">(بعد اعتماد المالك)</span></div>
     <div class="row">
       <div class="field" style="flex:1"><label>المبلغ المدفوع</label><input type="number" id="rev-paid-amount" min="0" step="0.01" placeholder="المبلغ المحوّل فعلاً"></div>
-      <div class="field" style="flex:1"><label>تاريخ التحويل</label><input type="date" id="rev-paid-date"></div>
+      <div class="field" style="flex:1"><label>تاريخ التحويل <span class="hint">(ميلادي)</span></label><input type="date" id="rev-paid-date" lang="en-GB"></div>
     </div>
     <div class="field"><label>مرجع التحويل (اختياري)</label><input id="rev-pay-ref" placeholder="رقم العملية / البنك / آخر 4 أرقام"></div>
     <div class="field"><label>📎 سند الدفع / صورة الحوالة (صورة/PDF)</label>

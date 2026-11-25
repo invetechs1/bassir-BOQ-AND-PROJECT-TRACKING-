@@ -2,7 +2,7 @@
 
 **Branch to deploy:** `claude/session-uqllzm`
 **Repo:** `invetechs1/bassir-BOQ-AND-PROJECT-TRACKING-`
-**Date:** 2026-11-24 · Bassir technical division
+**Date:** 2026-11-25 · Bassir technical division
 
 This is the single document to deploy all the work on the branch. Each feature was tested; details and per-feature notes are in the other files under `docs/`.
 
@@ -34,7 +34,7 @@ npm install                               # no new dependencies, safe to run
 | `public/expenses.html` | **New page** — expenses UI (entry, approve/pay, charge-to, proof, 3 document slots, material distribution view); warehouse-material link on the material form; 📦 المستودع nav link |
 | `warehouse/index.js` | **New module** — Warehouse: materials, receipts (توريد), issues (صرف) per subcontractor/self, live stock, by-recipient, and invoice-vs-received reconciliation |
 | `public/warehouse.html` | **New page** — warehouse UI (stock, movement ledger, receive, issue, by-recipient, materials) |
-| `public/index.html` | Expenses menu entry; **📦 المستودع** menu entry; sub-certificate payments (edit/delete, dates, print); decimal prices; Finance role in user management; subcontractor contract + approval |
+| `public/index.html` | Expenses menu entry; **📦 المستودع** menu entry; sub-certificate payments (edit/delete, dates, print); decimal prices; Finance role in user management; subcontractor contract + approval; **Gregorian date pickers** (all 9 date inputs) |
 | `server.js` | Mounts the **Warehouse module**; owner-only guard for sub-certificate approve/pay; new `finance` role; owner-only subcontractor approval |
 | `saas/index.js`, `saas/tap.js` | Tap recurring (merchant-initiated) hardening |
 | `public/saas/billing.html`, `public/saas/owner.html` | Gregorian (Miladi) dates |
@@ -122,6 +122,9 @@ A **🔀 حركة المواد** tab inside the warehouse page gives one row per
 - The **فرق الشراء** column compares purchased vs received and flags any quantity **paid for but not received into the warehouse** (e.g. purchased 250, received 200 → **⚠ 50 لم يدخل**). Unlinked materials show **—** (no false gap). This directly answers "where did the site materials go" and surfaces leakage between the invoice and the store.
 - Computed on existing data — no new storage; the only new stored field is the optional `warehouseMaterialId` on a material expense.
 
+### 16. Gregorian (Miladi) date pickers across the app
+The pages are `lang="ar"`, so Chrome rendered the native `<input type="date">` **picker** in the **Umm al-Qura (Hijri)** calendar for Saudi users — even though the stored value was always Gregorian ISO (`yyyy-mm-dd`). Every date input now carries `lang="en-GB"`, which forces the picker to the **Gregorian** calendar for all users while the pages stay Arabic/RTL. Covered: the expenses page (expense date, invoice date, transfer date — each labelled «ميلادي»), the warehouse page (receive/issue dates — labelled «ميلادي»), and all **9** date inputs in the main app (`index.html`: certificate date, work-log, blocker since/expected, approval, payment, sub-payment, project-doc, sub-certificate). Verified every input resolves to the `gregory` calendar. **Stored values are unchanged**; this is a display-only fix for the native picker. (The subscription/billing pages were already pinned to Gregorian — feature 4.)
+
 ---
 
 ## Post-deploy smoke test
@@ -139,6 +142,7 @@ A **🔀 حركة المواد** tab inside the warehouse page gives one row per
 11. **Material distribution**: add material expenses linked to a BOQ item (some own, some to a sub) → open **📦 توزيع المواد ومراقبة التكلفة** → set a target per unit → an over-target item shows 🔴 with the waste amount, the distribution shows the split across self/subs, and unassigned materials are flagged.
 12. **Warehouse**: open **📦 المستودع** → under **🧾 الأصناف** add a material (e.g. دهان بلاستيك / لتر) → **📥 توريد** receive 200 → **📤 صرف** issue 120 to a subcontractor and 40 to ذاتي → the **📊 الرصيد الحالي** shows balance 40; try to issue 100 → it is **blocked** (not enough stock); **🏷 حسب الجهة** shows 120 under the sub and 40 under ذاتي.
 13. **Movement ledger + invoice gap**: in the expenses page, add a material expense, pick the **صنف المستودع** = دهان بلاستيك with a covered quantity of 250 → open the warehouse **🔀 حركة المواد** tab → the row shows المشتراة (فواتير) 250, الوارد للمستودع 200, and **فرق الشراء = ⚠ 50 لم يدخل**; a material with no linked invoice shows **—** in those columns.
+14. **Gregorian date pickers**: open any date field (expense date, certificate date, payment date, warehouse receive/issue date, …) → the calendar popup shows the **Gregorian (ميلادي)** months, not Hijri; the field value is `yyyy-mm-dd`. Check on a browser whose language/region is Saudi Arabia, where the Hijri picker used to appear.
 
 ---
 

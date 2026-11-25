@@ -148,7 +148,7 @@
     <div class="field" style="flex:1"><label for="e-type" data-i18n="النوع *">النوع *</label><select id="e-type" onchange="onTypeChange()">
       <option value="material" data-i18n="مواد (فاتورة مورّد إلزامية)">مواد (فاتورة مورّد إلزامية)</option><option value="salary" data-i18n="رواتب">رواتب</option><option value="other" data-i18n="نثريات">نثريات</option>
     </select></div>
-    <div class="field" style="flex:1"><label for="e-date" data-i18n="التاريخ *">التاريخ *</label><input id="e-date" type="date"></div>
+    <div class="field" style="flex:1"><label for="e-date" data-i18n="التاريخ * (ميلادي)">التاريخ * (ميلادي)</label><input id="e-date" type="date" lang="en-GB"></div>
   </div>
   <div class="field"><label for="e-desc" data-i18n="الوصف *">الوصف *</label><input id="e-desc" data-i18n-ph="مثال: توريد حديد تسليح" placeholder="مثال: توريد حديد تسليح"></div>
   <div class="row">
@@ -178,7 +178,7 @@
   </div>
   <div class="row">
     <div class="field" style="flex:1"><label for="e-inv-no" data-i18n="رقم الفاتورة الضريبية">رقم الفاتورة الضريبية</label><input id="e-inv-no"></div>
-    <div class="field" style="flex:1"><label for="e-inv-date" data-i18n="تاريخ الفاتورة">تاريخ الفاتورة</label><input id="e-inv-date" type="date"></div>
+    <div class="field" style="flex:1"><label for="e-inv-date" data-i18n="تاريخ الفاتورة (ميلادي)">تاريخ الفاتورة (ميلادي)</label><input id="e-inv-date" type="date" lang="en-GB"></div>
   </div>
   <div class="field"><label for="e-boq" data-i18n="ربط ببند جدول الكميات (اختياري)">ربط ببند جدول الكميات (اختياري)</label><select id="e-boq"><option value="" data-i18n="— بلا ربط —">— بلا ربط —</option></select></div>
   <div class="row">
@@ -267,7 +267,7 @@
   <div class="note note-info" id="pay-hint" style="font-size:12.5px"></div>
   <div class="row">
     <div class="field" style="flex:1"><label for="pay-amount" data-i18n="المبلغ المدفوع (ر.س) *">المبلغ المدفوع (ر.س) *</label><input type="number" id="pay-amount" min="0" step="0.01"></div>
-    <div class="field" style="flex:1"><label for="pay-date" data-i18n="تاريخ التحويل">تاريخ التحويل</label><input type="date" id="pay-date"></div>
+    <div class="field" style="flex:1"><label for="pay-date" data-i18n="تاريخ التحويل (ميلادي)">تاريخ التحويل (ميلادي)</label><input type="date" id="pay-date" lang="en-GB"></div>
   </div>
   <div class="field"><label for="pay-ref" data-i18n="مرجع التحويل (اختياري)">مرجع التحويل (اختياري)</label><input id="pay-ref" data-i18n-ph="رقم العملية / البنك / آخر 4 أرقام" placeholder="رقم العملية / البنك / آخر 4 أرقام"></div>
   <div class="field">
@@ -301,10 +301,10 @@ Object.assign(I18N_EN, {
   'تفصيل التكلفة':'Cost breakdown', 'النوع':'Type', 'الكل':'All', 'مواد':'Materials', 'رواتب':'Salaries', 'نثريات':'Misc',
   'بحث':'Search', 'الوصف أو المورّد…':'Description or supplier…', 'التاريخ':'Date', 'الوصف':'Description', 'المورّد':'Supplier',
   'المبلغ':'Amount', 'الضريبة':'VAT', 'الإجمالي':'Total', 'مصروف جديد':'New expense', 'النوع *':'Type *',
-  'مواد (فاتورة مورّد إلزامية)':'Materials (supplier invoice required)', 'التاريخ *':'Date *', 'الوصف *':'Description *',
+  'مواد (فاتورة مورّد إلزامية)':'Materials (supplier invoice required)', 'التاريخ * (ميلادي)':'Date * (Gregorian)', 'الوصف *':'Description *',
   'مثال: توريد حديد تسليح':'e.g. Rebar supply', 'المورّد/الجهة':'Supplier/party', 'التصنيف':'Category', 'اختياري':'Optional',
   'ر.س':'SAR', 'نسبة الضريبة %':'VAT rate %', 'الشهر':'Month', 'عدد العمال':'Headcount', 'رقم الفاتورة الضريبية':'Tax invoice no.',
-  'تاريخ الفاتورة':'Invoice date', 'ربط ببند جدول الكميات (اختياري)':'Link to a BOQ item (optional)', '— بلا ربط —':'— No link —',
+  'تاريخ الفاتورة (ميلادي)':'Invoice date (Gregorian)', 'ربط ببند جدول الكميات (اختياري)':'Link to a BOQ item (optional)', '— بلا ربط —':'— No link —',
   'الكمية المغطّاة (اختياري)':'Covered quantity (optional)', 'مثال: م²/كجم':'e.g. sqm/kg',
   '📦 صنف المستودع (اختياري)':'📦 Warehouse item (optional)',
   'اربط فاتورة المواد بصنف المستودع لمطابقة المشتريات بالوارد في حركة المواد.':'Link the material invoice to a warehouse item to match purchases against receipts in material movement.',
@@ -347,7 +347,7 @@ Object.assign(I18N_EN, {
   'لا يمكن أن يتجاوز المبلغ المعتمد مبلغ المصروف (':'Approved amount cannot exceed the expense amount (',
   'أدخل مبلغاً أكبر من صفر':'Enter an amount greater than zero',
   'تم الاعتماد':'Approved', 'سبب الرفض (اختياري):':'Rejection reason (optional):', 'تم الرفض':'Rejected',
-  'تسجيل الدفع':'Record payment', 'المبلغ المدفوع (ر.س) *':'Paid amount (SAR) *', 'تاريخ التحويل':'Transfer date',
+  'تسجيل الدفع':'Record payment', 'المبلغ المدفوع (ر.س) *':'Paid amount (SAR) *', 'تاريخ التحويل (ميلادي)':'Transfer date (Gregorian)',
   'مرجع التحويل (اختياري)':'Transfer reference (optional)', '📎 كشف التحويل البنكي *':'📎 Bank transfer statement *',
   'حفظ الدفع':'Save payment', 'المبلغ المعتمد:':'Approved amount:',
   'لا يمكن أن يتجاوز المبلغ المدفوع المبلغ المعتمد (':'Paid amount cannot exceed the approved amount (',
